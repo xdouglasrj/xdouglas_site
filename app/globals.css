@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #e11d48;   /* rosa xDouglas */
+  --color-brand-secondary: #0f172a; /* dark base     */
+  --color-brand-accent: #f59e0b;    /* âmbar destaque */
+
+  /* Paleta da página de portão (entrada) */
+  --color-gate-bg: #000000;       /* fundo black */
+  --color-gate-azure: #3e4c59;    /* azure apagado */
+  --color-gate-pink: #a124c3;     /* rosa neon */
+  --color-gate-blue: #728094;     /* azul apagado */
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', monospace;
+
+  --radius-card: 0.75rem;
+  --radius-btn: 0.375rem;
+}
+
+/* ── Prose customizado para a página de privacidade ── */
+.prose-custom ul {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prose-custom ul li {
+  padding-left: 1.25rem;
+  position: relative;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #a3a3a3; /* neutral-400 */
+}
+
+.prose-custom ul li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: #525252; /* neutral-600 */
+}
+
+.prose-custom code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: #262626; /* neutral-800 */
+  color: #d4d4d4;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.prose-custom strong {
+  color: #e5e5e5; /* neutral-200 */
+  font-weight: 500;
+}
+
+.prose-custom p {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: #a3a3a3;
+}
