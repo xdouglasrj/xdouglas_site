@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { WaitlistActions } from './waitlist-actions'
+import { AutoAcceptCard } from './auto-accept-card'
+import { getAutoAcceptSettings } from '@/lib/settings/auto-accept'
 
 export const metadata: Metadata = { title: 'Convites pendentes' }
 export const dynamic = 'force-dynamic'
@@ -24,30 +26,38 @@ const TIPO_COLOR: Record<string, string> = {
 }
 
 export default async function AdminConvitesPage() {
-  const entries = await prisma.waitlist.findMany({
-    where: { invitedAt: null },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      artisticName: true,
-      phone: true,
-      tipoUsuario: true,
-      message: true,
-      createdAt: true,
-    },
-  })
+  const [entries, autoAccept] = await Promise.all([
+    prisma.waitlist.findMany({
+      where: { invitedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        artisticName: true,
+        phone: true,
+        tipoUsuario: true,
+        message: true,
+        createdAt: true,
+      },
+    }),
+    getAutoAcceptSettings(),
+  ])
 
   return (
     <div className="max-w-5xl mx-auto">
       {/* Cabeçalho */}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-xl font-semibold text-white">Convites pendentes</h1>
         <p className="text-sm text-neutral-500 mt-0.5">
           {entries.length} pedido{entries.length !== 1 ? 's' : ''} aguardando avaliação
         </p>
       </div>
+
+      <AutoAcceptCard
+        initialEnabled={autoAccept.enabled}
+        initialRemaining={autoAccept.remaining}
+      />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">

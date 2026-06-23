@@ -5,6 +5,8 @@ import { waitlistRateLimit } from '@/lib/security/rate-limit'
 import { extractIp } from '@/lib/analytics/geo'
 import { trackEvent } from '@/lib/analytics/events'
 import { buildEventContext } from '@/lib/analytics/context'
+import { consumeAutoAcceptSlot } from '@/lib/settings/auto-accept'
+import { acceptWaitlistEntry } from '@/lib/invites/accept'
 import type { WaitlistTipoUsuario } from '@prisma/client'
 
 // ============================================================
@@ -61,8 +63,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { email, name, artisticName, phone, tipoUsuario, message } = parsed.data
 
+  let autoAccepted = false
   try {
-    await prisma.waitlist.create({
+    const created = await prisma.waitlist.create({
       data: {
         email: email.toLowerCase().trim(),
         name: name?.trim(),
@@ -73,6 +76,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         consentedAt: new Date(),
       },
     })
+
+    // Piloto automático: se ligado e com saldo, aceita na hora (gera chave,
+    // marca convidado e envia o email). Falha aqui não quebra o pedido.
+    if (await consumeAutoAcceptSlot()) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
+      try {
+        await acceptWaitlistEntry(created, baseUrl)
+        autoAccepted = true
+      } catch (acceptErr) {
+        console.error('[Waitlist auto-accept]', acceptErr)
+      }
+    }
   } catch (err: unknown) {
     // Email duplicado
     if (
@@ -93,5 +108,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     trackEvent('WAITLIST_JOIN', { ...ctx, metadata: { tipoUsuario } })
   ).catch(() => {})
 
-  return NextResponse.json({ ok: true }, { status: 201 })
+  return NextResponse.json({ ok: true, autoAccepted }, { status: 201 })
 }

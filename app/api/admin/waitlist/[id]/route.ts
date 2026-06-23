@@ -1,12 +1,7 @@
 import { NextRequest } from 'next/server'
 import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
 import { prisma } from '@/lib/prisma'
-import {
-  generateInviteCode,
-  inviteTargetForCategory,
-  buildRegistrationUrl,
-} from '@/lib/invites/code'
-import { sendInviteEmail } from '@/lib/email/send-invite'
+import { acceptWaitlistEntry } from '@/lib/invites/accept'
 
 // ============================================================
 // Base URL pública (para montar o link do convite)
@@ -34,37 +29,9 @@ export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) =
   const entry = await prisma.waitlist.findUnique({ where: { id } })
   if (!entry) return apiError('Pedido não encontrado', 404, 'NOT_FOUND')
 
-  const target = inviteTargetForCategory(entry.tipoUsuario)
+  const result = await acceptWaitlistEntry(entry, resolveBaseUrl(req))
 
-  // Reaproveita a chave se o convite já foi aceito (re-enviar o link)
-  let inviteCode = entry.inviteCode
-  if (!entry.invitedAt || !inviteCode) {
-    inviteCode = generateInviteCode()
-    await prisma.waitlist.update({
-      where: { id },
-      data: { invitedAt: new Date(), inviteCode },
-    })
-  }
-
-  const registrationUrl = buildRegistrationUrl(resolveBaseUrl(req), target, inviteCode)
-
-  // Envia o email com o link automaticamente. Se falhar (ou sem chave
-  // configurada), o admin ainda recebe o link para enviar manualmente.
-  const emailSent = await sendInviteEmail({
-    to: entry.email,
-    inviteCode,
-    registrationUrl,
-    accountType: target.type,
-  })
-
-  return apiSuccess({
-    inviteCode,
-    registrationUrl,
-    category: entry.tipoUsuario,
-    accountType: target.type,
-    email: entry.email,
-    emailSent,
-  })
+  return apiSuccess(result)
 })
 
 // ============================================================

@@ -406,3 +406,17 @@ model ConsentEvent {
   @@index([createdAt])
   @@map("consent_events")
 }
+
+// =============================================================
+// APP SETTINGS — configurações globais (linha única "singleton")
+// =============================================================
+
+model AppSettings {
+  id                  String   @id @default("singleton")
+  // Aceite automático de convites (piloto automático com limite)
+  autoAcceptEnabled   Boolean  @default(false) @map("auto_accept_enabled")
+  autoAcceptRemaining Int      @default(0) @map("auto_accept_remaining")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
