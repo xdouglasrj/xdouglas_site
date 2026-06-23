@@ -64,7 +64,7 @@ export const DELETE = withRole('ADMIN', async (_req: NextRequest, _auth, params)
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 
-  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } })
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, email: true } })
   if (!user) return apiError('Cadastro não encontrado', 404, 'NOT_FOUND')
   if (user.role === 'ADMIN') return apiError('Não é possível excluir uma conta admin', 403, 'CANNOT_DELETE_ADMIN')
 
@@ -75,6 +75,8 @@ export const DELETE = withRole('ADMIN', async (_req: NextRequest, _auth, params)
     // Vínculos opcionais — desvincula sem apagar o conteúdo
     prisma.artist.updateMany({ where: { userId: id }, data: { userId: null } }),
     prisma.track.updateMany({ where: { submittedById: id }, data: { submittedById: null } }),
+    // Libera o email por completo: remove também o pedido na lista de espera
+    prisma.waitlist.deleteMany({ where: { email: user.email } }),
     // Por fim, remove o usuário
     prisma.user.delete({ where: { id } }),
   ])
