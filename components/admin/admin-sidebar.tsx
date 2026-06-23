@@ -47,6 +47,7 @@ const NAV_ITEMS = [
 
 const PEOPLE_ITEMS = [
   { label: 'Convites pendentes', href: '/admin/convites' },
+  { label: 'Convites aceitos', href: '/admin/convites-aceitos' },
   { label: 'Cadastros', href: '/admin/cadastros' },
 ] as const
 
@@ -78,7 +79,7 @@ export function AdminSidebar() {
     window.location.href = '/'
   }
 
-  const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/cadastros')
+  const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/convites-aceitos') || pathname.startsWith('/admin/cadastros')
 
   return (
     <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
@@ -163,7 +164,7 @@ export function AdminSidebar() {
           </h2>
           <ul className="space-y-1">
             {PEOPLE_ITEMS.map((item) => {
-              const active = pathname.startsWith(item.href)
+              const active = pathname === item.href
               return (
                 <li key={item.href}>
                   <Link

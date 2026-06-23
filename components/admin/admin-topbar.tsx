@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: 'Músicas', href: '/admin/musicas' },
   { label: 'Lista de espera', href: '/admin/waitlist' },
   { label: 'Convites pendentes', href: '/admin/convites' },
+  { label: 'Convites aceitos', href: '/admin/convites-aceitos' },
   { label: 'Cadastros', href: '/admin/cadastros' },
 ]
 
@@ -62,7 +63,7 @@ export function AdminTopbar() {
               onClick={() => setOpen(false)}
               className={clsx(
                 'px-3 py-2 rounded-lg text-sm transition-colors',
-                pathname.startsWith(item.href)
+                pathname === item.href
                   ? 'bg-gate-pink/15 text-gate-pink font-medium'
                   : 'text-gate-blue hover:text-white hover:bg-gate-pink/10'
               )}
