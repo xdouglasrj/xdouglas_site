@@ -13,7 +13,7 @@ export default async function CatalogLayout({
   return (
     <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user?.photoUrl} />
-      <main className="ml-16">{children}</main>
+      <main className="md:ml-16">{children}</main>
     </div>
   )
 }
