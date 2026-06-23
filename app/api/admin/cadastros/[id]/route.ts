@@ -51,3 +51,33 @@ export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) =
     },
   })
 })
+
+// ============================================================
+// DELETE /api/admin/cadastros/[id] — exclui o cadastro de vez
+//
+// Diferente de 'block': remove o usuário do banco (libera email/usuário
+// para um novo cadastro). Útil para testes. Não exclui contas ADMIN.
+// Desvincula (sem apagar) o perfil de artista e as faixas enviadas.
+// ============================================================
+
+export const DELETE = withRole('ADMIN', async (_req: NextRequest, _auth, params) => {
+  const id = params?.id
+  if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
+
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } })
+  if (!user) return apiError('Cadastro não encontrado', 404, 'NOT_FOUND')
+  if (user.role === 'ADMIN') return apiError('Não é possível excluir uma conta admin', 403, 'CANNOT_DELETE_ADMIN')
+
+  await prisma.$transaction([
+    // Vínculos obrigatórios — precisam ser removidos antes do usuário
+    prisma.adminSession.deleteMany({ where: { userId: id } }),
+    prisma.auditLog.deleteMany({ where: { userId: id } }),
+    // Vínculos opcionais — desvincula sem apagar o conteúdo
+    prisma.artist.updateMany({ where: { userId: id }, data: { userId: null } }),
+    prisma.track.updateMany({ where: { submittedById: id }, data: { submittedById: null } }),
+    // Por fim, remove o usuário
+    prisma.user.delete({ where: { id } }),
+  ])
+
+  return apiSuccess({ ok: true })
+})

@@ -57,6 +57,22 @@ export function UserActions({ id, username, active, blocked }: UserActionsProps)
     }
   }
 
+  async function handleDelete() {
+    if (!confirm(`EXCLUIR o cadastro de "${username ?? id}" permanentemente? Isso remove a conta do banco e o email/usuário poderá se cadastrar de novo. Esta ação NÃO pode ser desfeita.`)) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/cadastros/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(data.error ?? 'Não foi possível excluir.')
+        return
+      }
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (blocked) {
     return (
       <div className="flex items-center gap-2 justify-end">
@@ -66,6 +82,13 @@ export function UserActions({ id, username, active, blocked }: UserActionsProps)
           className="px-2.5 py-1 rounded-md text-xs font-medium border border-amber-800/60 bg-amber-950/40 text-amber-400 hover:bg-amber-900/50 transition-colors disabled:opacity-40"
         >
           Desbloquear
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={busy}
+          className="px-2.5 py-1 rounded-md text-xs font-medium border border-red-900/60 bg-red-950/40 text-red-400 hover:bg-red-900/50 transition-colors disabled:opacity-40"
+        >
+          Excluir
         </button>
       </div>
     )
@@ -88,6 +111,13 @@ export function UserActions({ id, username, active, blocked }: UserActionsProps)
         className="px-2.5 py-1 rounded-md text-xs font-medium border border-red-900/60 bg-red-950/40 text-red-400 hover:bg-red-900/50 transition-colors disabled:opacity-40"
       >
         Bloquear
+      </button>
+      <button
+        onClick={handleDelete}
+        disabled={busy}
+        className="px-2.5 py-1 rounded-md text-xs font-medium border border-red-900/60 bg-red-950/60 text-red-300 hover:bg-red-900/60 transition-colors disabled:opacity-40"
+      >
+        Excluir
       </button>
     </div>
   )
