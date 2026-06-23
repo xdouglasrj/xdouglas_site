@@ -377,7 +377,11 @@ model Waitlist {
   tipoUsuario   WaitlistTipoUsuario @map("tipo_usuario")
   message       String?             // campo livre opcional
   consentedAt   DateTime            @map("consented_at") // LGPD: momento do aceite
-  invitedAt     DateTime?           @map("invited_at")   // preenchido quando convite for enviado
+  invitedAt     DateTime?           @map("invited_at")   // preenchido quando convite for aceito
+  // Chave aleatória gerada ao aceitar o convite — usada no link de cadastro
+  inviteCode    String?             @unique @map("invite_code")
+  // Momento em que o convite foi consumido (cadastro concluído) — single-use
+  usedAt        DateTime?           @map("used_at")
   createdAt     DateTime            @default(now()) @map("created_at")
 
   @@index([tipoUsuario])

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { waitlistRateLimit } from '@/lib/security/rate-limit'
 import { extractIp } from '@/lib/analytics/geo'
+import { inviteTargetForCategory, normalizeInviteCode } from '@/lib/invites/code'
 
 // ============================================================
 // Validação
@@ -100,54 +101,61 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  try {
-    if (data.type === 'artist') {
-      const user = await prisma.user.create({
-        data: {
-          username,
-          email,
-          password: hashedPassword,
-          name: data.name?.trim(),
-          role: 'ARTIST',
-          // Inativo até a validação manual do convite
-          active: false,
-          inviteCode: data.inviteCode.trim(),
-          phone: data.phone.trim(),
-          newsletterOptIn: data.newsletterOptIn,
-        },
-        select: { id: true },
-      })
-      return NextResponse.json(
-        {
-          ok: true,
-          status: 'PENDING_INVITE_REVIEW',
-          message: 'Cadastro recebido. Seu convite será validado e você receberá um email quando seu acesso for liberado.',
-          userId: user.id,
-        },
-        { status: 201 }
-      )
-    }
+  // Valida o convite: precisa ser uma chave gerada pelo admin (aceita),
+  // ainda não utilizada e da categoria correspondente a este cadastro.
+  const code = normalizeInviteCode(data.inviteCode)
+  const invite = await prisma.waitlist.findUnique({ where: { inviteCode: code } })
 
+  if (!invite || !invite.invitedAt) {
+    return NextResponse.json(
+      { error: 'Convite inválido ou não autorizado.', code: 'INVALID_INVITE' },
+      { status: 403 }
+    )
+  }
+  if (invite.usedAt) {
+    return NextResponse.json(
+      { error: 'Este convite já foi utilizado.', code: 'INVITE_USED' },
+      { status: 409 }
+    )
+  }
+  if (inviteTargetForCategory(invite.tipoUsuario).type !== data.type) {
+    return NextResponse.json(
+      { error: 'Este convite não corresponde a este tipo de cadastro.', code: 'INVITE_CATEGORY_MISMATCH' },
+      { status: 403 }
+    )
+  }
+
+  // Convite válido — a aprovação do admin já é a liberação, então a conta
+  // nasce ativa. O papel vem da categoria escolhida no convite.
+  const role = data.type === 'artist' ? 'ARTIST' : 'GUEST'
+
+  try {
     const user = await prisma.user.create({
       data: {
         username,
         email,
         password: hashedPassword,
         name: data.name?.trim(),
-        role: 'GUEST',
-        // Inativo até a validação manual do convite
-        active: false,
-        inviteCode: data.inviteCode.trim(),
+        role,
+        active: true,
+        inviteCode: code,
         phone: data.phone.trim(),
         newsletterOptIn: data.newsletterOptIn,
       },
       select: { id: true },
     })
+
+    // Marca o convite como consumido (single-use)
+    await prisma.waitlist.update({
+      where: { id: invite.id },
+      data: { usedAt: new Date() },
+    })
+
     return NextResponse.json(
       {
         ok: true,
-        status: 'PENDING_INVITE_REVIEW',
-        message: 'Cadastro recebido. Seu convite será validado e você receberá um aviso por WhatsApp ou email quando seu acesso for liberado.',
+        status: 'ACCOUNT_ACTIVE',
+        message: 'Conta criada com sucesso! Você já pode entrar com seu usuário e senha.',
         userId: user.id,
       },
       { status: 201 }
