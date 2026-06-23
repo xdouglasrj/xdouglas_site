@@ -13,6 +13,7 @@ interface AcceptResult {
   registrationUrl: string
   accountType: 'artist' | 'visitor'
   email: string
+  emailSent: boolean
 }
 
 export function WaitlistActions({ id, email }: WaitlistActionsProps) {
@@ -105,10 +106,27 @@ export function WaitlistActions({ id, email }: WaitlistActionsProps) {
               </div>
             </div>
 
-            <p className="mb-3 text-sm text-neutral-400">
-              Envie este link para a pessoa concluir o cadastro. A chave é de uso único e já
-              vem embutida no link.
-            </p>
+            {result.emailSent ? (
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-emerald-800/50 bg-emerald-950/40 px-3 py-2">
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <p className="text-xs text-emerald-300">
+                  Email enviado automaticamente para <strong>{result.email}</strong> com o link.
+                  Você também pode copiar abaixo, se precisar reenviar.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-800/50 bg-amber-950/30 px-3 py-2">
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                <p className="text-xs text-amber-300">
+                  Envio automático indisponível. Copie o link abaixo e envie para a pessoa
+                  ({result.email}). A chave é de uso único.
+                </p>
+              </div>
+            )}
 
             <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-neutral-500">
               Chave de convite

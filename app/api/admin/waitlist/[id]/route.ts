@@ -6,6 +6,7 @@ import {
   inviteTargetForCategory,
   buildRegistrationUrl,
 } from '@/lib/invites/code'
+import { sendInviteEmail } from '@/lib/email/send-invite'
 
 // ============================================================
 // Base URL pública (para montar o link do convite)
@@ -47,12 +48,22 @@ export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) =
 
   const registrationUrl = buildRegistrationUrl(resolveBaseUrl(req), target, inviteCode)
 
+  // Envia o email com o link automaticamente. Se falhar (ou sem chave
+  // configurada), o admin ainda recebe o link para enviar manualmente.
+  const emailSent = await sendInviteEmail({
+    to: entry.email,
+    inviteCode,
+    registrationUrl,
+    accountType: target.type,
+  })
+
   return apiSuccess({
     inviteCode,
     registrationUrl,
     category: entry.tipoUsuario,
     accountType: target.type,
     email: entry.email,
+    emailSent,
   })
 })
 
