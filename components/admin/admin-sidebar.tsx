@@ -34,21 +34,12 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
-  {
-    label: 'Lista de espera',
-    href: '/admin/waitlist',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M2 4h12M2 8h8M2 12h5" />
-      </svg>
-    ),
-  },
 ] as const
 
 const PEOPLE_ITEMS = [
-  { label: 'Convites pendentes', href: '/admin/convites' },
-  { label: 'Convites aceitos', href: '/admin/convites-aceitos' },
-  { label: 'Cadastros', href: '/admin/cadastros' },
+  { label: 'Pedidos recebidos', href: '/admin/convites' },
+  { label: 'Convites pendentes', href: '/admin/convites-aceitos' },
+  { label: 'Cadastro ativo', href: '/admin/cadastros' },
 ] as const
 
 // ============================================================
@@ -79,7 +70,7 @@ export function AdminSidebar() {
     window.location.href = '/'
   }
 
-  const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/convites-aceitos') || pathname.startsWith('/admin/cadastros')
+  const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/cadastros')
 
   return (
     <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">

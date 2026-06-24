@@ -1,8 +1,14 @@
 import type { Metadata } from 'next'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { UserActions } from './user-actions'
+import { getWaitlistStats } from '@/lib/admin/waitlist-stats'
+import { WaitlistStatsBar } from '@/components/admin/waitlist-stats-bar'
+import { AdminSearchBar } from '@/components/admin/admin-search-bar'
+import { AdminPagination } from '@/components/admin/admin-pagination'
+import { ADMIN_PAGE_SIZE, parsePage } from '@/lib/admin/pagination'
 
-export const metadata: Metadata = { title: 'Cadastros' }
+export const metadata: Metadata = { title: 'Cadastro ativo' }
 export const dynamic = 'force-dynamic'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -15,42 +21,70 @@ const ROLE_COLOR: Record<string, string> = {
   GUEST: 'bg-sky-950/60 text-sky-400 border-sky-800/60',
 }
 
-export default async function AdminCadastrosPage() {
-  const users = await prisma.user.findMany({
-    where: { role: { not: 'ADMIN' } },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      name: true,
-      artisticName: true,
-      role: true,
-      active: true,
-      blocked: true,
-      phone: true,
-      inviteCode: true,
-      newsletterOptIn: true,
-      createdAt: true,
-    },
-  })
+interface PageProps {
+  searchParams: Promise<{ q?: string; page?: string }>
+}
 
-  const pending = users.filter((u) => !u.active).length
+export default async function AdminCadastrosPage({ searchParams }: PageProps) {
+  const { q, page: pageParam } = await searchParams
+  const query = q?.trim() ?? ''
+  const page = parsePage(pageParam)
+
+  const where: Prisma.UserWhereInput = {
+    role: { not: 'ADMIN' },
+    ...(query && {
+      OR: [
+        { username: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query, mode: 'insensitive' } },
+        { artisticName: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query, mode: 'insensitive' } },
+      ],
+    }),
+  }
+
+  const [stats, count, users] = await Promise.all([
+    getWaitlistStats(),
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * ADMIN_PAGE_SIZE,
+      take: ADMIN_PAGE_SIZE,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        artisticName: true,
+        role: true,
+        active: true,
+        blocked: true,
+        phone: true,
+        inviteCode: true,
+        newsletterOptIn: true,
+        createdAt: true,
+      },
+    }),
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(count / ADMIN_PAGE_SIZE))
 
   return (
     <div className="max-w-5xl mx-auto">
       {/* Cabeçalho */}
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-white">Cadastros</h1>
-        <p className="text-sm text-neutral-500 mt-0.5">
-          {users.length} cadastro{users.length !== 1 ? 's' : ''} · {pending} aguardando aprovação
-        </p>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-white">Cadastro ativo</h1>
       </div>
+
+      <WaitlistStatsBar {...stats} />
+
+      <AdminSearchBar defaultValue={query} placeholder="Buscar por nome, usuário, email ou telefone..." />
 
       {users.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">
           <p className="text-neutral-500 text-sm">
-            Nenhum cadastro ainda.
+            {query ? 'Nenhum cadastro encontrado.' : 'Nenhum cadastro ainda.'}
           </p>
         </div>
       ) : (
@@ -150,6 +184,8 @@ export default async function AdminCadastrosPage() {
           </table>
         </div>
       )}
+
+      <AdminPagination page={page} totalPages={totalPages} basePath="/admin/cadastros" query={query} />
     </div>
   )
 }

@@ -1,10 +1,16 @@
 import type { Metadata } from 'next'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { WaitlistActions } from './waitlist-actions'
 import { AutoAcceptCard } from './auto-accept-card'
 import { getAutoAcceptSettings } from '@/lib/settings/auto-accept'
+import { getWaitlistStats } from '@/lib/admin/waitlist-stats'
+import { WaitlistStatsBar } from '@/components/admin/waitlist-stats-bar'
+import { AdminSearchBar } from '@/components/admin/admin-search-bar'
+import { AdminPagination } from '@/components/admin/admin-pagination'
+import { ADMIN_PAGE_SIZE, parsePage } from '@/lib/admin/pagination'
 
-export const metadata: Metadata = { title: 'Convites pendentes' }
+export const metadata: Metadata = { title: 'Pedidos recebidos' }
 export const dynamic = 'force-dynamic'
 
 const TIPO_LABEL: Record<string, string> = {
@@ -25,11 +31,35 @@ const TIPO_COLOR: Record<string, string> = {
   OUTRO:    'bg-neutral-800 text-neutral-400 border-neutral-700',
 }
 
-export default async function AdminConvitesPage() {
-  const [entries, autoAccept] = await Promise.all([
+interface PageProps {
+  searchParams: Promise<{ q?: string; page?: string }>
+}
+
+export default async function AdminConvitesPage({ searchParams }: PageProps) {
+  const { q, page: pageParam } = await searchParams
+  const query = q?.trim() ?? ''
+  const page = parsePage(pageParam)
+
+  const where: Prisma.WaitlistWhereInput = {
+    invitedAt: null,
+    ...(query && {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query, mode: 'insensitive' } },
+      ],
+    }),
+  }
+
+  const [stats, autoAccept, count, entries] = await Promise.all([
+    getWaitlistStats(),
+    getAutoAcceptSettings(),
+    prisma.waitlist.count({ where }),
     prisma.waitlist.findMany({
-      where: { invitedAt: null },
+      where,
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * ADMIN_PAGE_SIZE,
+      take: ADMIN_PAGE_SIZE,
       select: {
         id: true,
         email: true,
@@ -40,28 +70,30 @@ export default async function AdminConvitesPage() {
         createdAt: true,
       },
     }),
-    getAutoAcceptSettings(),
   ])
+
+  const totalPages = Math.max(1, Math.ceil(count / ADMIN_PAGE_SIZE))
 
   return (
     <div className="max-w-5xl mx-auto">
       {/* Cabeçalho */}
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Convites pendentes</h1>
-        <p className="text-sm text-neutral-500 mt-0.5">
-          {entries.length} pedido{entries.length !== 1 ? 's' : ''} aguardando avaliação
-        </p>
+        <h1 className="text-xl font-semibold text-white">Pedidos recebidos</h1>
       </div>
+
+      <WaitlistStatsBar {...stats} />
 
       <AutoAcceptCard
         initialEnabled={autoAccept.enabled}
         initialRemaining={autoAccept.remaining}
       />
 
+      <AdminSearchBar defaultValue={query} placeholder="Buscar por nome, email ou telefone..." />
+
       {entries.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">
           <p className="text-neutral-500 text-sm">
-            Nenhum pedido de convite pendente.
+            {query ? 'Nenhum pedido encontrado.' : 'Nenhum pedido de convite pendente.'}
           </p>
         </div>
       ) : (
@@ -142,6 +174,8 @@ export default async function AdminConvitesPage() {
           </table>
         </div>
       )}
+
+      <AdminPagination page={page} totalPages={totalPages} basePath="/admin/convites" query={query} />
     </div>
   )
 }

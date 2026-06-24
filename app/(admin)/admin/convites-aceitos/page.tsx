@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { AcceptedActions } from './accepted-actions'
 import {
@@ -10,8 +11,13 @@ import {
   inviteTargetForCategory,
   buildRegistrationUrl,
 } from '@/lib/invites/code'
+import { getWaitlistStats } from '@/lib/admin/waitlist-stats'
+import { WaitlistStatsBar } from '@/components/admin/waitlist-stats-bar'
+import { AdminSearchBar } from '@/components/admin/admin-search-bar'
+import { AdminPagination } from '@/components/admin/admin-pagination'
+import { ADMIN_PAGE_SIZE, parsePage } from '@/lib/admin/pagination'
 
-export const metadata: Metadata = { title: 'Convites aceitos' }
+export const metadata: Metadata = { title: 'Convites pendentes' }
 export const dynamic = 'force-dynamic'
 
 const TIPO_LABEL: Record<string, string> = {
@@ -33,36 +39,67 @@ function daysLeft(invitedAt: Date, now: Date): number {
   return Math.max(0, INVITE_EXPIRY_DAYS - elapsedDays)
 }
 
-export default async function AdminConvitesAceitosPage() {
+interface PageProps {
+  searchParams: Promise<{ q?: string; page?: string }>
+}
+
+export default async function AdminConvitesAceitosPage({ searchParams }: PageProps) {
   // Limpeza preguiçosa: ao abrir, remove os que já passaram de 7 dias
   await cleanupExpiredInvites()
+
+  const { q, page: pageParam } = await searchParams
+  const query = q?.trim() ?? ''
+  const page = parsePage(pageParam)
 
   const now = new Date()
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
-  const entries = await prisma.waitlist.findMany({
-    where: { usedAt: null, invitedAt: { not: null, gte: inviteExpiryCutoff(now) } },
-    orderBy: { invitedAt: 'desc' },
-    select: {
-      id: true, email: true, name: true,
-      tipoUsuario: true, inviteCode: true, invitedAt: true,
-    },
-  })
+  const where: Prisma.WaitlistWhereInput = {
+    usedAt: null,
+    invitedAt: { not: null, gte: inviteExpiryCutoff(now) },
+    ...(query && {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+        { phone: { contains: query, mode: 'insensitive' } },
+      ],
+    }),
+  }
+
+  const [stats, count, entries] = await Promise.all([
+    getWaitlistStats(),
+    prisma.waitlist.count({ where }),
+    prisma.waitlist.findMany({
+      where,
+      orderBy: { invitedAt: 'desc' },
+      skip: (page - 1) * ADMIN_PAGE_SIZE,
+      take: ADMIN_PAGE_SIZE,
+      select: {
+        id: true, email: true, name: true,
+        tipoUsuario: true, inviteCode: true, invitedAt: true,
+      },
+    }),
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(count / ADMIN_PAGE_SIZE))
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-white">Convites aceitos</h1>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-white">Convites pendentes</h1>
         <p className="text-sm text-neutral-500 mt-0.5">
-          {entries.length} convite{entries.length !== 1 ? 's' : ''} aguardando o cadastro ser concluído ·
-          expiram sozinhos em {INVITE_EXPIRY_DAYS} dias
+          Convites aceitos aguardando o cadastro ser concluído · expiram sozinhos em {INVITE_EXPIRY_DAYS} dias
         </p>
       </div>
+
+      <WaitlistStatsBar {...stats} />
+
+      <AdminSearchBar defaultValue={query} placeholder="Buscar por nome, email ou telefone..." />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">
           <p className="text-neutral-500 text-sm">
-            Nenhum convite aceito aguardando cadastro.
+            {query ? 'Nenhum convite encontrado.' : 'Nenhum convite aceito aguardando cadastro.'}
           </p>
         </div>
       ) : (
@@ -121,6 +158,8 @@ export default async function AdminConvitesAceitosPage() {
           </table>
         </div>
       )}
+
+      <AdminPagination page={page} totalPages={totalPages} basePath="/admin/convites-aceitos" query={query} />
     </div>
   )
 }

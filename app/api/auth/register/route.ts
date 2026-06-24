@@ -20,7 +20,11 @@ const username = z
 // Nome artístico: mais permissivo, aceita espaços e acentos
 const artisticName = z.string().min(2, 'Mínimo 2 caracteres').max(50)
 
-const password = z.string().min(8, 'Mínimo 8 caracteres')
+const password = z
+  .string()
+  .min(8, 'Mínimo 8 caracteres')
+  .refine((pw) => (pw.match(/[A-Z]/g) ?? []).length >= 2, 'Use pelo menos 2 letras maiúsculas')
+  .refine((pw) => (pw.match(/[^A-Za-z0-9]/g) ?? []).length >= 2, 'Use pelo menos 2 caracteres especiais')
 const inviteCode = z.string().min(4, 'Código de convite inválido')
 
 const registerSchema = z.discriminatedUnion('type', [

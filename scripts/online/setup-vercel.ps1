@@ -10,7 +10,7 @@
   - Detecta team_id (uso pessoal se nao houver team).
   - Cria o projeto "xdouglas" se nao existir; senao reaproveita.
   - Marca variaveis sensiveis (JWT, refresh, analytics, cron, resend) como Sensitive.
-  - Linka o repo xdouglasrj/xdouglas_site para auto-deploy em main.
+  - Linka o repo GitHub para auto-deploy em main.
   - Dispara o primeiro deploy via API e imprime a URL.
 
 .EXAMPLE
@@ -24,10 +24,6 @@ $VERCEL_API = 'https://api.vercel.com'
 $PROJECT_NAME = 'xdouglas'
 $REPO_FULL = 'xdouglasrj/xdouglas_site'
 $BRANCH = 'main'
-
-# ----------------------------------------------------------------------
-# Helpers
-# ----------------------------------------------------------------------
 
 function Write-Section([string]$title) {
   Write-Host ''
@@ -61,7 +57,6 @@ function Read-EnvFile([string]$path) {
     $parts = $line.Split('=', 2)
     $key = $parts[0].Trim()
     $val = $parts[1].Trim()
-    # tira aspas ao redor se houver
     if (($val.StartsWith('"') -and $val.EndsWith('"')) -or
         ($val.StartsWith("'") -and $val.EndsWith("'"))) {
       $val = $val.Substring(1, $val.Length - 2)
@@ -105,17 +100,23 @@ function New-Project([string]$token, [string]$teamId, [string]$name) {
   $body = @{
     name = $name
     framework = 'nextjs'
-    buildCommand = $null
-    installCommand = $null
-    outputDirectory = $null
-    rootDirectory = $null
     gitRepository = @{ type = 'github'; repo = $REPO_FULL }
-    productionBranch = $BRANCH
   } | ConvertTo-Json -Depth 5
 
   $url = "$VERCEL_API/v10/projects"
   if ($teamId) { $url += "?teamId=$teamId" }
-  return Invoke-RestMethod -Method POST -Uri $url -Headers $headers -Body $body
+  $project = Invoke-RestMethod -Method POST -Uri $url -Headers $headers -Body $body
+
+  $patchBody = @{ productionBranch = $BRANCH } | ConvertTo-Json
+  $patchUrl = "$VERCEL_API/v9/projects/$($project.id)"
+  if ($teamId) { $patchUrl += "?teamId=$teamId" }
+  try {
+    Invoke-RestMethod -Method PATCH -Uri $patchUrl -Headers $headers -Body $patchBody | Out-Null
+  } catch {
+    Write-Host "[vercel] aviso: nao consegui setar productionBranch via API. Siga no painel da Vercel." -ForegroundColor Yellow
+  }
+
+  return $project
 }
 
 function Set-EnvVar([string]$token, [string]$teamId, [string]$projectId, [string]$key, [string]$value, [string]$target, [bool]$sensitive) {
@@ -123,11 +124,14 @@ function Set-EnvVar([string]$token, [string]$teamId, [string]$projectId, [string
     Authorization = "Bearer $token"
     'Content-Type' = 'application/json'
   }
+  # A API da Vercel espera `type` e `target` como arrays de string.
+  $typeArr = if ($sensitive) { @('sensitive') } else { @('plain') }
+  $targetArr = @($target)
   $body = @{
     key = $key
     value = $value
-    type = if ($sensitive) { 'sensitive' } else { 'plain' }
-    target = $target
+    type = $typeArr
+    target = $targetArr
   } | ConvertTo-Json
 
   $url = "$VERCEL_API/v10/projects/$projectId/env"
@@ -149,7 +153,6 @@ function Get-EnvValue([string]$path, [hashtable]$env, [string]$key) {
     $v = $env[$key]
     if ($v -and $v.Trim() -ne '') { return $v }
   }
-  # fallback para placeholder do .env.example
   if (Test-Path $path) {
     $m = Select-String -Path $path -Pattern "^$key=`"?(?<v>[^`"#]*)" -ErrorAction SilentlyContinue
     if ($m -and $m.Matches.Count -gt 0 -and $m.Matches[0].Groups['v'].Value.Trim()) {
@@ -159,16 +162,11 @@ function Get-EnvValue([string]$path, [hashtable]$env, [string]$key) {
   return $null
 }
 
-# ----------------------------------------------------------------------
-# 1. Token da Vercel
-# ----------------------------------------------------------------------
-
 Write-Section 'Token da Vercel'
 Write-Host 'Crie um token Full Account em https://vercel.com/account/tokens' -ForegroundColor Yellow
 $token = Read-Secret 'Cole o token aqui: '
 if (-not $token) { throw 'Token vazio.' }
 
-# Sanity check
 try {
   $me = Get-VercelUser $token
   Write-Host "[vercel] autenticado como $($me.username) ($($me.email))" -ForegroundColor Green
@@ -181,7 +179,7 @@ $teamId = $null
 if ($teams.Count -gt 0) {
   Write-Host ''
   Write-Host 'Times encontrados:' -ForegroundColor Yellow
-  for ($i = 0; $i -lt $teams.Count; $i++) {
+  for ($i = 0; $i -lt $i.Count; $i++) {
     Write-Host "  [$($i+1)] $($teams[$i].slug) ($($teams[$i].name))"
   }
   Write-Host "  [0] Pessoal (sem team)"
@@ -192,30 +190,22 @@ if ($teams.Count -gt 0) {
 }
 $teamArg = $teamId
 
-# ----------------------------------------------------------------------
-# 2. Ler .env.local
-# ----------------------------------------------------------------------
-
 Write-Section 'Carregando .env.local'
 $envFile = Get-EnvFile
 $envVars = Read-EnvFile $envFile
 Write-Host "[env] $($envVars.Count) variaveis carregadas de $envFile" -ForegroundColor Green
 
-# ----------------------------------------------------------------------
-# 3. Validacoes criticas
-# ----------------------------------------------------------------------
-
 Write-Section 'Validacoes'
 $dbUrl = $envVars['DATABASE_URL']
 $directUrl = $envVars['DIRECT_URL']
-if (-not $dbUrl -or $dbUrl -match 'localhost|127\.0\.0\.1') {
-  Write-Host 'DATABASE_URL ainda aponta para localhost.' -ForegroundColor Red
-  Write-Host 'Crie o banco no Supabase/Neon/Railway ANTES de subir o deploy,' -ForegroundColor Red
-  Write-Host 'troque DATABASE_URL e DIRECT_URL no .env.local e rode este script de novo.' -ForegroundColor Red
+if (-not $dbUrl -or $dbUrl -match 'localhost|127\.0\.0\.1|HOST|USER:PASS') {
+  Write-Host 'DATABASE_URL ausente ou ainda com placeholder (USER:PASS@HOST:PORT/DB).' -ForegroundColor Red
+  Write-Host 'Substitua os placeholders pelas connection strings reais do Supabase/Neon/Railway' -ForegroundColor Red
+  Write-Host 'e rode este script de novo.' -ForegroundColor Red
   exit 1
 }
-if (-not $directUrl -or $directUrl -match 'localhost|127\.0\.0\.1') {
-  Write-Host 'DIRECT_URL ainda aponta para localhost.' -ForegroundColor Red
+if (-not $directUrl -or $directUrl -match 'localhost|127\.0\.0\.1|HOST|USER:PASS') {
+  Write-Host 'DIRECT_URL ausente ou ainda com placeholder.' -ForegroundColor Red
   exit 1
 }
 Write-Host '[ok] DATABASE_URL e DIRECT_URL apontam para Postgres gerenciado' -ForegroundColor Green
@@ -227,10 +217,6 @@ if (-not $jwt -or $jwt.Length -lt 32) {
 }
 Write-Host '[ok] JWT_SECRET definido' -ForegroundColor Green
 
-# ----------------------------------------------------------------------
-# 4. Criar (ou reaproveitar) o projeto
-# ----------------------------------------------------------------------
-
 Write-Section 'Projeto na Vercel'
 $project = Find-Project $token $teamArg $PROJECT_NAME
 if ($project) {
@@ -241,10 +227,6 @@ if ($project) {
   Write-Host "[vercel] projeto criado (id=$($project.id))" -ForegroundColor Green
 }
 $projectId = $project.id
-
-# ----------------------------------------------------------------------
-# 5. Subir envs (production + preview + development)
-# ----------------------------------------------------------------------
 
 Write-Section 'Subindo variaveis de ambiente'
 $targets = @('production', 'preview', 'development')
@@ -281,10 +263,6 @@ foreach ($k in $requiredKeys) {
 }
 Write-Host ''
 Write-Host "[env] $created criadas, $kept ja existiam (atualizadas quando reexecutar)" -ForegroundColor Green
-
-# ----------------------------------------------------------------------
-# 6. Forcar novo deploy a partir do main
-# ----------------------------------------------------------------------
 
 Write-Section 'Disparando deploy'
 

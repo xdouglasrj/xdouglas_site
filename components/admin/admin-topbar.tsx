@@ -9,10 +9,9 @@ import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin/dashboard' },
   { label: 'Músicas', href: '/admin/musicas' },
-  { label: 'Lista de espera', href: '/admin/waitlist' },
-  { label: 'Convites pendentes', href: '/admin/convites' },
-  { label: 'Convites aceitos', href: '/admin/convites-aceitos' },
-  { label: 'Cadastros', href: '/admin/cadastros' },
+  { label: 'Pedidos recebidos', href: '/admin/convites' },
+  { label: 'Convites pendentes', href: '/admin/convites-aceitos' },
+  { label: 'Cadastro ativo', href: '/admin/cadastros' },
 ]
 
 export function AdminTopbar() {
