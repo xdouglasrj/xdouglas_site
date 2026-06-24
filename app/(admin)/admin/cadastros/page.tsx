@@ -118,8 +118,11 @@ export default async function AdminCadastrosPage({ searchParams }: PageProps) {
                   {/* Usuário */}
                   <td className="px-4 py-3">
                     <p className="font-medium text-neutral-200 truncate">
-                      {user.artisticName || user.name || user.username}
+                      {user.name || user.artisticName || user.username}
                     </p>
+                    {user.artisticName && user.artisticName !== user.name && (
+                      <p className="text-xs text-purple-400/80 truncate">🎤 {user.artisticName}</p>
+                    )}
                     <p className="text-xs text-rose-400/80 font-mono truncate">@{user.username}</p>
                     <p className="text-xs text-neutral-600 truncate">{user.email}</p>
                     {user.phone && (
