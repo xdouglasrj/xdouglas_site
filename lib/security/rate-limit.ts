@@ -102,3 +102,11 @@ export function forgotPasswordRateLimit(ipHash: string): RateLimitResult {
     maxRequests: 3,
   })
 }
+
+/** Consulta do status do link de redefinição: 20 por IP por hora (apenas leitura) */
+export function resetPasswordCheckRateLimit(ipHash: string): RateLimitResult {
+  return checkRateLimit(`reset-password-check:${ipHash}`, {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 20,
+  })
+}

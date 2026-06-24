@@ -120,6 +120,7 @@ export default async function AdminCadastrosPage({ searchParams }: PageProps) {
                     <p className="font-medium text-neutral-200 truncate">
                       {user.artisticName || user.name || user.username}
                     </p>
+                    <p className="text-xs text-rose-400/80 font-mono truncate">@{user.username}</p>
                     <p className="text-xs text-neutral-600 truncate">{user.email}</p>
                     {user.phone && (
                       <p className="text-xs text-neutral-600 truncate">{user.phone}</p>

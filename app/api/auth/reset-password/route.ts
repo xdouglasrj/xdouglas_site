@@ -13,7 +13,11 @@ import { extractIp } from '@/lib/analytics/geo'
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Token inválido'),
-  password: z.string().min(8, 'Senha muito curta'),
+  password: z
+    .string()
+    .min(8, 'Senha muito curta')
+    .refine((pw) => (pw.match(/[A-Z]/g) ?? []).length >= 2, 'Senha precisa de pelo menos 2 letras maiúsculas')
+    .refine((pw) => (pw.match(/[^A-Za-z0-9]/g) ?? []).length >= 2, 'Senha precisa de pelo menos 2 caracteres especiais'),
 })
 
 // ============================================================
@@ -54,10 +58,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const user = await prisma.user.findUnique({
     where: { resetPasswordTokenHash: tokenHash },
-    select: { id: true, resetPasswordExpiresAt: true },
+    select: { id: true, resetPasswordExpiresAt: true, resetPasswordUsedAt: true },
   })
 
-  if (!user || !user.resetPasswordExpiresAt || user.resetPasswordExpiresAt < new Date()) {
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Link inválido ou expirado. Solicite uma nova redefinição.', code: 'INVALID_TOKEN' },
+      { status: 400 }
+    )
+  }
+
+  if (user.resetPasswordUsedAt) {
+    return NextResponse.json(
+      { error: 'Este link já foi utilizado para redefinir a senha. Solicite um novo link.', code: 'TOKEN_ALREADY_USED' },
+      { status: 409 }
+    )
+  }
+
+  if (!user.resetPasswordExpiresAt || user.resetPasswordExpiresAt < new Date()) {
     return NextResponse.json(
       { error: 'Link inválido ou expirado. Solicite uma nova redefinição.', code: 'INVALID_TOKEN' },
       { status: 400 }
@@ -70,8 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     where: { id: user.id },
     data: {
       password: passwordHash,
-      resetPasswordTokenHash: null,
-      resetPasswordExpiresAt: null,
+      resetPasswordUsedAt: new Date(),
     },
   })
 

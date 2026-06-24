@@ -63,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const user = await prisma.user.findUnique({
     where: isEmail ? { email: identifier } : { username: identifier },
-    select: { id: true, email: true, active: true, blocked: true },
+    select: { id: true, email: true, username: true, active: true, blocked: true },
   })
 
   // Só envia email se a conta existir e estiver ativa — mas a resposta
@@ -76,13 +76,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       data: {
         resetPasswordTokenHash: hashPasswordResetToken(token),
         resetPasswordExpiresAt: passwordResetExpiresAt(),
+        resetPasswordUsedAt: null,
       },
     })
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const resetUrl = `${appUrl}/redefinir-senha?token=${token}`
 
-    await sendPasswordResetEmail({ to: user.email, resetUrl })
+    await sendPasswordResetEmail({ to: user.email, username: user.username ?? user.email, resetUrl })
 
     await prisma.auditLog.create({
       data: { userId: user.id, action: 'PASSWORD_RESET_REQUESTED' },

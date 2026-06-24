@@ -14,12 +14,14 @@ function getResend(): Resend | null {
 
 interface SendPasswordResetParams {
   to: string
+  username: string
   resetUrl: string
 }
 
 /** Envia o email com o link de redefinição de senha. Retorna true se enviado. */
 export async function sendPasswordResetEmail({
   to,
+  username,
   resetUrl,
 }: SendPasswordResetParams): Promise<boolean> {
   const resend = getResend()
@@ -32,7 +34,7 @@ export async function sendPasswordResetEmail({
       from: `xDouglas <${from}>`,
       to,
       subject: 'Redefinição de senha — xDouglas',
-      html: passwordResetEmailHtml({ resetUrl }),
+      html: passwordResetEmailHtml({ username, resetUrl }),
     })
     return !error
   } catch {
@@ -44,7 +46,13 @@ export async function sendPasswordResetEmail({
 // Template HTML do email (estilos inline, compatível com clients)
 // ============================================================
 
-function passwordResetEmailHtml({ resetUrl }: { resetUrl: string }): string {
+function passwordResetEmailHtml({
+  username,
+  resetUrl,
+}: {
+  username: string
+  resetUrl: string
+}): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -72,6 +80,13 @@ function passwordResetEmailHtml({ resetUrl }: { resetUrl: string }): string {
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#728094;">
                 Recebemos um pedido para redefinir a senha da sua conta na comunidade xDouglas.
                 Clique no botão abaixo para escolher uma nova senha. O link expira em 1 hora.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 0 32px;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#728094;">
+                Seu login: <span style="color:#ffffff;font-weight:700;">${username}</span>
               </p>
             </td>
           </tr>
