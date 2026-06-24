@@ -24,7 +24,7 @@ export function WelcomeToast({ name, firstToday }: WelcomeToastProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-gate-bg/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => setVisible(false)}
       />
       <div className="relative w-full max-w-sm rounded-2xl border border-gate-pink/50 bg-gate-bg px-8 py-8 text-center shadow-2xl shadow-gate-pink/20">

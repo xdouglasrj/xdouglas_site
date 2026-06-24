@@ -87,7 +87,7 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 py-10"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
-      <div className="absolute inset-0 bg-gate-bg/80 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div className="relative w-full max-w-md rounded-2xl border border-gate-azure bg-gate-bg p-8 shadow-2xl shadow-black/80">
         <button

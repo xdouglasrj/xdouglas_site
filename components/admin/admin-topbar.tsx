@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin/dashboard' },
@@ -30,26 +31,29 @@ export function AdminTopbar() {
   return (
     <header className="md:hidden sticky top-0 z-40 border-b border-gate-azure bg-gate-bg">
       <div className="h-14 flex items-center justify-between px-4">
-        <Link href="/admin/dashboard" className="text-base font-bold text-white">
-          x<span className="text-gate-pink">Douglas</span>
+        <Link href="/admin/dashboard" className="font-logo text-xl text-white">
+          xDouglas
         </Link>
 
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="p-2 text-gate-blue hover:text-white"
-          aria-label="Menu"
-          aria-expanded={open}
-        >
-          {open ? (
-            <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M3 5h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2z" clipRule="evenodd" />
-            </svg>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="p-2 text-gate-blue hover:text-white"
+            aria-label="Menu"
+            aria-expanded={open}
+          >
+            {open ? (
+              <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M3 5h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2zm0 4h14a1 1 0 010 2H3a1 1 0 010-2z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Dropdown mobile */}

@@ -11,9 +11,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 bg-gate-bg">
       <div className="mb-8 text-center">
-        <span className="text-2xl font-bold tracking-tight text-white">
-          x<span className="text-gate-pink">Douglas</span>
-        </span>
+        <span className="font-logo text-4xl text-white">xDouglas</span>
         <p className="mt-1 text-sm text-gate-blue">Recuperação de senha</p>
       </div>
 

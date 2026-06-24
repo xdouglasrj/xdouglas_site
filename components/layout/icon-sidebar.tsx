@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const GENRES = ['Funk', 'Rap/Trap', 'Eletrônico', 'Pagode', 'Sertanejo', 'Remix']
 
@@ -63,25 +64,28 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
       {/* ============================================================ */}
       <div className="md:hidden">
         <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gate-azure bg-gate-bg px-4">
-          <Link href="/inicio" onClick={() => setMobileOpen(false)} className="text-base font-bold text-white">
-            x<span className="text-gate-pink">Douglas</span>
+          <Link href="/inicio" onClick={() => setMobileOpen(false)} className="font-logo text-2xl text-white">
+            xDouglas
           </Link>
-          <button
-            onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
-            aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
-            aria-expanded={mobileOpen}
-          >
-            {mobileOpen ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
+              aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </div>
         </header>
 
         {mobileOpen && (
@@ -241,18 +245,21 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
             </Link>
           )}
 
-          <button
-            onClick={handleLogout}
-            className="mt-auto flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Sair"
-            title="Sair"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l5-5-5-5" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12H9" />
-            </svg>
-          </button>
+          <div className="mt-auto flex flex-col items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+              aria-label="Sair"
+              title="Sair"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 17l5-5-5-5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12H9" />
+              </svg>
+            </button>
+          </div>
         </nav>
 
         {/* Painel — gêneros */}

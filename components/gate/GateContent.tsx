@@ -7,6 +7,7 @@ import { GateLoginModal } from '@/components/gate/GateLoginModal'
 import { GateSignupModal } from '@/components/gate/GateSignupModal'
 import { GateInviteModal } from '@/components/gate/GateInviteModal'
 import { onLoginBroadcast } from '@/lib/auth/cross-tab-logout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 type Modal = 'login' | 'signup' | 'invite' | null
 
@@ -20,6 +21,10 @@ export function GateContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gate-bg">
+      <div className="fixed right-4 top-4 z-10">
+        <ThemeToggle />
+      </div>
+
       <main className="flex flex-1 flex-col items-center justify-center gap-10 px-4 text-center">
         <Image
           src="/brand/xdouglas-logo.png"
