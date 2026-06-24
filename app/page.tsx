@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { getCurrentRole } from '@/lib/auth/role'
 import { GateContent } from '@/components/gate/GateContent'
 
@@ -11,5 +12,9 @@ export default async function GatePage() {
     redirect(role === 'ADMIN' ? '/admin/dashboard' : '/inicio')
   }
 
-  return <GateContent />
+  return (
+    <Suspense>
+      <GateContent />
+    </Suspense>
+  )
 }

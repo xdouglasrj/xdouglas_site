@@ -5,9 +5,11 @@ import { jwtVerify } from 'jose'
 // Rotas protegidas pelo middleware
 // ============================================================
 
-// Área administrativa — exige sessão e redireciona para /admin/login
+// Área administrativa — exige sessão e redireciona para o login único
+// na home ("/"), que abre o modal de entrada (não existe mais uma
+// página /admin/login separada — uma única tela de login para todos)
 const ADMIN_PREFIXES = ['/admin', '/api/admin']
-const PUBLIC_ADMIN_PATHS = ['/admin/login', '/api/admin/auth/login']
+const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 
 // Área logada da comunidade — exige sessão (qualquer role) e redireciona
 // para o portão de login ("/"). Sem isso, qualquer pessoa podia abrir
@@ -40,7 +42,7 @@ export async function middleware(request: NextRequest) {
         { status: 401 }
       )
     }
-    return isAdminRoute ? redirectToAdminLogin(request) : redirectToGate(request)
+    return redirectToGate(request, isAdminRoute)
   }
 
   try {
@@ -65,19 +67,15 @@ export async function middleware(request: NextRequest) {
       )
     }
 
-    // Para páginas, redireciona para o login correspondente
-    return isAdminRoute ? redirectToAdminLogin(request) : redirectToGate(request)
+    // Para páginas, redireciona para o login
+    return redirectToGate(request, isAdminRoute)
   }
 }
 
-function redirectToAdminLogin(request: NextRequest): NextResponse {
-  const loginUrl = new URL('/admin/login', request.url)
-  loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
-  return NextResponse.redirect(loginUrl)
-}
-
-function redirectToGate(request: NextRequest): NextResponse {
+// Manda para a home — para rotas admin, abre o modal de login automaticamente
+function redirectToGate(request: NextRequest, openLoginModal: boolean): NextResponse {
   const gateUrl = new URL('/', request.url)
+  if (openLoginModal) gateUrl.searchParams.set('login', '1')
   return NextResponse.redirect(gateUrl)
 }
 

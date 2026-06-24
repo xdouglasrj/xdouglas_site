@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { broadcastLogin } from '@/lib/auth/cross-tab-logout'
 
 interface GateLoginModalProps {
@@ -96,6 +97,12 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
               autoComplete="current-password"
               className="w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
             />
+            <Link
+              href="/esqueci-senha"
+              className="mt-1.5 inline-block text-xs text-gate-blue transition hover:text-gate-pink"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
 
           {error && <p className="text-sm text-gate-pink">{error}</p>}

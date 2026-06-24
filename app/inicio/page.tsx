@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { WelcomeToast } from '@/components/gate/WelcomeToast'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 
@@ -28,6 +29,7 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
       )}
 
       <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
+        <Breadcrumbs />
         <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
         <p className="mt-2 max-w-md text-sm text-gate-blue">
           Use o ícone de música na barra lateral para explorar por gênero, ou a lupa para

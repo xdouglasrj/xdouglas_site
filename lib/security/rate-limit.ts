@@ -94,3 +94,11 @@ export function waitlistRateLimit(ipHash: string): RateLimitResult {
     maxRequests: 3,
   })
 }
+
+/** Esqueci a senha: 3 pedidos por IP por hora (evita spam de email) */
+export function forgotPasswordRateLimit(ipHash: string): RateLimitResult {
+  return checkRateLimit(`forgot-password:${ipHash}`, {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 3,
+  })
+}

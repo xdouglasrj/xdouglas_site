@@ -3,6 +3,7 @@ import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default async function AdminLayout({
   children,
@@ -15,10 +16,10 @@ export default async function AdminLayout({
     try {
       await verifyAccessToken(token)
     } catch {
-      redirect('/admin/login')
+      redirect('/?login=1')
     }
   } else {
-    redirect('/admin/login')
+    redirect('/?login=1')
   }
 
   return (
@@ -31,6 +32,7 @@ export default async function AdminLayout({
         {/* Topbar — mobile */}
         <AdminTopbar />
         <main className="flex-1 p-6 md:p-8">
+          <Breadcrumbs />
           {children}
         </main>
       </div>

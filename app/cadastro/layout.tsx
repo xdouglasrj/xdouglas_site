@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default function CadastroLayout({
   children,
@@ -12,6 +13,7 @@ export default function CadastroLayout({
           <span className="text-2xl font-light text-white">x</span>
           <span className="text-2xl font-semibold text-gate-pink">Douglas</span>
         </Link>
+        <Breadcrumbs className="justify-center" />
         {children}
       </div>
     </main>

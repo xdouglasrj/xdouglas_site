@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { GateLoginModal } from '@/components/gate/GateLoginModal'
 import { GateSignupModal } from '@/components/gate/GateSignupModal'
 import { GateInviteModal } from '@/components/gate/GateInviteModal'
@@ -10,7 +11,8 @@ import { onLoginBroadcast } from '@/lib/auth/cross-tab-logout'
 type Modal = 'login' | 'signup' | 'invite' | null
 
 export function GateContent() {
-  const [modal, setModal] = useState<Modal>(null)
+  const searchParams = useSearchParams()
+  const [modal, setModal] = useState<Modal>(searchParams.get('login') ? 'login' : null)
 
   // Se outra aba fizer login, esta aba acompanha imediatamente —
   // recarrega para o Server Component reavaliar a sessão e redirecionar
