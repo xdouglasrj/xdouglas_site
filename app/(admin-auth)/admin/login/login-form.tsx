@@ -25,7 +25,7 @@ export function LoginForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/admin/dashboard'
 
-  const emailRef = useRef<HTMLInputElement>(null)
+  const usernameRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
@@ -38,14 +38,14 @@ export function LoginForm() {
     setFieldErrors({})
     setLoading(true)
 
-    const email = emailRef.current?.value ?? ''
+    const username = usernameRef.current?.value ?? ''
     const password = passwordRef.current?.value ?? ''
 
     try {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       })
 
       const data = await res.json()
@@ -96,13 +96,13 @@ export function LoginForm() {
       )}
 
       <Input
-        ref={emailRef}
-        type="email"
-        label="Email"
-        placeholder="admin@xdouglas.com"
-        autoComplete="email"
+        ref={usernameRef}
+        type="text"
+        label="Usuário"
+        placeholder="admin"
+        autoComplete="username"
         autoFocus
-        error={fieldErrors.email}
+        error={fieldErrors.username}
         required
       />
 
