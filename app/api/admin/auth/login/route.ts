@@ -72,10 +72,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const { username, password } = parsed.data
+  const identifier = username.toLowerCase().trim()
+  const isEmail = identifier.includes('@')
 
-  // 4. Busca usuário — tempo constante mesmo se não existir (evita timing attack)
+  // 4. Busca usuário (aceita username ou email) — tempo constante mesmo se
+  // não existir (evita timing attack)
   const user = await prisma.user.findUnique({
-    where: { username: username.toLowerCase() },
+    where: isEmail ? { email: identifier } : { username: identifier },
     select: { id: true, username: true, password: true, role: true, name: true, active: true, blocked: true, lastLoginAt: true },
   })
 

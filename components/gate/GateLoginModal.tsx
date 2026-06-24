@@ -72,13 +72,13 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gate-blue">
-              Usuário
+              Usuário ou e-mail
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="seu_usuario"
+              placeholder="seu_usuario ou e-mail"
               required
               autoComplete="username"
               className="w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
