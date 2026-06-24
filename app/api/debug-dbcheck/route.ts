@@ -27,25 +27,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const email = request.nextUrl.searchParams.get('email')
   let account: unknown = undefined
   if (email) {
-    // $queryRaw em vez de prisma.user.findUnique: resetPasswordUsedAt já existe
-    // como coluna no banco mas ainda não foi adicionado ao schema.prisma commitado,
-    // então o Prisma Client gerado em produção não reconhece o campo no select tipado.
-    const rows = await prisma.$queryRaw<
-      Array<{
-        username: string | null
-        active: boolean
-        blocked: boolean
-        reset_password_expires_at: Date | null
-        reset_password_used_at: Date | null
-        last_login_at: Date | null
-        created_at: Date
-        updated_at: Date
-      }>
-    >`
-      SELECT username, active, blocked, reset_password_expires_at, reset_password_used_at, last_login_at, created_at, updated_at
-      FROM users WHERE email = ${email.trim().toLowerCase()}
-    `
-    account = rows[0] ?? { found: false }
+    const user = await prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+      select: {
+        username: true,
+        active: true,
+        blocked: true,
+        resetPasswordExpiresAt: true,
+        resetPasswordUsedAt: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    })
+    account = user ?? { found: false }
   }
 
   return NextResponse.json({
