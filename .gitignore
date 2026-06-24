@@ -36,3 +36,6 @@ public/dev-storage/
 # Arquivos de mídia grandes / fora do app
 *.rar
 *.mp4
+
+.vercel
+*.tsbuildinfo

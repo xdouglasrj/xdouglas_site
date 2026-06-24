@@ -44,7 +44,7 @@ export default async function AdminConvitesAceitosPage() {
     where: { usedAt: null, invitedAt: { not: null, gte: inviteExpiryCutoff(now) } },
     orderBy: { invitedAt: 'desc' },
     select: {
-      id: true, email: true, name: true, artisticName: true,
+      id: true, email: true, name: true,
       tipoUsuario: true, inviteCode: true, invitedAt: true,
     },
   })
@@ -88,7 +88,7 @@ export default async function AdminConvitesAceitosPage() {
                   <tr key={entry.id} className="hover:bg-neutral-800/40 transition-colors">
                     <td className="px-4 py-3">
                       <p className="font-medium text-neutral-200 truncate">
-                        {entry.artisticName || entry.name || entry.email}
+                        {entry.name || entry.email}
                       </p>
                       <p className="text-xs text-neutral-600 truncate">{entry.email}</p>
                     </td>

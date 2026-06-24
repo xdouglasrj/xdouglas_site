@@ -25,7 +25,6 @@ interface GateInviteModalProps {
 export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteModalProps) {
   const [tipo, setTipo] = useState<TipoUsuario | null>(null)
   const [name, setName] = useState('')
-  const [artisticName, setArtisticName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [message, setMessage] = useState('')
@@ -37,7 +36,6 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
   function reset() {
     setTipo(null)
     setName('')
-    setArtisticName('')
     setEmail('')
     setPhone('')
     setMessage('')
@@ -65,7 +63,6 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
         body: JSON.stringify({
           email,
           name: name || undefined,
-          artisticName: artisticName || undefined,
           phone,
           tipoUsuario: tipo,
           message: message || undefined,
@@ -155,17 +152,6 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
               <div>
                 <label className={labelClass}>Nome</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} required type="text" placeholder="Seu nome" className={inputClass} />
-              </div>
-
-              <div>
-                <label className={labelClass}>Nome artístico</label>
-                <input
-                  value={artisticName}
-                  onChange={(e) => setArtisticName(e.target.value)}
-                  type="text"
-                  placeholder="Como você é conhecido (opcional)"
-                  className={inputClass}
-                />
               </div>
 
               <div>

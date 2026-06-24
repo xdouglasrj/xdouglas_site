@@ -31,6 +31,8 @@ export default async function PerfilPage() {
       email: true,
       username: true,
       name: true,
+      artisticName: true,
+      phone: true,
       role: true,
       photoUrl: true,
       createdAt: true,
@@ -58,6 +60,8 @@ export default async function PerfilPage() {
           <ProfileForm
             email={user.email}
             username={user.username}
+            artisticName={user.artisticName}
+            phone={user.phone}
             initialName={user.name ?? ''}
             initialPhotoUrl={user.photoUrl}
           />

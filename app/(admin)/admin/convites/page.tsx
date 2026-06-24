@@ -34,7 +34,6 @@ export default async function AdminConvitesPage() {
         id: true,
         email: true,
         name: true,
-        artisticName: true,
         phone: true,
         tipoUsuario: true,
         message: true,
@@ -93,7 +92,7 @@ export default async function AdminConvitesPage() {
                   {/* Contato */}
                   <td className="px-4 py-3">
                     <p className="font-medium text-neutral-200 truncate">
-                      {entry.artisticName || entry.name || entry.email}
+                      {entry.name || entry.email}
                     </p>
                     <p className="text-xs text-neutral-600 truncate">{entry.email}</p>
                     {entry.phone && (

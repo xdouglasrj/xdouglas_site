@@ -24,6 +24,7 @@ export default async function AdminCadastrosPage() {
       email: true,
       username: true,
       name: true,
+      artisticName: true,
       role: true,
       active: true,
       blocked: true,
@@ -83,7 +84,7 @@ export default async function AdminCadastrosPage() {
                   {/* Usuário */}
                   <td className="px-4 py-3">
                     <p className="font-medium text-neutral-200 truncate">
-                      {user.name || user.username}
+                      {user.artisticName || user.name || user.username}
                     </p>
                     <p className="text-xs text-neutral-600 truncate">{user.email}</p>
                     {user.phone && (

@@ -87,6 +87,8 @@ model User {
   // Código de convite informado no cadastro de músico/produtor — validado manualmente por agora
   inviteCode String?  @map("invite_code")
   phone      String?
+  // Nome artístico — preenchido no cadastro para quem não é Ouvinte
+  artisticName String? @map("artistic_name")
   newsletterOptIn Boolean @default(false) @map("newsletter_opt_in")
   lastLoginAt DateTime? @map("last_login_at")
   // Bloqueado pelo admin — impede novo cadastro com mesmo email/usuário/whatsapp
@@ -372,7 +374,6 @@ model Waitlist {
   id            String              @id @default(uuid())
   email         String              @unique
   name          String?
-  artisticName  String?             @map("artistic_name")
   phone         String?
   tipoUsuario   WaitlistTipoUsuario @map("tipo_usuario")
   message       String?             // campo livre opcional

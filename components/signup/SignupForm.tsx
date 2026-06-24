@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 interface SignupFormProps {
   type: 'artist' | 'visitor'
   initialInviteCode?: string
+}
+
+interface InvitePreview {
+  name: string | null
+  email: string
+  phone: string | null
 }
 
 const inputClass =
@@ -15,17 +21,37 @@ const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-wider te
 export function SignupForm({ type, initialInviteCode = '' }: SignupFormProps) {
   const isArtist = type === 'artist'
 
-  const [name, setName] = useState('')
+  const [invite, setInvite] = useState<InvitePreview | null>(null)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteLoading, setInviteLoading] = useState(true)
+
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
+  const [artisticName, setArtisticName] = useState('')
   const [password, setPassword] = useState('')
-  const [phone, setPhone] = useState('')
-  const [inviteCode, setInviteCode] = useState(initialInviteCode)
   const [newsletterOptIn, setNewsletterOptIn] = useState<boolean | null>(null)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [doneMessage, setDoneMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!initialInviteCode) {
+      setInviteError('Link de convite inválido. Verifique o link recebido por email.')
+      setInviteLoading(false)
+      return
+    }
+    fetch(`/api/invites/${encodeURIComponent(initialInviteCode)}`)
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) {
+          setInviteError(data.error ?? 'Convite inválido ou expirado.')
+          return
+        }
+        setInvite({ name: data.name, email: data.email, phone: data.phone })
+      })
+      .catch(() => setInviteError('Erro ao carregar o convite. Tente novamente.'))
+      .finally(() => setInviteLoading(false))
+  }, [initialInviteCode])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,12 +67,10 @@ export function SignupForm({ type, initialInviteCode = '' }: SignupFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
-          name,
           username,
-          email,
           password,
-          phone,
-          inviteCode,
+          ...(isArtist ? { artisticName } : {}),
+          inviteCode: initialInviteCode,
           newsletterOptIn,
         }),
       })
@@ -82,56 +106,63 @@ export function SignupForm({ type, initialInviteCode = '' }: SignupFormProps) {
     )
   }
 
+  if (inviteLoading) {
+    return (
+      <div className="rounded-2xl border border-gate-azure bg-gate-bg p-6 sm:p-8 text-center">
+        <p className="text-sm text-gate-blue">Carregando seu convite...</p>
+      </div>
+    )
+  }
+
+  if (inviteError || !invite) {
+    return (
+      <div className="rounded-2xl border border-gate-azure bg-gate-bg p-6 sm:p-8 text-center">
+        <h1 className="mb-2 text-xl font-bold text-white">Não foi possível continuar</h1>
+        <p className="text-sm text-gate-pink">{inviteError ?? 'Convite inválido.'}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-2xl border border-gate-azure bg-gate-bg p-6 sm:p-8">
       <h1 className="mb-1 text-2xl font-bold text-white">
         {isArtist ? 'Cadastro de músico/produtor' : 'Cadastro de ouvinte'}
       </h1>
-      <p className="mb-7 text-sm text-gate-blue">
-        Complete seus dados para ativar o acesso enviado no seu convite.
+      <p className="mb-1 text-sm text-gate-blue">
+        Bem-vindo(a), {invite.name ?? invite.email}! Complete seu acesso para ativar a conta.
+      </p>
+      <p className="mb-7 text-xs text-gate-blue/70">
+        {invite.email}{invite.phone ? ` · ${invite.phone}` : ''}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={labelClass}>Nome</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} placeholder="Seu nome" />
-        </div>
-
-        <div>
-          <label className={labelClass}>{isArtist ? 'Nome artístico' : 'Usuário'}</label>
+          <label className={labelClass}>Login</label>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
             className={inputClass}
-            placeholder={isArtist ? 'Seu nome artístico' : 'seu_usuario'}
+            placeholder="seu_usuario"
           />
         </div>
 
-        <div>
-          <label className={labelClass}>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} placeholder="seu@email.com" />
-        </div>
-
-        <div>
-          <label className={labelClass}>WhatsApp</label>
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className={inputClass} placeholder="(00) 00000-0000" />
-        </div>
+        {isArtist && (
+          <div>
+            <label className={labelClass}>Nome artístico</label>
+            <input
+              value={artisticName}
+              onChange={(e) => setArtisticName(e.target.value)}
+              required
+              className={inputClass}
+              placeholder="Como você é conhecido"
+            />
+          </div>
+        )}
 
         <div>
           <label className={labelClass}>Senha</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className={inputClass} placeholder="Mínimo 8 caracteres" />
-        </div>
-
-        <div>
-          <label className={labelClass}>Código de convite</label>
-          <input
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
-            required
-            className="w-full rounded-lg border border-gate-pink/50 bg-gate-pink/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
-            placeholder="XXXX-XXXX-XXXX"
-          />
         </div>
 
         <div>

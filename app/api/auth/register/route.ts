@@ -10,40 +10,33 @@ import { inviteTargetForCategory, normalizeInviteCode } from '@/lib/invites/code
 // Validação
 // ============================================================
 
-const visitorUsername = z
+// Login: identificador de acesso, igual para os dois tipos de cadastro
+const username = z
   .string()
   .min(3, 'Mínimo 3 caracteres')
   .max(30)
   .regex(/^[a-z0-9_.]+$/i, 'Use apenas letras, números, "_" e "."')
 
 // Nome artístico: mais permissivo, aceita espaços e acentos
-const artistUsername = z.string().min(2, 'Mínimo 2 caracteres').max(50)
+const artisticName = z.string().min(2, 'Mínimo 2 caracteres').max(50)
 
-const email = z.string().email('Email inválido')
 const password = z.string().min(8, 'Mínimo 8 caracteres')
-const name = z.string().min(2, 'Nome muito curto').max(100).optional()
-const phone = z.string().min(8, 'WhatsApp inválido').max(20)
 const inviteCode = z.string().min(4, 'Código de convite inválido')
 
 const registerSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('artist'),
-    username: artistUsername,
-    email,
+    username,
     password,
-    name,
+    artisticName,
     inviteCode,
-    phone,
     newsletterOptIn: z.boolean(),
   }),
   z.object({
     type: z.literal('visitor'),
-    username: visitorUsername,
-    email,
+    username,
     password,
-    name,
     inviteCode,
-    phone,
     newsletterOptIn: z.boolean(),
   }),
 ])
@@ -81,28 +74,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const data = parsed.data
   const username = data.username.toLowerCase().trim()
-  const email = data.email.toLowerCase().trim()
-  const phoneTrimmed = data.phone.trim()
   const hashedPassword = await bcrypt.hash(data.password, 12)
-
-  // Bloqueio manual pelo admin — impede novo cadastro com o mesmo
-  // email, usuário ou WhatsApp de uma conta já bloqueada
-  const blockedMatch = await prisma.user.findFirst({
-    where: {
-      blocked: true,
-      OR: [{ email }, { username }, { phone: phoneTrimmed }],
-    },
-    select: { id: true },
-  })
-  if (blockedMatch) {
-    return NextResponse.json(
-      { error: 'Cadastro não permitido.', code: 'BLOCKED' },
-      { status: 403 }
-    )
-  }
 
   // Valida o convite: precisa ser uma chave gerada pelo admin (aceita),
   // ainda não utilizada e da categoria correspondente a este cadastro.
+  // Nome, email e WhatsApp vêm do pedido de convite original — não são
+  // mais informados novamente neste formulário.
   const code = normalizeInviteCode(data.inviteCode)
   const invite = await prisma.waitlist.findUnique({ where: { inviteCode: code } })
 
@@ -125,6 +102,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
+  // Bloqueio manual pelo admin — impede novo cadastro com o mesmo
+  // email, usuário ou WhatsApp de uma conta já bloqueada
+  const blockedMatch = await prisma.user.findFirst({
+    where: {
+      blocked: true,
+      OR: [{ email: invite.email }, { username }, { phone: invite.phone ?? undefined }],
+    },
+    select: { id: true },
+  })
+  if (blockedMatch) {
+    return NextResponse.json(
+      { error: 'Cadastro não permitido.', code: 'BLOCKED' },
+      { status: 403 }
+    )
+  }
+
   // Convite válido — a aprovação do admin já é a liberação, então a conta
   // nasce ativa. O papel vem da categoria escolhida no convite.
   const role = data.type === 'artist' ? 'ARTIST' : 'GUEST'
@@ -133,13 +126,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const user = await prisma.user.create({
       data: {
         username,
-        email,
+        email: invite.email,
         password: hashedPassword,
-        name: data.name?.trim(),
+        name: invite.name,
+        artisticName: data.type === 'artist' ? data.artisticName.trim() : null,
         role,
         active: true,
         inviteCode: code,
-        phone: data.phone.trim(),
+        phone: invite.phone,
         newsletterOptIn: data.newsletterOptIn,
       },
       select: { id: true },

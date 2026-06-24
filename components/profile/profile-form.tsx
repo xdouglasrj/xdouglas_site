@@ -5,6 +5,8 @@ import { useRef, useState } from 'react'
 interface ProfileFormProps {
   email: string
   username: string | null
+  artisticName: string | null
+  phone: string | null
   initialName: string
   initialPhotoUrl: string | null
 }
@@ -12,7 +14,7 @@ interface ProfileFormProps {
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-export function ProfileForm({ email, username, initialName, initialPhotoUrl }: ProfileFormProps) {
+export function ProfileForm({ email, username, artisticName, phone, initialName, initialPhotoUrl }: ProfileFormProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl)
   const [photoState, setPhotoState] = useState<'idle' | 'uploading' | 'error'>('idle')
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -202,6 +204,18 @@ export function ProfileForm({ email, username, initialName, initialPhotoUrl }: P
             <div className="flex justify-between gap-4">
               <dt className="text-gate-blue">Usuário</dt>
               <dd className="text-white/80 truncate">@{username}</dd>
+            </div>
+          )}
+          {artisticName && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-gate-blue">Nome artístico</dt>
+              <dd className="text-white/80 truncate">{artisticName}</dd>
+            </div>
+          )}
+          {phone && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-gate-blue">WhatsApp</dt>
+              <dd className="text-white/80 truncate">{phone}</dd>
             </div>
           )}
         </dl>
