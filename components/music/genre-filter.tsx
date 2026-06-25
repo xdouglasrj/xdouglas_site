@@ -13,7 +13,7 @@ export function GenreFilter({ genres, selected, onChange }: GenreFilterProps) {
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto pb-1 scrollbar-none"
+      className="flex flex-wrap items-center justify-center gap-2"
       role="group"
       aria-label="Filtrar por gênero"
     >

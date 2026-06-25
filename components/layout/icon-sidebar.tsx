@@ -45,7 +45,8 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    router.push(`/musicas-recentes?q=${encodeURIComponent(query.trim())}`)
+    // Busca no catálogo completo (todas as músicas), não só no feed de 24h
+    router.push(`/generos?q=${encodeURIComponent(query.trim())}`)
     setPanel(null)
     setMobileOpen(false)
   }
@@ -132,16 +133,16 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
             <p className="mt-6 mb-2 px-1 text-xs font-bold uppercase tracking-widest text-gate-blue">Gêneros</p>
             <div className="flex flex-wrap gap-2">
               <Link
-                href="/musicas-recentes"
+                href="/generos"
                 onClick={() => setMobileOpen(false)}
                 className="rounded-full border border-gate-pink px-3 py-1.5 text-sm font-medium text-gate-pink transition hover:bg-gate-pink/15"
               >
-                Músicas recentes
+                Todos
               </Link>
               {GENRES.map((g) => (
                 <Link
                   key={g}
-                  href={`/musicas-recentes?genre=${encodeURIComponent(g)}`}
+                  href={`/generos?genre=${encodeURIComponent(g)}`}
                   onClick={() => setMobileOpen(false)}
                   className="rounded-full border border-gate-azure px-3 py-1.5 text-sm text-gate-blue transition hover:border-gate-pink hover:text-gate-pink"
                 >
@@ -317,10 +318,19 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
                   Músicas recentes
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/generos"
+                  onClick={() => setPanel(null)}
+                  className="block rounded-md px-2 py-2 text-sm font-medium text-white transition hover:bg-gate-pink/15 hover:text-gate-pink"
+                >
+                  Todos os gêneros
+                </Link>
+              </li>
               {GENRES.map((g) => (
                 <li key={g}>
                   <Link
-                    href={`/musicas-recentes?genre=${encodeURIComponent(g)}`}
+                    href={`/generos?genre=${encodeURIComponent(g)}`}
                     onClick={() => setPanel(null)}
                     className="block rounded-md px-2 py-2 text-sm font-medium text-white transition hover:bg-gate-pink/15 hover:text-gate-pink"
                   >

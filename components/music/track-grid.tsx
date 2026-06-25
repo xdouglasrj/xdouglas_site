@@ -5,7 +5,9 @@ import { TrackCard } from './track-card'
 import { TrackGridSkeleton } from './track-card-skeleton'
 import { EmptyState } from './empty-state'
 import { GenreFilter } from './genre-filter'
+import { SortFilter } from './sort-filter'
 import type { TrackPublic } from '@/lib/tracks/types'
+import type { TrackSortBy } from '@/lib/tracks/queries'
 
 interface TrackGridProps {
   initialTracks: TrackPublic[]
@@ -13,9 +15,15 @@ interface TrackGridProps {
   genres: string[]
   initialGenre?: string | null
   initialQuery?: string | null
+  initialSort?: TrackSortBy
   canDownload?: boolean
-  /** Se true, busca todo o histórico publicado (sem o corte de 24/36/48h). */
-  includeExpired?: boolean
+  /**
+   * 'feed' — /musicas-recentes: só músicas postadas nas últimas 24h (janela
+   * individual por upload), sem barra de filtros.
+   * 'catalog' — páginas de gênero: todo o histórico publicado, com filtro
+   * de gênero centralizado e filtros extra (nome, artista, data, download).
+   */
+  mode?: 'feed' | 'catalog'
 }
 
 const PER_PAGE = 20
@@ -26,12 +34,15 @@ export function TrackGrid({
   genres,
   initialGenre = null,
   initialQuery = null,
+  initialSort = 'recent',
   canDownload = true,
-  includeExpired = false,
+  mode = 'feed',
 }: TrackGridProps) {
+  const isCatalog = mode === 'catalog'
   const [tracks, setTracks] = useState<TrackPublic[]>(initialTracks)
   const [total, setTotal] = useState(initialTotal)
-  const [genre, setGenre] = useState<string | null>(initialGenre)
+  const [genre, setGenre] = useState<string | null>(isCatalog ? initialGenre : null)
+  const [sort, setSort] = useState<TrackSortBy>(isCatalog ? initialSort : 'recent')
   const [query] = useState<string | null>(initialQuery)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -40,14 +51,17 @@ export function TrackGrid({
 
   // Busca quando filtro ou página muda
   const fetchTracks = useCallback(
-    async (selectedGenre: string | null, nextPage: number) => {
+    async (selectedGenre: string | null, nextPage: number, nextSort: TrackSortBy) => {
       const params = new URLSearchParams({
         page: String(nextPage),
         perPage: String(PER_PAGE),
       })
       if (selectedGenre) params.set('genre', selectedGenre)
       if (query) params.set('q', query)
-      if (includeExpired) params.set('includeExpired', '1')
+      if (isCatalog) {
+        params.set('includeExpired', '1')
+        params.set('sort', nextSort)
+      }
 
       const res = await fetch(`/api/musicas?${params}`)
       if (!res.ok) return
@@ -57,7 +71,7 @@ export function TrackGrid({
       setTracks(data.tracks)
       setTotal(data.total)
     },
-    [query, includeExpired]
+    [query, isCatalog]
   )
 
   // Mudança de gênero — reseta paginação
@@ -66,7 +80,16 @@ export function TrackGrid({
     setGenre(newGenre)
     setPage(1)
     setLoading(true)
-    fetchTracks(newGenre, 1).finally(() => setLoading(false))
+    fetchTracks(newGenre, 1, sort).finally(() => setLoading(false))
+  }
+
+  // Mudança de ordenação — reseta paginação
+  function handleSortChange(newSort: TrackSortBy) {
+    if (newSort === sort) return
+    setSort(newSort)
+    setPage(1)
+    setLoading(true)
+    fetchTracks(genre, 1, newSort).finally(() => setLoading(false))
   }
 
   // Troca de página
@@ -74,21 +97,26 @@ export function TrackGrid({
     if (nextPage === page || nextPage < 1 || nextPage > totalPages) return
     setPage(nextPage)
     setLoading(true)
-    fetchTracks(genre, nextPage).finally(() => setLoading(false))
+    fetchTracks(genre, nextPage, sort).finally(() => setLoading(false))
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Filtro de gênero */}
-      <GenreFilter
-        genres={genres}
-        selected={genre}
-        onChange={handleGenreChange}
-      />
+      {/* Barra de filtros — só nas páginas de gênero (catálogo completo) */}
+      {isCatalog && (
+        <div className="flex flex-col items-center gap-3 px-4 py-4">
+          <GenreFilter
+            genres={genres}
+            selected={genre}
+            onChange={handleGenreChange}
+          />
+          <SortFilter selected={sort} onChange={handleSortChange} />
+        </div>
+      )}
 
       {/* Contagem */}
       {!loading && (
-        <p className="text-xs text-gate-blue">
+        <p className={`text-xs text-gate-blue ${isCatalog ? 'text-center' : ''}`}>
           {total.toLocaleString('pt-BR')} música{total !== 1 ? 's' : ''}
           {genre ? ` em ${genre}` : ''}
           {query ? ` para "${query}"` : ''}

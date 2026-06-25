@@ -66,6 +66,8 @@ function serializeTrack(raw: {
 
 // ── Queries ───────────────────────────────────────────────────
 
+export type TrackSortBy = 'recent' | 'name' | 'artist' | 'downloads'
+
 export interface ListTracksOptions {
   page?: number
   perPage?: number
@@ -74,10 +76,19 @@ export interface ListTracksOptions {
   q?: string
   /** Se true, ignora a janela de exibição (24/36/48h) e traz todo o histórico publicado. */
   includeExpired?: boolean
+  /** Ordenação — só usada nas páginas de gênero (catálogo completo). */
+  sortBy?: TrackSortBy
 }
 
+const SORT_ORDER_BY = {
+  recent: { publishedAt: 'desc' as const },
+  name: { title: 'asc' as const },
+  artist: { artist: { name: 'asc' as const } },
+  downloads: { downloadCount: 'desc' as const },
+} satisfies Record<TrackSortBy, object>
+
 export async function listTracks(opts: ListTracksOptions = {}) {
-  const { page = 1, perPage = 24, genre, artistSlug, q, includeExpired = false } = opts
+  const { page = 1, perPage = 24, genre, artistSlug, q, includeExpired = false, sortBy = 'recent' } = opts
   const skip = (page - 1) * perPage
   const cutoff = includeExpired ? null : await getContentCutoffDate()
 
@@ -99,7 +110,7 @@ export async function listTracks(opts: ListTracksOptions = {}) {
     prisma.track.findMany({
       where,
       select: TRACK_SELECT,
-      orderBy: { publishedAt: 'desc' },
+      orderBy: SORT_ORDER_BY[sortBy],
       skip,
       take: perPage,
     }),

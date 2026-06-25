@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { listTracks, listGenres } from '@/lib/tracks/queries'
+import { listTracks, listGenres, type TrackSortBy } from '@/lib/tracks/queries'
 
 // ============================================================
 // GET /api/musicas
-// Parâmetros: page, perPage, genre, artistSlug
+// Parâmetros: page, perPage, genre, artistSlug, sort
 // ============================================================
+
+const VALID_SORTS: TrackSortBy[] = ['recent', 'name', 'artist', 'downloads']
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = request.nextUrl
@@ -15,10 +17,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const artistSlug = searchParams.get('artistSlug') ?? undefined
   const q = searchParams.get('q') ?? undefined
   const includeExpired = searchParams.get('includeExpired') === '1'
+  const sortParam = searchParams.get('sort')
+  const sortBy = VALID_SORTS.includes(sortParam as TrackSortBy) ? (sortParam as TrackSortBy) : 'recent'
 
   // Genres e tracks em paralelo
   const [result, genres] = await Promise.all([
-    listTracks({ page, perPage, genre, artistSlug, q, includeExpired }),
+    listTracks({ page, perPage, genre, artistSlug, q, includeExpired, sortBy }),
     listGenres(includeExpired),
   ])
 

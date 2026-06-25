@@ -71,7 +71,7 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
   const approvedAt = formatDate(track.publishedAt)
 
   return (
-    <article className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/[0.06]">
+    <article className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-white/[0.06]">
       {/* Capa — miniatura, como o ícone de um arquivo */}
       <Link
         href={`/musicas/${track.slug}`}
@@ -108,8 +108,10 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
           {track.producerName && track.producerName !== track.artist.name && (
             <span className="text-white/40"> · prod. {track.producerName}</span>
           )}
-          {approvedAt && <span className="text-white/30"> · aprovada em {approvedAt}</span>}
         </p>
+        {approvedAt && (
+          <p className="mt-0.5 text-[11px] text-white/30 truncate">aprovada em {approvedAt}</p>
+        )}
       </div>
 
       {/* Tags de metadados — escondem em telas estreitas */}
