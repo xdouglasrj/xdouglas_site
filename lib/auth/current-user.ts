@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 export interface CurrentUserBasics {
   role: string
   photoUrl: string | null
+  username: string | null
 }
 
 export async function getCurrentUserBasics(): Promise<CurrentUserBasics | null> {
@@ -14,9 +15,9 @@ export async function getCurrentUserBasics(): Promise<CurrentUserBasics | null> 
     const payload = await verifyAccessToken(token)
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { photoUrl: true },
+      select: { photoUrl: true, username: true },
     })
-    return { role: payload.role, photoUrl: user?.photoUrl ?? null }
+    return { role: payload.role, photoUrl: user?.photoUrl ?? null, username: user?.username ?? null }
   } catch {
     return null
   }

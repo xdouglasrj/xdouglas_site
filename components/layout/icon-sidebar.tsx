@@ -16,9 +16,11 @@ interface IconSidebarProps {
   isAdmin?: boolean
   isArtist?: boolean
   photoUrl?: string | null
+  username?: string | null
 }
 
-export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null }: IconSidebarProps) {
+export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null, username = null }: IconSidebarProps) {
+  const profileHref = username ? `/perfil/${username}` : '/perfil'
   const [panel, setPanel] = useState<Panel>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -122,7 +124,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
                 <MobileLink href="/upload" onClick={() => setMobileOpen(false)} label="Upload de música" />
               )}
 
-              <MobileLink href="/perfil" onClick={() => setMobileOpen(false)} label="Meu perfil" />
+              <MobileLink href={profileHref} onClick={() => setMobileOpen(false)} label="Meu perfil" />
 
               {isAdmin && (
                 <MobileLink href="/admin/dashboard" onClick={() => setMobileOpen(false)} label="Painel admin" />
@@ -253,7 +255,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
           </Link>
 
           <Link
-            href="/perfil"
+            href={profileHref}
             className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink overflow-hidden"
             aria-label="Perfil"
             title="Perfil"

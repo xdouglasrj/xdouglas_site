@@ -113,6 +113,26 @@ export async function submitTrack(input: SubmitTrackInput, userId: string) {
 // Lista as músicas enviadas pelo próprio artista (qualquer status)
 // ============================================================
 
+// ============================================================
+// Lista as músicas publicadas de um artista — usado no perfil
+// (próprio e público)
+// ============================================================
+
+export async function listPublishedTracksByArtist(artistId: string) {
+  return prisma.track.findMany({
+    where: { artistId, published: true },
+    orderBy: { publishedAt: 'desc' },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      genre: true,
+      coverUrl: true,
+      publishedAt: true,
+    },
+  })
+}
+
 export async function listMySubmissions(userId: string) {
   return prisma.track.findMany({
     where: { submittedById: userId },

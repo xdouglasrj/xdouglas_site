@@ -5,7 +5,10 @@ import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
 import { FollowButton } from '@/components/profile/follow-button'
+import { EditProfileButton } from '@/components/profile/edit-profile-button'
+import { ProfileTracks } from '@/components/profile/profile-tracks'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
+import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
 
 const ROLE_LABEL: Record<string, string> = {
   GUEST: 'Ouvinte',
@@ -38,8 +41,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   })
   if (!viewer) redirect('/')
 
-  // /perfil/<seu-próprio-usuário> manda para a tela de edição
-  if (viewer.username === usuario) redirect('/perfil')
+  const isSelf = viewer.username === usuario
 
   const profile = await prisma.user.findUnique({
     where: { username: usuario },
@@ -54,8 +56,9 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       role: true,
       showEmail: true,
       showPhone: true,
+      showName: true,
       createdAt: true,
-      artist: { select: { name: true, slug: true, bio: true } },
+      artist: { select: { id: true, name: true, slug: true, bio: true } },
     },
   })
 
@@ -63,19 +66,27 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
 
   const isAdmin = viewer.role === 'ADMIN'
   const isViewerArtist = viewer.role === 'ARTIST' || viewer.role === 'ARTIST_SUPPORTER'
+  const isProfileArtist = profile.role === 'ARTIST' || profile.role === 'ARTIST_SUPPORTER'
 
-  const [counts, followingAlready] = await Promise.all([
+  const [counts, followingAlready, tracks] = await Promise.all([
     getFollowCounts(profile.id),
-    isFollowing(viewer.id, profile.id),
+    isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
+    profile.artist ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
   ])
 
-  // Admin sempre vê tudo. Para os demais, respeita a privacidade escolhida pelo usuário.
-  const canSeeEmail = isAdmin || profile.showEmail
-  const canSeePhone = isAdmin || (profile.showPhone && !!profile.phone)
+  // O próprio usuário e o admin sempre veem tudo. Para os demais, respeita a
+  // privacidade escolhida pelo usuário. Ouvintes sempre exibem o nome;
+  // artistas decidem se mostram o nome real (showName).
+  const canSeeEmail = isSelf || isAdmin || profile.showEmail
+  const canSeePhone = isSelf || isAdmin || (profile.showPhone && !!profile.phone)
+  const canSeeName = isSelf || isAdmin || !isProfileArtist || profile.showName
+  const displayName = canSeeName
+    ? profile.name || profile.artisticName || profile.username
+    : profile.artisticName || profile.username
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} username={viewer.username} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">
@@ -93,14 +104,27 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
                 )}
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">
-                  {profile.name || profile.artisticName || profile.username}
-                </h1>
+                <h1 className="text-xl font-bold text-white">{displayName}</h1>
                 <p className="text-sm text-gate-blue">@{profile.username}</p>
               </div>
             </div>
 
-            <FollowButton userId={profile.id} initialFollowing={followingAlready} />
+            {isSelf ? (
+              <EditProfileButton
+                email={profile.email}
+                username={profile.username}
+                artisticName={profile.artisticName}
+                phone={profile.phone}
+                initialName={profile.name ?? ''}
+                initialPhotoUrl={profile.photoUrl}
+                initialShowEmail={profile.showEmail}
+                initialShowPhone={profile.showPhone}
+                initialShowName={profile.showName}
+                isArtist={isProfileArtist}
+              />
+            ) : (
+              <FollowButton userId={profile.id} initialFollowing={followingAlready} />
+            )}
           </div>
 
           <p className="mt-2 text-xs text-gate-blue">
@@ -136,7 +160,15 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
                 </div>
               )}
             </dl>
+            {isSelf && (
+              <p className="mt-3 text-xs text-white/30">
+                Você está vendo seu perfil como ele é salvo. Use &quot;Editar perfil&quot; para
+                controlar o que outros membros podem ver.
+              </p>
+            )}
           </section>
+
+          <ProfileTracks tracks={tracks} />
         </div>
       </main>
     </div>

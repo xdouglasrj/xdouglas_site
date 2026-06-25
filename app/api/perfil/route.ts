@@ -21,6 +21,7 @@ export const GET = withAuth(async (_request, auth) => {
       photoUrl: true,
       showEmail: true,
       showPhone: true,
+      showName: true,
       createdAt: true,
       artist: { select: { name: true, slug: true, bio: true, photoUrl: true } },
     },
@@ -45,6 +46,7 @@ const updateSchema = z.object({
   photoUrl: z.string().url().optional(),
   showEmail: z.boolean().optional(),
   showPhone: z.boolean().optional(),
+  showName: z.boolean().optional(),
 }).refine(
   (data) => !data.newPassword || !!data.currentPassword,
   { message: 'Senha atual obrigatória para trocar a senha', path: ['currentPassword'] }
@@ -66,7 +68,7 @@ export const PATCH = withAuth(async (request, auth) => {
     )
   }
 
-  const { name, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone } = parsed.data
+  const { name, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
   const data: {
     name?: string
     password?: string
@@ -74,6 +76,7 @@ export const PATCH = withAuth(async (request, auth) => {
     photoUrl?: string
     showEmail?: boolean
     showPhone?: boolean
+    showName?: boolean
   } = {}
 
   if (name !== undefined) {
@@ -87,6 +90,7 @@ export const PATCH = withAuth(async (request, auth) => {
 
   if (showEmail !== undefined) data.showEmail = showEmail
   if (showPhone !== undefined) data.showPhone = showPhone
+  if (showName !== undefined) data.showName = showName
 
   if (newPassword) {
     const user = await prisma.user.findUnique({

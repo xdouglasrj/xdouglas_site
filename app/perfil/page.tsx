@@ -1,25 +1,18 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { ProfileForm } from '@/components/profile/profile-form'
+import { ProfileFormFields } from '@/components/profile/profile-form'
 import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 
 export const metadata: Metadata = {
-  title: 'Perfil',
+  title: 'Configurações de perfil',
   robots: { index: false, follow: false },
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  GUEST: 'Ouvinte',
-  MEMBER: 'Membro',
-  ARTIST: 'Artista',
-  ARTIST_SUPPORTER: 'Artista parceiro',
-  ADMIN: 'Administrador',
-}
-
-export default async function PerfilPage() {
+export default async function PerfilConfiguracoesPage() {
   const token = await getAccessToken()
   if (!token) redirect('/')
   const payload = await verifyAccessToken(token).catch(() => null)
@@ -30,15 +23,14 @@ export default async function PerfilPage() {
     select: {
       email: true,
       username: true,
-      name: true,
       artisticName: true,
       phone: true,
       role: true,
       photoUrl: true,
       showEmail: true,
       showPhone: true,
-      createdAt: true,
-      artist: { select: { name: true, slug: true } },
+      showName: true,
+      name: true,
     },
   })
 
@@ -49,26 +41,38 @@ export default async function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} username={user.username} />
 
-      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-2xl font-bold text-white">Perfil</h1>
-          <p className="mt-1 text-sm text-gate-blue">
-            {ROLE_LABEL[user.role] ?? user.role}
-            {user.artist && <span className="text-white/40"> · {user.artist.name}</span>}
-          </p>
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-6 sm:py-8">
+        <div className="max-w-md mx-auto">
+          {user.username && (
+            <Link
+              href={`/perfil/${user.username}`}
+              className="inline-flex items-center gap-1.5 text-sm text-gate-blue transition hover:text-gate-pink"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+              </svg>
+              Ver meu perfil
+            </Link>
+          )}
 
-          <ProfileForm
-            email={user.email}
-            username={user.username}
-            artisticName={user.artisticName}
-            phone={user.phone}
-            initialName={user.name ?? ''}
-            initialPhotoUrl={user.photoUrl}
-            initialShowEmail={user.showEmail}
-            initialShowPhone={user.showPhone}
-          />
+          <h1 className="mt-2 text-lg font-bold text-white">Configurações de perfil</h1>
+
+          <div className="mt-4">
+            <ProfileFormFields
+              email={user.email}
+              username={user.username}
+              artisticName={user.artisticName}
+              phone={user.phone}
+              initialName={user.name ?? ''}
+              initialPhotoUrl={user.photoUrl}
+              initialShowEmail={user.showEmail}
+              initialShowPhone={user.showPhone}
+              initialShowName={user.showName}
+              isArtist={isArtist}
+            />
+          </div>
         </div>
       </main>
     </div>

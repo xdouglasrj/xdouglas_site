@@ -119,6 +119,8 @@ model User {
   // dessas flags.
   showEmail  Boolean  @default(false) @map("show_email")
   showPhone  Boolean  @default(false) @map("show_phone")
+  // Visibilidade do nome real — só se aplica a artistas (ouvintes sempre exibem o nome)
+  showName   Boolean  @default(true) @map("show_name")
   // Redefinição de senha — apenas o hash do token é armazenado, nunca o token original
   resetPasswordTokenHash  String?   @unique @map("reset_password_token_hash")
   resetPasswordExpiresAt  DateTime? @map("reset_password_expires_at")
