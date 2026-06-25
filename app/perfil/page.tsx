@@ -1,18 +1,12 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { ProfileFormFields } from '@/components/profile/profile-form'
 import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 
-export const metadata: Metadata = {
-  title: 'Configurações de perfil',
-  robots: { index: false, follow: false },
-}
-
-export default async function PerfilConfiguracoesPage() {
+// /perfil não tem conteúdo próprio — manda para a página de visualização
+// do próprio usuário (/perfil/<seu @>). Editar dados só existe via o
+// popup "Editar perfil", aberto a partir de lá.
+export default async function PerfilPage() {
   const token = await getAccessToken()
   if (!token) redirect('/')
   const payload = await verifyAccessToken(token).catch(() => null)
@@ -20,63 +14,9 @@ export default async function PerfilConfiguracoesPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: {
-      email: true,
-      username: true,
-      handle: true,
-      artisticName: true,
-      phone: true,
-      role: true,
-      photoUrl: true,
-      showEmail: true,
-      showPhone: true,
-      showName: true,
-      name: true,
-    },
+    select: { handle: true },
   })
 
-  if (!user) redirect('/')
-
-  const isAdmin = user.role === 'ADMIN'
-  const isArtist = user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'
-
-  return (
-    <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} handle={user.handle} />
-
-      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-6 sm:py-8">
-        <div className="max-w-md mx-auto">
-          {user.handle && (
-            <Link
-              href={`/perfil/${user.handle}`}
-              className="inline-flex items-center gap-1.5 text-sm text-gate-blue transition hover:text-gate-pink"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
-              </svg>
-              Ver meu perfil
-            </Link>
-          )}
-
-          <h1 className="mt-2 text-lg font-bold text-white">Configurações de perfil</h1>
-
-          <div className="mt-4">
-            <ProfileFormFields
-              email={user.email}
-              username={user.username}
-              handle={user.handle}
-              artisticName={user.artisticName}
-              phone={user.phone}
-              initialName={user.name ?? ''}
-              initialPhotoUrl={user.photoUrl}
-              initialShowEmail={user.showEmail}
-              initialShowPhone={user.showPhone}
-              initialShowName={user.showName}
-              isArtist={isArtist}
-            />
-          </div>
-        </div>
-      </main>
-    </div>
-  )
+  if (!user?.handle) redirect('/inicio')
+  redirect(`/perfil/${user.handle}`)
 }

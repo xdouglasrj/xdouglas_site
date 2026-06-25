@@ -75,12 +75,13 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
     profile.artist ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
   ])
 
-  // O próprio usuário e o admin sempre veem tudo. Para os demais, respeita a
-  // privacidade escolhida pelo usuário. Ouvintes sempre exibem o nome;
-  // artistas decidem se mostram o nome real (showName).
-  const canSeeEmail = isSelf || isAdmin || profile.showEmail
-  const canSeePhone = isSelf || isAdmin || (profile.showPhone && !!profile.phone)
-  const canSeeName = isSelf || isAdmin || !isProfileArtist || profile.showName
+  // O perfil mostra só o que foi configurado em "Editar perfil" — vale
+  // até para o próprio dono vendo a própria página. O admin é a única
+  // exceção e sempre vê tudo. Ouvintes sempre exibem o nome; artistas
+  // decidem se mostram o nome real (showName).
+  const canSeeEmail = isAdmin || profile.showEmail
+  const canSeePhone = isAdmin || (profile.showPhone && !!profile.phone)
+  const canSeeName = isAdmin || !isProfileArtist || profile.showName
   const displayName = canSeeName
     ? profile.name || profile.artisticName || profile.handle
     : profile.artisticName || profile.handle
@@ -153,7 +154,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
                   <dd className="text-white/80 truncate">{profile.email}</dd>
                 </div>
               ) : (
-                <p className="text-xs text-white/30">Este membro optou por não exibir o e-mail.</p>
+                <p className="text-xs text-white/30">E-mail não disponibilizado.</p>
               )}
               {canSeePhone && (
                 <div className="flex justify-between gap-4">
@@ -162,12 +163,6 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
                 </div>
               )}
             </dl>
-            {isSelf && (
-              <p className="mt-3 text-xs text-white/30">
-                Você está vendo seu perfil como ele é salvo. Use &quot;Editar perfil&quot; para
-                controlar o que outros membros podem ver.
-              </p>
-            )}
           </section>
 
           <ProfileTracks tracks={tracks} />
