@@ -16,9 +16,9 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 // /inicio ou /musicas direto pela URL (ou chamar a API por trás dessas
 // páginas) sem nunca ter feito login.
 const MEMBER_PREFIXES = [
-  '/inicio', '/musicas', '/upload', '/perfil', '/forum',
+  '/inicio', '/musicas', '/upload', '/perfil', '/forum', '/busca',
   '/api/musicas', '/api/download', '/api/stream', '/api/perfil',
-  '/api/social', '/api/forum', '/api/reports',
+  '/api/social', '/api/forum', '/api/reports', '/api/usuarios',
 ]
 
 // ============================================================
@@ -96,6 +96,7 @@ export const config = {
     '/upload/:path*',
     '/perfil/:path*',
     '/forum/:path*',
+    '/busca/:path*',
     '/api/musicas/:path*',
     '/api/download/:path*',
     '/api/stream/:path*',
@@ -103,5 +104,6 @@ export const config = {
     '/api/social/:path*',
     '/api/forum/:path*',
     '/api/reports/:path*',
+    '/api/usuarios/:path*',
   ],
 }

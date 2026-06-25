@@ -47,8 +47,8 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    // Busca no catálogo completo (todas as músicas), não só no feed de 24h
-    router.push(`/generos?q=${encodeURIComponent(query.trim())}`)
+    // Busca unificada: músicas do catálogo completo + pessoas pelo @handle
+    router.push(`/busca?q=${encodeURIComponent(query.trim())}`)
     setPanel(null)
     setMobileOpen(false)
   }
@@ -105,7 +105,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar artista ou música..."
+                  placeholder="Música, artista ou @usuário..."
                   className="w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
                 />
                 <button type="submit" className="shrink-0 rounded-lg bg-gate-pink px-4 text-sm font-semibold text-white">
@@ -356,7 +356,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Artista ou música..."
+                placeholder="Música, artista ou @usuário..."
                 className="w-full rounded-md border border-gate-azure bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
               />
               <button

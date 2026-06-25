@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { toPublicUser, PUBLIC_USER_SELECT, type PublicUser } from './public-user'
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
   if (followerId === followingId) return false
@@ -33,4 +34,52 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
 
   await prisma.follow.create({ data: { followerId, followingId } })
   return true
+}
+
+interface ListFollowOptions {
+  q?: string
+  limit?: number
+}
+
+// Filtro de busca por @handle/nome aplicado sobre o User do outro lado do Follow
+function userNameFilter(q: string | undefined) {
+  if (!q?.trim()) return undefined
+  const query = q.trim().replace(/^@/, '')
+  return {
+    OR: [
+      { handle: { contains: query, mode: 'insensitive' as const } },
+      { name: { contains: query, mode: 'insensitive' as const } },
+      { artisticName: { contains: query, mode: 'insensitive' as const } },
+    ],
+  }
+}
+
+/** Quem segue `userId` — usado no popup de seguidores. */
+export async function listFollowers(userId: string, opts: ListFollowOptions = {}): Promise<PublicUser[]> {
+  const { q, limit = 50 } = opts
+  const rows = await prisma.follow.findMany({
+    where: {
+      followingId: userId,
+      follower: { active: true, blocked: false, handle: { not: null }, ...userNameFilter(q) },
+    },
+    select: { follower: { select: PUBLIC_USER_SELECT } },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  })
+  return rows.map((r) => toPublicUser(r.follower))
+}
+
+/** Quem `userId` segue — usado no popup de seguindo. */
+export async function listFollowing(userId: string, opts: ListFollowOptions = {}): Promise<PublicUser[]> {
+  const { q, limit = 50 } = opts
+  const rows = await prisma.follow.findMany({
+    where: {
+      followerId: userId,
+      following: { active: true, blocked: false, handle: { not: null }, ...userNameFilter(q) },
+    },
+    select: { following: { select: PUBLIC_USER_SELECT } },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  })
+  return rows.map((r) => toPublicUser(r.following))
 }

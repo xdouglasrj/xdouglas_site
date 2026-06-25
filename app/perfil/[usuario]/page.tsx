@@ -5,6 +5,8 @@ import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
 import { FollowButton } from '@/components/profile/follow-button'
+import { FollowListModal } from '@/components/profile/follow-list-modal'
+import { Avatar } from '@/components/ui/avatar'
 import { EditProfileButton } from '@/components/profile/edit-profile-button'
 import { ProfileTracks } from '@/components/profile/profile-tracks'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
@@ -94,17 +96,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
         <div className="max-w-lg mx-auto">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="relative w-16 h-16 shrink-0 rounded-full overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">
-                {profile.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.photoUrl} alt={profile.name ?? profile.handle ?? ''} className="w-full h-full object-cover" />
-                ) : (
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gate-blue">
-                    <circle cx="12" cy="8" r="4" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />
-                  </svg>
-                )}
-              </div>
+              <Avatar photoUrl={profile.photoUrl} alt={profile.name ?? profile.handle ?? ''} size={64} />
               <div>
                 <h1 className="text-xl font-bold text-white">{displayName}</h1>
                 <p className="text-sm text-gate-blue">@{profile.handle}</p>
@@ -136,8 +128,8 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
           </p>
 
           <div className="mt-4 flex gap-6 text-sm">
-            <span className="text-white/80"><strong className="text-white">{counts.followers}</strong> seguidores</span>
-            <span className="text-white/80"><strong className="text-white">{counts.following}</strong> seguindo</span>
+            <FollowListModal userId={profile.id} type="followers" count={counts.followers} label="seguidores" />
+            <FollowListModal userId={profile.id} type="following" count={counts.following} label="seguindo" />
           </div>
 
           {profile.artist?.bio && (
