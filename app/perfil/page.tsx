@@ -23,6 +23,7 @@ export default async function PerfilConfiguracoesPage() {
     select: {
       email: true,
       username: true,
+      handle: true,
       artisticName: true,
       phone: true,
       role: true,
@@ -41,13 +42,13 @@ export default async function PerfilConfiguracoesPage() {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} username={user.username} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} handle={user.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-6 sm:py-8">
         <div className="max-w-md mx-auto">
-          {user.username && (
+          {user.handle && (
             <Link
-              href={`/perfil/${user.username}`}
+              href={`/perfil/${user.handle}`}
               className="inline-flex items-center gap-1.5 text-sm text-gate-blue transition hover:text-gate-pink"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -63,6 +64,7 @@ export default async function PerfilConfiguracoesPage() {
             <ProfileFormFields
               email={user.email}
               username={user.username}
+              handle={user.handle}
               artisticName={user.artisticName}
               phone={user.phone}
               initialName={user.name ?? ''}

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { waitlistRateLimit } from '@/lib/security/rate-limit'
 import { extractIp } from '@/lib/analytics/geo'
 import { inviteTargetForCategory, normalizeInviteCode } from '@/lib/invites/code'
+import { generateUniqueHandle } from '@/lib/auth/handle'
 
 // ============================================================
 // Validação
@@ -126,10 +127,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // nasce ativa. O papel vem da categoria escolhida no convite.
   const role = data.type === 'artist' ? 'ARTIST' : 'GUEST'
 
+  // @ público gerado a partir do nome — não do username de login (ver
+  // lib/auth/handle.ts). O usuário pode trocar depois em "Editar perfil".
+  const handle = await generateUniqueHandle(invite.name?.trim() || 'membro')
+
   try {
     const user = await prisma.user.create({
       data: {
         username,
+        handle,
         email: invite.email,
         password: hashedPassword,
         name: invite.name,

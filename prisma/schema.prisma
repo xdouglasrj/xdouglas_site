@@ -96,9 +96,17 @@ enum ReportStatus {
 model User {
   id         String   @id @default(uuid())
   email      String   @unique
+  // Identificador de LOGIN — privado, nunca exibido publicamente nem usado
+  // em rotas/links de perfil (ver "handle" abaixo para o @ público)
   username   String?  @unique @map("username")
   password   String   // bcrypt hash
   name       String?
+  // @ público da comunidade — usado em /perfil/<handle> e nas menções no
+  // fórum/feed. Gerado a partir do nome no cadastro; o usuário pode trocar
+  // depois em "Editar perfil". Separado do username de login por segurança:
+  // o username não deve ser descobrível publicamente (evita facilitar
+  // ataques de força bruta no login a partir do perfil público).
+  handle     String?  @unique @map("handle")
   role       Role     @default(GUEST)
   active     Boolean  @default(true)
   // Código de convite informado no cadastro de músico/produtor — validado manualmente por agora

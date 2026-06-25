@@ -7,6 +7,7 @@ import { ProfileForm } from './profile-form'
 interface EditProfileButtonProps {
   email: string
   username: string | null
+  handle: string | null
   artisticName: string | null
   phone: string | null
   initialName: string
@@ -26,6 +27,13 @@ export function EditProfileButton(props: EditProfileButtonProps) {
     router.refresh()
   }
 
+  // O @ define a URL do perfil (/perfil/<handle>) — se o usuário trocar o @
+  // enquanto está vendo o próprio perfil, navega para a nova URL para não
+  // ficar numa rota que deixou de existir.
+  function handleHandleChange(newHandle: string) {
+    router.replace(`/perfil/${newHandle}`)
+  }
+
   return (
     <>
       <button
@@ -36,7 +44,7 @@ export function EditProfileButton(props: EditProfileButtonProps) {
         Editar perfil
       </button>
 
-      {open && <ProfileForm {...props} onClose={handleClose} />}
+      {open && <ProfileForm {...props} onClose={handleClose} onHandleChange={handleHandleChange} />}
     </>
   )
 }

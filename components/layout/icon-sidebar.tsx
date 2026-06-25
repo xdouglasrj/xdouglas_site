@@ -16,11 +16,11 @@ interface IconSidebarProps {
   isAdmin?: boolean
   isArtist?: boolean
   photoUrl?: string | null
-  username?: string | null
+  handle?: string | null
 }
 
-export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null, username = null }: IconSidebarProps) {
-  const profileHref = username ? `/perfil/${username}` : '/perfil'
+export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null, handle = null }: IconSidebarProps) {
+  const profileHref = handle ? `/perfil/${handle}` : '/perfil'
   const [panel, setPanel] = useState<Panel>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')

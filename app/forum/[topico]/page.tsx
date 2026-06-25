@@ -6,8 +6,8 @@ import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { getThread } from '@/lib/forum/forum'
 import { ReplyForm } from './reply-form'
 
-function authorName(a: { name: string | null; artisticName: string | null; username: string | null }) {
-  return a.name || a.artisticName || a.username || 'Membro'
+function authorName(a: { name: string | null; artisticName: string | null }) {
+  return a.name || a.artisticName || 'Membro'
 }
 
 function formatDate(date: Date) {
@@ -36,7 +36,7 @@ export default async function TopicoPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} username={user.username} />
+      <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} handle={user.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-2xl">

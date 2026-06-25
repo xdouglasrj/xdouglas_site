@@ -44,10 +44,10 @@ const FICTIONAL_TRACK_TITLES = [
 ] as const
 
 const FICTIONAL_USERS_DATA = [
-  { email: 'lua.beats@exemplo.com', username: 'luabeats', name: 'Lua Beats', artisticName: 'Lua Beats', role: 'ARTIST' as const },
-  { email: 'rafa.mc@exemplo.com', username: 'rafamc', name: 'Rafa MC', artisticName: 'Rafa MC', role: 'ARTIST' as const },
-  { email: 'carol.ouvinte@exemplo.com', username: 'carolm', name: 'Carol Martins', artisticName: null, role: 'MEMBER' as const },
-  { email: 'pedro.dj@exemplo.com', username: 'pedrodj', name: 'Pedro Andrade', artisticName: 'DJ Pedrin', role: 'ARTIST' as const },
+  { email: 'lua.beats@exemplo.com', username: 'luabeats_login', handle: 'luabeats', name: 'Lua Beats', artisticName: 'Lua Beats', role: 'ARTIST' as const },
+  { email: 'rafa.mc@exemplo.com', username: 'rafamc_login', handle: 'rafamc', name: 'Rafa MC', artisticName: 'Rafa MC', role: 'ARTIST' as const },
+  { email: 'carol.ouvinte@exemplo.com', username: 'carolm_login', handle: 'carolm', name: 'Carol Martins', artisticName: null, role: 'MEMBER' as const },
+  { email: 'pedro.dj@exemplo.com', username: 'pedrodj_login', handle: 'pedrodj', name: 'Pedro Andrade', artisticName: 'DJ Pedrin', role: 'ARTIST' as const },
 ] as const
 
 const FICTIONAL_POSTS_DATA = [
@@ -144,6 +144,7 @@ export async function seedFictionalLaunchContent(
         create: {
           email: u.email,
           username: u.username,
+          handle: u.handle,
           password: fakeUserPassword,
           name: u.name,
           artisticName: u.artisticName,

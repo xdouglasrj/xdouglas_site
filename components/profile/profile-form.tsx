@@ -1,10 +1,12 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export interface ProfileFormFieldsProps {
   email: string
   username: string | null
+  handle: string | null
   artisticName: string | null
   phone: string | null
   initialName: string
@@ -13,6 +15,7 @@ export interface ProfileFormFieldsProps {
   initialShowPhone: boolean
   initialShowName: boolean
   isArtist: boolean
+  onHandleChange?: (newHandle: string) => void
 }
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
@@ -70,6 +73,7 @@ function PrivacyToggleRow({ label, checked, disabled, onToggle }: PrivacyToggleR
 export function ProfileFormFields({
   email,
   username,
+  handle,
   artisticName,
   phone,
   initialName,
@@ -78,7 +82,9 @@ export function ProfileFormFields({
   initialShowPhone,
   initialShowName,
   isArtist,
+  onHandleChange,
 }: ProfileFormFieldsProps) {
+  const router = useRouter()
   const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl)
   const [photoState, setPhotoState] = useState<'idle' | 'uploading' | 'error'>('idle')
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -87,6 +93,11 @@ export function ProfileFormFields({
   const [name, setName] = useState(initialName)
   const [savingName, setSavingName] = useState(false)
   const [nameMessage, setNameMessage] = useState<string | null>(null)
+
+  const [handleValue, setHandleValue] = useState(handle ?? '')
+  const [savingHandle, setSavingHandle] = useState(false)
+  const [handleMessage, setHandleMessage] = useState<string | null>(null)
+  const [handleError, setHandleError] = useState<string | null>(null)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -203,6 +214,43 @@ export function ProfileFormFields({
     }
   }
 
+  async function handleHandleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (savingHandle) return
+    setHandleError(null)
+    setHandleMessage(null)
+
+    const normalized = handleValue.trim().toLowerCase()
+    if (!/^[a-z0-9_]{3,24}$/.test(normalized)) {
+      setHandleError('Use de 3 a 24 letras minúsculas, números ou "_".')
+      return
+    }
+
+    setSavingHandle(true)
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle: normalized }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setHandleError(data.code === 'HANDLE_TAKEN' ? 'Esse @ já está em uso.' : 'Erro ao atualizar @.')
+        return
+      }
+
+      setHandleValue(normalized)
+      setHandleMessage('@ atualizado.')
+      onHandleChange?.(normalized)
+      router.refresh()
+    } catch {
+      setHandleError('Erro de conexão.')
+    } finally {
+      setSavingHandle(false)
+    }
+  }
+
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (savingPassword) return
@@ -298,8 +346,8 @@ export function ProfileFormFields({
           </div>
           {username && (
             <div className="flex justify-between gap-4">
-              <dt className="text-gate-blue">Usuário</dt>
-              <dd className="text-white/80 truncate">@{username}</dd>
+              <dt className="text-gate-blue">Usuário (login)</dt>
+              <dd className="text-white/80 truncate">{username}</dd>
             </div>
           )}
           {artisticName && (
@@ -315,7 +363,39 @@ export function ProfileFormFields({
             </div>
           )}
         </dl>
+        {username && (
+          <p className="mt-2 text-[11px] text-white/30">
+            O usuário de login é privado — use o @ abaixo para a comunidade te encontrar.
+          </p>
+        )}
       </section>
+
+      {/* @ público da comunidade */}
+      <form onSubmit={handleHandleSubmit} className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Seu @ na comunidade</h2>
+        <p className="mt-1 text-[11px] text-white/40">
+          É o que aparece no seu link de perfil e nas suas publicações — diferente do usuário de login.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-white/40">@</span>
+          <input
+            type="text"
+            value={handleValue}
+            onChange={(e) => setHandleValue(e.target.value.toLowerCase())}
+            maxLength={24}
+            className="min-w-0 flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+          />
+          <button
+            type="submit"
+            disabled={savingHandle}
+            className="rounded-md bg-gate-pink px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+          >
+            {savingHandle ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+        {handleError && <span className="mt-1.5 block text-[11px] text-red-400">{handleError}</span>}
+        {handleMessage && <span className="mt-1.5 block text-[11px] text-emerald-400">{handleMessage}</span>}
+      </form>
 
       {/* Privacidade */}
       <section className="rounded-lg border border-gate-azure bg-white/5 p-3.5">

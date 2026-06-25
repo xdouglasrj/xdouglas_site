@@ -37,17 +37,18 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
 
   const viewer = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true, photoUrl: true, username: true },
+    select: { id: true, role: true, photoUrl: true, handle: true },
   })
   if (!viewer) redirect('/')
 
-  const isSelf = viewer.username === usuario
+  const isSelf = viewer.handle === usuario
 
   const profile = await prisma.user.findUnique({
-    where: { username: usuario },
+    where: { handle: usuario },
     select: {
       id: true,
       username: true,
+      handle: true,
       name: true,
       artisticName: true,
       email: true,
@@ -81,12 +82,12 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const canSeePhone = isSelf || isAdmin || (profile.showPhone && !!profile.phone)
   const canSeeName = isSelf || isAdmin || !isProfileArtist || profile.showName
   const displayName = canSeeName
-    ? profile.name || profile.artisticName || profile.username
-    : profile.artisticName || profile.username
+    ? profile.name || profile.artisticName || profile.handle
+    : profile.artisticName || profile.handle
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} username={viewer.username} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} handle={viewer.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">
@@ -95,7 +96,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
               <div className="relative w-16 h-16 shrink-0 rounded-full overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">
                 {profile.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.photoUrl} alt={profile.name ?? profile.username ?? ''} className="w-full h-full object-cover" />
+                  <img src={profile.photoUrl} alt={profile.name ?? profile.handle ?? ''} className="w-full h-full object-cover" />
                 ) : (
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gate-blue">
                     <circle cx="12" cy="8" r="4" />
@@ -105,7 +106,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">{displayName}</h1>
-                <p className="text-sm text-gate-blue">@{profile.username}</p>
+                <p className="text-sm text-gate-blue">@{profile.handle}</p>
               </div>
             </div>
 
@@ -113,6 +114,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
               <EditProfileButton
                 email={profile.email}
                 username={profile.username}
+                handle={profile.handle}
                 artisticName={profile.artisticName}
                 phone={profile.phone}
                 initialName={profile.name ?? ''}

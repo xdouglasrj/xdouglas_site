@@ -8,8 +8,8 @@ import { listThreads } from '@/lib/forum/forum'
 export const metadata: Metadata = { title: 'Fórum', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 
-function authorName(a: { name: string | null; artisticName: string | null; username: string | null }) {
-  return a.name || a.artisticName || a.username || 'Membro'
+function authorName(a: { name: string | null; artisticName: string | null }) {
+  return a.name || a.artisticName || 'Membro'
 }
 
 export default async function ForumPage() {
@@ -20,7 +20,7 @@ export default async function ForumPage() {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} username={user.username} />
+      <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} handle={user.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="flex items-center justify-between max-w-2xl">

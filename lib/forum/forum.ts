@@ -4,7 +4,7 @@ const THREAD_PAGE_SIZE = 20
 
 const AUTHOR_SELECT = {
   id: true,
-  username: true,
+  handle: true,
   name: true,
   artisticName: true,
   photoUrl: true,

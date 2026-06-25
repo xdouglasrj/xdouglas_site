@@ -5,7 +5,7 @@ const FEED_PAGE_SIZE = 20
 
 export interface FeedAuthor {
   id: string
-  username: string | null
+  handle: string | null
   name: string | null
   artisticName: string | null
   photoUrl: string | null
@@ -24,7 +24,7 @@ export interface FeedPost {
 
 const AUTHOR_SELECT = {
   id: true,
-  username: true,
+  handle: true,
   name: true,
   artisticName: true,
   photoUrl: true,

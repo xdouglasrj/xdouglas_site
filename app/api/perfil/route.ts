@@ -3,6 +3,7 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/auth/guard'
+import { HANDLE_REGEX } from '@/lib/auth/handle'
 
 // ============================================================
 // GET /api/perfil — dados do usuário logado
@@ -15,6 +16,7 @@ export const GET = withAuth(async (_request, auth) => {
       id: true,
       email: true,
       username: true,
+      handle: true,
       name: true,
       phone: true,
       role: true,
@@ -40,6 +42,7 @@ export const GET = withAuth(async (_request, auth) => {
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
+  handle: z.string().min(3).max(24).regex(HANDLE_REGEX, 'Use apenas letras minúsculas, números e "_"').optional(),
   currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(8).max(72).optional(),
   photoKey: z.string().min(1).max(500).optional(),
@@ -68,9 +71,10 @@ export const PATCH = withAuth(async (request, auth) => {
     )
   }
 
-  const { name, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
+  const { name, handle, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
   const data: {
     name?: string
+    handle?: string
     password?: string
     photoKey?: string
     photoUrl?: string
@@ -81,6 +85,15 @@ export const PATCH = withAuth(async (request, auth) => {
 
   if (name !== undefined) {
     data.name = name
+  }
+
+  if (handle !== undefined) {
+    const normalized = handle.toLowerCase()
+    const taken = await prisma.user.findUnique({ where: { handle: normalized }, select: { id: true } })
+    if (taken && taken.id !== auth.userId) {
+      return NextResponse.json({ error: 'Esse @ já está em uso', code: 'HANDLE_TAKEN' }, { status: 409 })
+    }
+    data.handle = normalized
   }
 
   if (photoKey !== undefined && photoUrl !== undefined) {
@@ -116,11 +129,21 @@ export const PATCH = withAuth(async (request, auth) => {
     return NextResponse.json({ error: 'Nada para atualizar', code: 'EMPTY_UPDATE' }, { status: 400 })
   }
 
-  const updated = await prisma.user.update({
-    where: { id: auth.userId },
-    data,
-    select: { id: true, email: true, username: true, name: true, role: true, photoUrl: true },
-  })
+  try {
+    const updated = await prisma.user.update({
+      where: { id: auth.userId },
+      data,
+      select: { id: true, email: true, username: true, handle: true, name: true, role: true, photoUrl: true },
+    })
 
-  return NextResponse.json({ ok: true, user: updated })
+    return NextResponse.json({ ok: true, user: updated })
+  } catch (err: unknown) {
+    if (
+      typeof err === 'object' && err !== null &&
+      'code' in err && (err as { code: string }).code === 'P2002'
+    ) {
+      return NextResponse.json({ error: 'Esse @ já está em uso', code: 'HANDLE_TAKEN' }, { status: 409 })
+    }
+    throw err
+  }
 })

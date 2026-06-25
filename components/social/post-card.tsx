@@ -9,7 +9,7 @@ export interface FeedPostView {
   content: string
   createdAt: string
   author: {
-    username: string | null
+    handle: string | null
     name: string | null
     artisticName: string | null
     photoUrl: string | null
@@ -23,11 +23,11 @@ interface CommentView {
   id: string
   content: string
   createdAt: string
-  author: { username: string | null; name: string | null; artisticName: string | null; photoUrl: string | null }
+  author: { handle: string | null; name: string | null; artisticName: string | null; photoUrl: string | null }
 }
 
-function authorName(a: { name: string | null; artisticName: string | null; username: string | null }) {
-  return a.name || a.artisticName || a.username || 'Membro'
+function authorName(a: { name: string | null; artisticName: string | null }) {
+  return a.name || a.artisticName || 'Membro'
 }
 
 function formatDate(iso: string) {
@@ -103,7 +103,7 @@ export function PostCard({ post }: { post: FeedPostView }) {
   return (
     <article className="rounded-lg border border-gate-azure bg-white/5 p-4">
       <div className="flex items-center gap-3">
-        <Link href={`/perfil/${post.author.username}`} className="relative w-9 h-9 shrink-0 rounded-full overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">
+        <Link href={`/perfil/${post.author.handle}`} className="relative w-9 h-9 shrink-0 rounded-full overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">
           {post.author.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={post.author.photoUrl} alt="" className="w-full h-full object-cover" />
@@ -115,7 +115,7 @@ export function PostCard({ post }: { post: FeedPostView }) {
           )}
         </Link>
         <div className="min-w-0">
-          <Link href={`/perfil/${post.author.username}`} className="text-sm font-semibold text-white hover:text-gate-pink truncate block">
+          <Link href={`/perfil/${post.author.handle}`} className="text-sm font-semibold text-white hover:text-gate-pink truncate block">
             {authorName(post.author)}
           </Link>
           <p className="text-xs text-white/40">{formatDate(post.createdAt)}</p>
