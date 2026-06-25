@@ -36,7 +36,6 @@ async function FeedContent({ q }: FeedContentProps) {
     <TrackGrid
       initialTracks={result.tracks}
       initialTotal={result.total}
-      genres={[]}
       initialQuery={q ?? null}
       canDownload={canDownload}
       mode="feed"

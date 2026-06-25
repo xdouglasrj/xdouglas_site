@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { TrackCard } from './track-card'
 import { TrackGridSkeleton } from './track-card-skeleton'
 import { EmptyState } from './empty-state'
-import { GenreFilter } from './genre-filter'
 import { SortFilter } from './sort-filter'
 import type { TrackPublic } from '@/lib/tracks/types'
 import type { TrackSortBy } from '@/lib/tracks/queries'
@@ -12,7 +11,6 @@ import type { TrackSortBy } from '@/lib/tracks/queries'
 interface TrackGridProps {
   initialTracks: TrackPublic[]
   initialTotal: number
-  genres: string[]
   initialGenre?: string | null
   initialQuery?: string | null
   initialSort?: TrackSortBy
@@ -31,7 +29,6 @@ const PER_PAGE = 20
 export function TrackGrid({
   initialTracks,
   initialTotal,
-  genres,
   initialGenre = null,
   initialQuery = null,
   initialSort = 'recent',
@@ -105,11 +102,6 @@ export function TrackGrid({
       {/* Barra de filtros — só nas páginas de gênero (catálogo completo) */}
       {isCatalog && (
         <div className="flex flex-col items-center gap-3 px-4 py-4">
-          <GenreFilter
-            genres={genres}
-            selected={genre}
-            onChange={handleGenreChange}
-          />
           <SortFilter selected={sort} onChange={handleSortChange} />
         </div>
       )}

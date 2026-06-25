@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import { listTracks, listGenres, type TrackSortBy } from '@/lib/tracks/queries'
+import { listTracks, type TrackSortBy } from '@/lib/tracks/queries'
 import { TrackGrid } from '@/components/music/track-grid'
 import { TrackGridSkeleton } from '@/components/music/track-card-skeleton'
 import { getCurrentRole } from '@/lib/auth/role'
@@ -25,9 +25,8 @@ interface CatalogoContentProps {
 async function CatalogoContent({ genre, q, sort }: CatalogoContentProps) {
   // Catálogo completo: não aplica o corte de 24/36/48h do feed de
   // /musicas-recentes — aqui é pra navegar todo o histórico por gênero.
-  const [result, genres, role] = await Promise.all([
+  const [result, role] = await Promise.all([
     listTracks({ page: 1, perPage: PER_PAGE, genre, q, sortBy: sort, includeExpired: true }),
-    listGenres(true),
     getCurrentRole(),
   ])
 
@@ -38,7 +37,6 @@ async function CatalogoContent({ genre, q, sort }: CatalogoContentProps) {
     <TrackGrid
       initialTracks={result.tracks}
       initialTotal={result.total}
-      genres={genres}
       initialGenre={genre ?? null}
       initialQuery={q ?? null}
       initialSort={sort}
