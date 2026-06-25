@@ -3,6 +3,7 @@ import { getUploadLimits } from '@/lib/settings/upload-limits'
 import { getContentExpirationHours } from '@/lib/settings/content-expiration'
 import { UploadLimitsCard } from './upload-limits-card'
 import { ContentExpirationCard } from './content-expiration-card'
+import { SeedFictionalContentCard } from './seed-fictional-content-card'
 
 export const metadata: Metadata = { title: 'Configurações' }
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,8 @@ export default async function AdminConfiguracoesPage() {
       />
 
       <ContentExpirationCard initialHours={expirationHours} />
+
+      <SeedFictionalContentCard />
     </div>
   )
 }
