@@ -1,20 +1,26 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
 import { getStorage } from '@/lib/storage'
+import { getUploadLimits } from '@/lib/settings/upload-limits'
 import crypto from 'crypto'
 
 // ============================================================
 // POST /api/admin/musicas/upload-url
 //
 // Fluxo de upload direto (browser → R2):
-//   1. Admin escolhe arquivo
+//   1. Artista ou admin escolhe arquivo
 //   2. Frontend chama este endpoint com { filename, contentType, kind }
 //   3. Backend gera presigned PUT URL (TTL 5min)
 //   4. Frontend faz PUT direto para o R2
 //   5. Frontend envia a storageKey ao criar/editar a música
 //
 // O arquivo NUNCA passa pelo servidor Next.js.
+//
+// Apesar do caminho /api/admin/, este endpoint também é usado pelo
+// fluxo de envio do próprio artista (ArtistTrackForm) — por isso a
+// role mínima é ARTIST, não ADMIN. ARTIST_SUPPORTER e ADMIN também
+// passam, pois roleOrder os coloca acima de ARTIST.
 // ============================================================
 
 const ALLOWED_AUDIO = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/flac', 'audio/aiff']
@@ -24,10 +30,13 @@ const uploadUrlSchema = z.object({
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1),
   kind: z.enum(['audio', 'cover']),
-  sizeBytes: z.number().positive().max(500 * 1024 * 1024), // 500MB máximo
+  // Só relevante quando kind === 'audio' — define qual limite de
+  // tamanho configurado pelo admin se aplica.
+  trackType: z.enum(['music', 'podcast']).default('music'),
+  sizeBytes: z.number().positive().max(2000 * 1024 * 1024), // teto absoluto de sanidade
 })
 
-export const POST = withAuth(async (request: NextRequest) => {
+export const POST = withRole('ARTIST', async (request: NextRequest) => {
   let body: unknown
   try {
     body = await request.json()
@@ -40,7 +49,7 @@ export const POST = withAuth(async (request: NextRequest) => {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
   }
 
-  const { filename, contentType, kind, sizeBytes } = parsed.data
+  const { filename, contentType, kind, trackType, sizeBytes } = parsed.data
 
   // Valida content type por tipo de arquivo
   const allowed = kind === 'audio' ? ALLOWED_AUDIO : ALLOWED_IMAGE
@@ -50,6 +59,30 @@ export const POST = withAuth(async (request: NextRequest) => {
       400,
       'INVALID_CONTENT_TYPE'
     )
+  }
+
+  // Limite de tamanho configurável pelo admin — só para áudio
+  // (a capa segue o teto absoluto de sanidade do schema)
+  if (kind === 'audio') {
+    const limits = await getUploadLimits()
+
+    if (trackType === 'podcast' && !limits.podcastEnabled) {
+      return apiError(
+        'O upload de podcast ainda não está disponível.',
+        403,
+        'PODCAST_DISABLED'
+      )
+    }
+
+    const maxMb = trackType === 'podcast' ? limits.podcastMaxSizeMb : limits.musicMaxSizeMb
+    const maxBytes = maxMb * 1024 * 1024
+    if (sizeBytes > maxBytes) {
+      return apiError(
+        `Arquivo muito grande. Limite atual para ${trackType === 'podcast' ? 'podcast' : 'música'}: ${maxMb}MB.`,
+        400,
+        'FILE_TOO_LARGE'
+      )
+    }
   }
 
   // Gera chave única no R2 com UUID para evitar colisões e path traversal

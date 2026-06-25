@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getContentCutoffDate } from '@/lib/settings/content-expiration'
 import type { TrackPublic } from './types'
 
 // ============================================================
@@ -76,9 +77,11 @@ export interface ListTracksOptions {
 export async function listTracks(opts: ListTracksOptions = {}) {
   const { page = 1, perPage = 24, genre, artistSlug, q } = opts
   const skip = (page - 1) * perPage
+  const cutoff = await getContentCutoffDate()
 
   const where = {
     published: true,
+    publishedAt: { gte: cutoff },
     ...(genre && { genre }),
     ...(artistSlug && { artist: { slug: artistSlug } }),
     ...(q && {
@@ -111,8 +114,9 @@ export async function listTracks(opts: ListTracksOptions = {}) {
 }
 
 export async function getTrackBySlug(slug: string): Promise<TrackPublic | null> {
-  const raw = await prisma.track.findUnique({
-    where: { slug, published: true },
+  const cutoff = await getContentCutoffDate()
+  const raw = await prisma.track.findFirst({
+    where: { slug, published: true, publishedAt: { gte: cutoff } },
     select: TRACK_SELECT,
   })
 
@@ -120,12 +124,25 @@ export async function getTrackBySlug(slug: string): Promise<TrackPublic | null> 
 }
 
 export async function listGenres(): Promise<string[]> {
+  const cutoff = await getContentCutoffDate()
   const rows = await prisma.track.findMany({
-    where: { published: true, genre: { not: null } },
+    where: { published: true, publishedAt: { gte: cutoff }, genre: { not: null } },
     select: { genre: true },
     distinct: ['genre'],
     orderBy: { genre: 'asc' },
   })
 
   return rows.map((r) => r.genre!).filter(Boolean)
+}
+
+/** As N músicas publicadas mais recentes (ainda dentro da janela de exibição). */
+export async function listLatestTracks(limit: number): Promise<TrackPublic[]> {
+  const cutoff = await getContentCutoffDate()
+  const raws = await prisma.track.findMany({
+    where: { published: true, publishedAt: { gte: cutoff } },
+    select: TRACK_SELECT,
+    orderBy: { publishedAt: 'desc' },
+    take: limit,
+  })
+  return raws.map(serializeTrack)
 }

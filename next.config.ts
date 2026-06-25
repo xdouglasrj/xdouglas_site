@@ -32,6 +32,17 @@ const nextConfig: NextConfig = {
 
   // Variáveis que o Edge Middleware pode acessar (sem expor ao client)
   serverExternalPackages: ['@prisma/client', 'bcryptjs', 'sharp'],
+
+  // Catálogo foi renomeado para "Músicas recentes" — preserva links antigos
+  async redirects() {
+    return [
+      {
+        source: '/musicas',
+        destination: '/musicas-recentes',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 export default nextConfig

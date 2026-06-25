@@ -53,7 +53,7 @@ export default async function TrackDetailPage({
     <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gate-blue" aria-label="Navegação">
-        <Link href="/musicas" className="hover:text-white transition-colors">
+        <Link href="/musicas-recentes" className="hover:text-white transition-colors">
           Músicas
         </Link>
         <span className="mx-2">/</span>
@@ -88,7 +88,7 @@ export default async function TrackDetailPage({
             </h1>
             <p className="mt-1.5 text-gate-blue">
               <Link
-                href={`/musicas?artistSlug=${track.artist.slug}`}
+                href={`/musicas-recentes?artistSlug=${track.artist.slug}`}
                 className="hover:text-white transition-colors"
               >
                 {track.artist.name}

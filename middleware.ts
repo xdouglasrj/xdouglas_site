@@ -15,7 +15,11 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 // para o portão de login ("/"). Sem isso, qualquer pessoa podia abrir
 // /inicio ou /musicas direto pela URL (ou chamar a API por trás dessas
 // páginas) sem nunca ter feito login.
-const MEMBER_PREFIXES = ['/inicio', '/musicas', '/upload', '/perfil', '/api/musicas', '/api/download', '/api/stream', '/api/perfil']
+const MEMBER_PREFIXES = [
+  '/inicio', '/musicas', '/upload', '/perfil', '/forum',
+  '/api/musicas', '/api/download', '/api/stream', '/api/perfil',
+  '/api/social', '/api/forum', '/api/reports',
+]
 
 // ============================================================
 // Middleware Edge — validação JWT sem I/O de banco
@@ -91,9 +95,13 @@ export const config = {
     '/musicas/:path*',
     '/upload/:path*',
     '/perfil/:path*',
+    '/forum/:path*',
     '/api/musicas/:path*',
     '/api/download/:path*',
     '/api/stream/:path*',
     '/api/perfil/:path*',
+    '/api/social/:path*',
+    '/api/forum/:path*',
+    '/api/reports/:path*',
   ],
 }

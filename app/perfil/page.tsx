@@ -36,6 +36,8 @@ export default async function PerfilPage() {
       phone: true,
       role: true,
       photoUrl: true,
+      showEmail: true,
+      showPhone: true,
       createdAt: true,
       artist: { select: { name: true, slug: true } },
     },
@@ -66,6 +68,8 @@ export default async function PerfilPage() {
             phone={user.phone}
             initialName={user.name ?? ''}
             initialPhotoUrl={user.photoUrl}
+            initialShowEmail={user.showEmail}
+            initialShowPhone={user.showPhone}
           />
         </div>
       </main>

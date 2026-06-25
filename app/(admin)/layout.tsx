@@ -12,13 +12,19 @@ export default async function AdminLayout({
 }) {
   const token = await getAccessToken()
 
-  if (token) {
-    try {
-      await verifyAccessToken(token)
-    } catch {
+  if (!token) {
+    redirect('/?login=1')
+  }
+
+  try {
+    const payload = await verifyAccessToken(token)
+    // Token válido não é suficiente: rotas /admin exigem role ADMIN.
+    // Sem isso, qualquer membro logado conseguia ver dados de todos
+    // os usuários e da waitlist só por navegar até aqui.
+    if (payload.role !== 'ADMIN') {
       redirect('/?login=1')
     }
-  } else {
+  } catch {
     redirect('/?login=1')
   }
 

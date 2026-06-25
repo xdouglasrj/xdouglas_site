@@ -74,6 +74,21 @@ enum EventType {
   CONSENT_REVOKED
 }
 
+enum ReportTargetType {
+  POST
+  COMMENT
+  FORUM_THREAD
+  FORUM_REPLY
+  TRACK
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
 // =============================================================
 // USERS — base de todos os papéis (Fase 1 usa apenas ADMIN)
 // =============================================================
@@ -99,6 +114,11 @@ model User {
   // Foto de perfil — chave R2 + URL pública CDN
   photoKey   String?  @map("photo_key")
   photoUrl   String?  @map("photo_url")
+  // Privacidade — o próprio usuário decide se email/telefone aparecem
+  // para outros membros. O admin sempre vê todos os dados, independente
+  // dessas flags.
+  showEmail  Boolean  @default(false) @map("show_email")
+  showPhone  Boolean  @default(false) @map("show_phone")
   // Redefinição de senha — apenas o hash do token é armazenado, nunca o token original
   resetPasswordTokenHash  String?   @unique @map("reset_password_token_hash")
   resetPasswordExpiresAt  DateTime? @map("reset_password_expires_at")
@@ -113,9 +133,134 @@ model User {
   artist        Artist?
   submittedTracks Track[] @relation("TrackSubmittedBy")
 
+  // Social — seguir, feed, fórum, denúncias
+  following     Follow[]      @relation("Follower")
+  followers     Follow[]      @relation("Following")
+  posts         Post[]
+  likes         Like[]
+  comments      Comment[]
+  forumThreads  ForumThread[]
+  forumReplies  ForumReply[]
+  reportsMade   Report[]      @relation("ReportsMade")
+
   @@index([email])
   @@index([role])
   @@map("users")
+}
+
+// =============================================================
+// SOCIAL — seguir
+// =============================================================
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("follower_id")
+  follower    User     @relation("Follower", fields: [followerId], references: [id])
+  followingId String   @map("following_id")
+  following   User     @relation("Following", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// =============================================================
+// SOCIAL — feed (posts, curtidas, comentários)
+// =============================================================
+
+model Post {
+  id        String    @id @default(uuid())
+  authorId  String    @map("author_id")
+  author    User      @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  likes     Like[]
+  comments  Comment[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  post      Post     @relation(fields: [postId], references: [id])
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("likes")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  post      Post     @relation(fields: [postId], references: [id])
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([postId])
+  @@map("comments")
+}
+
+// =============================================================
+// FÓRUM — tópicos e respostas
+// =============================================================
+
+model ForumThread {
+  id        String       @id @default(uuid())
+  authorId  String       @map("author_id")
+  author    User         @relation(fields: [authorId], references: [id])
+  title     String
+  body      String
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  replies   ForumReply[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("forum_threads")
+}
+
+model ForumReply {
+  id        String      @id @default(uuid())
+  threadId  String      @map("thread_id")
+  thread    ForumThread @relation(fields: [threadId], references: [id])
+  authorId  String      @map("author_id")
+  author    User        @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([threadId])
+  @@map("forum_replies")
+}
+
+// =============================================================
+// DENÚNCIAS — moderação de conteúdo
+// =============================================================
+
+model Report {
+  id          String           @id @default(uuid())
+  reporterId  String           @map("reporter_id")
+  reporter    User             @relation("ReportsMade", fields: [reporterId], references: [id])
+  targetType  ReportTargetType @map("target_type")
+  targetId    String           @map("target_id")
+  reason      String
+  status      ReportStatus     @default(PENDING)
+  resolvedAt  DateTime?        @map("resolved_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("reports")
 }
 
 // =============================================================
@@ -425,6 +570,18 @@ model AppSettings {
   // Aceite automático de convites (piloto automático com limite)
   autoAcceptEnabled   Boolean  @default(false) @map("auto_accept_enabled")
   autoAcceptRemaining Int      @default(0) @map("auto_accept_remaining")
+
+  // Limites de upload de áudio por tipo de conteúdo (em MB)
+  musicMaxSizeMb      Int      @default(20)  @map("music_max_size_mb")
+  podcastMaxSizeMb    Int      @default(100) @map("podcast_max_size_mb")
+  // Upload de podcast existe como modelo de configuração, mas a função
+  // ainda não foi liberada para os artistas — desligado por padrão.
+  podcastEnabled      Boolean  @default(false) @map("podcast_enabled")
+
+  // Janela de exibição pública de músicas e comentários (em horas) — depois
+  // desse prazo, somem do catálogo/feed mas continuam no banco (soft-hide).
+  contentExpirationHours Int   @default(24) @map("content_expiration_hours")
+
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")

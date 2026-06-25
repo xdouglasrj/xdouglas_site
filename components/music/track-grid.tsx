@@ -16,7 +16,7 @@ interface TrackGridProps {
   canDownload?: boolean
 }
 
-const PER_PAGE = 24
+const PER_PAGE = 20
 
 export function TrackGrid({
   initialTracks,
@@ -32,13 +32,12 @@ export function TrackGrid({
   const [query] = useState<string | null>(initialQuery)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
 
-  const hasMore = tracks.length < total
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
-  // Busca quando filtro muda — reseta paginação
+  // Busca quando filtro ou página muda
   const fetchTracks = useCallback(
-    async (selectedGenre: string | null, nextPage: number, append: boolean) => {
+    async (selectedGenre: string | null, nextPage: number) => {
       const params = new URLSearchParams({
         page: String(nextPage),
         perPage: String(PER_PAGE),
@@ -51,29 +50,27 @@ export function TrackGrid({
 
       const data = await res.json()
 
-      setTracks((prev) =>
-        append ? [...prev, ...data.tracks] : data.tracks
-      )
+      setTracks(data.tracks)
       setTotal(data.total)
     },
     [query]
   )
 
-  // Mudança de gênero
+  // Mudança de gênero — reseta paginação
   function handleGenreChange(newGenre: string | null) {
     if (newGenre === genre) return
     setGenre(newGenre)
     setPage(1)
     setLoading(true)
-    fetchTracks(newGenre, 1, false).finally(() => setLoading(false))
+    fetchTracks(newGenre, 1).finally(() => setLoading(false))
   }
 
-  // Carregar mais
-  function handleLoadMore() {
-    const nextPage = page + 1
+  // Troca de página
+  function handlePageChange(nextPage: number) {
+    if (nextPage === page || nextPage < 1 || nextPage > totalPages) return
     setPage(nextPage)
-    setLoadingMore(true)
-    fetchTracks(genre, nextPage, true).finally(() => setLoadingMore(false))
+    setLoading(true)
+    fetchTracks(genre, nextPage).finally(() => setLoading(false))
   }
 
   return (
@@ -110,20 +107,71 @@ export function TrackGrid({
             ))}
           </div>
 
-          {/* Carregar mais */}
-          {hasMore && (
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="px-6 py-2.5 text-sm font-medium text-gate-blue border border-gate-azure rounded-lg hover:border-gate-pink hover:text-gate-pink disabled:opacity-50 transition-colors"
-              >
-                {loadingMore ? 'Carregando…' : 'Ver mais músicas'}
-              </button>
-            </div>
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />
           )}
         </>
       )}
     </div>
+  )
+}
+
+// ============================================================
+// Paginação numerada
+// ============================================================
+
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number
+  totalPages: number
+  onChange: (page: number) => void
+}) {
+  // Janela de páginas em volta da atual (no máximo 5 números visíveis)
+  const start = Math.max(1, Math.min(page - 2, totalPages - 4))
+  const end = Math.min(totalPages, start + 4)
+  const pageNumbers = Array.from({ length: end - start + 1 }, (_, i) => start + i)
+
+  return (
+    <nav
+      aria-label="Paginação de músicas"
+      className="flex items-center justify-center gap-1.5 pt-4"
+    >
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page <= 1}
+        className="px-3 py-2 text-sm font-medium text-gate-blue border border-gate-azure rounded-lg hover:border-gate-pink hover:text-gate-pink disabled:opacity-40 disabled:pointer-events-none transition-colors"
+        aria-label="Página anterior"
+      >
+        Anterior
+      </button>
+
+      {pageNumbers.map((n) => (
+        <button
+          key={n}
+          onClick={() => onChange(n)}
+          aria-current={n === page ? 'page' : undefined}
+          className={`min-w-[2.25rem] px-2.5 py-2 text-sm font-medium rounded-lg border transition-colors ${
+            n === page
+              ? 'bg-gate-pink border-gate-pink text-white'
+              : 'text-gate-blue border-gate-azure hover:border-gate-pink hover:text-gate-pink'
+          }`}
+        >
+          {n}
+        </button>
+      ))}
+
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page >= totalPages}
+        className="px-3 py-2 text-sm font-medium text-gate-blue border border-gate-azure rounded-lg hover:border-gate-pink hover:text-gate-pink disabled:opacity-40 disabled:pointer-events-none transition-colors"
+        aria-label="Próxima página"
+      >
+        Próxima
+      </button>
+    </nav>
   )
 }

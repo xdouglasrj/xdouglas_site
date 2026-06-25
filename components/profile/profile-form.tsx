@@ -9,12 +9,23 @@ interface ProfileFormProps {
   phone: string | null
   initialName: string
   initialPhotoUrl: string | null
+  initialShowEmail: boolean
+  initialShowPhone: boolean
 }
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-export function ProfileForm({ email, username, artisticName, phone, initialName, initialPhotoUrl }: ProfileFormProps) {
+export function ProfileForm({
+  email,
+  username,
+  artisticName,
+  phone,
+  initialName,
+  initialPhotoUrl,
+  initialShowEmail,
+  initialShowPhone,
+}: ProfileFormProps) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(initialPhotoUrl)
   const [photoState, setPhotoState] = useState<'idle' | 'uploading' | 'error'>('idle')
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -29,6 +40,37 @@ export function ProfileForm({ email, username, artisticName, phone, initialName,
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
+
+  const [showEmail, setShowEmail] = useState(initialShowEmail)
+  const [showPhone, setShowPhone] = useState(initialShowPhone)
+  const [savingPrivacy, setSavingPrivacy] = useState(false)
+  const [privacyError, setPrivacyError] = useState<string | null>(null)
+
+  async function handlePrivacyToggle(field: 'showEmail' | 'showPhone', value: boolean) {
+    if (savingPrivacy) return
+    setSavingPrivacy(true)
+    setPrivacyError(null)
+
+    const revert = field === 'showEmail' ? setShowEmail : setShowPhone
+    revert(value)
+
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (!res.ok) {
+        revert(!value)
+        setPrivacyError('Não foi possível salvar.')
+      }
+    } catch {
+      revert(!value)
+      setPrivacyError('Erro de conexão.')
+    } finally {
+      setSavingPrivacy(false)
+    }
+  }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -219,6 +261,67 @@ export function ProfileForm({ email, username, artisticName, phone, initialName,
             </div>
           )}
         </dl>
+      </section>
+
+      {/* Privacidade */}
+      <section className="rounded-lg border border-gate-azure bg-white/5 p-5">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-gate-blue">Privacidade</h2>
+        <p className="mt-1 text-xs text-white/40">
+          O admin sempre tem acesso a todos os seus dados. Estas opções controlam o que outros
+          membros da comunidade podem ver no seu perfil.
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-white/80">Mostrar meu e-mail para outros membros</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showEmail}
+              aria-label="Mostrar e-mail para outros membros"
+              onClick={() => handlePrivacyToggle('showEmail', !showEmail)}
+              disabled={savingPrivacy}
+              className={[
+                'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50',
+                showEmail ? 'bg-gate-pink' : 'bg-white/15',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'absolute top-1 h-4 w-4 rounded-full bg-white transition-transform',
+                  showEmail ? 'translate-x-6' : 'translate-x-1',
+                ].join(' ')}
+              />
+            </button>
+          </div>
+
+          {phone && (
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-white/80">Mostrar meu WhatsApp para outros membros</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showPhone}
+                aria-label="Mostrar WhatsApp para outros membros"
+                onClick={() => handlePrivacyToggle('showPhone', !showPhone)}
+                disabled={savingPrivacy}
+                className={[
+                  'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50',
+                  showPhone ? 'bg-gate-pink' : 'bg-white/15',
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'absolute top-1 h-4 w-4 rounded-full bg-white transition-transform',
+                    showPhone ? 'translate-x-6' : 'translate-x-1',
+                  ].join(' ')}
+                />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {privacyError && <p className="mt-3 text-xs text-red-400">{privacyError}</p>}
       </section>
 
       {/* Nome */}

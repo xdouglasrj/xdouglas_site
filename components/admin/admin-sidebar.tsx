@@ -35,6 +35,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    label: 'Denúncias',
+    href: '/admin/denuncias',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8 1.5 1.5 14h13L8 1.5z" />
+        <path d="M8 6v3.5" />
+        <circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
 ] as const
 
 const PEOPLE_ITEMS = [
@@ -122,6 +133,22 @@ export function AdminSidebar() {
             <path d="M2 14c0-3 2.5-5 6-5s6 2 6 5" />
           </svg>
         </button>
+
+        <Link
+          href="/admin/configuracoes"
+          className={clsx(
+            'flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15',
+            pathname.startsWith('/admin/configuracoes') ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
+          )}
+          aria-label="Configurações"
+          aria-current={pathname.startsWith('/admin/configuracoes') ? 'page' : undefined}
+          title="Configurações"
+        >
+          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="8" cy="8" r="2.2" />
+            <path d="M8 1.5v1.4M8 13.1v1.4M2.6 4.3l1.2.7M12.2 11l1.2.7M2.6 11.7l1.2-.7M12.2 5l1.2-.7M1.5 8h1.4M13.1 8h1.4" />
+          </svg>
+        </Link>
 
         <Link
           href="/inicio"
