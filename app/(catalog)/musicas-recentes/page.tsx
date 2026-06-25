@@ -7,11 +7,15 @@ import { getCurrentRole } from '@/lib/auth/role'
 
 export const metadata: Metadata = {
   title: 'Músicas recentes',
-  description: 'As últimas músicas postadas, exclusivas para produtores, DJs e artistas.',
+  description: 'Histórico completo das músicas postadas pela comunidade xDouglas.',
 }
 
-// Revalida a cada 60 segundos (ISR)
-export const revalidate = 60
+// Sempre dinâmica — histórico em tempo real. Com ISR (revalidate), o
+// Next.js cacheava agressivamente a versão "sem filtro" da rota no
+// router cache do navegador, fazendo o link "Músicas recentes" da
+// sidebar voltar a mostrar o filtro de gênero anterior em vez do
+// histórico completo, até um reload manual.
+export const dynamic = 'force-dynamic'
 
 const PER_PAGE = 20
 
@@ -21,9 +25,12 @@ interface CatalogoContentProps {
 }
 
 async function CatalogoContent({ genre, q }: CatalogoContentProps) {
+  // Histórico completo: não aplica o corte de 24/36/48h do feed/início,
+  // pois com alto volume de uploads (100+/dia) a música não pode "sumir"
+  // antes de o DJ/ouvinte conseguir acompanhar.
   const [result, genres, role] = await Promise.all([
-    listTracks({ page: 1, perPage: PER_PAGE, genre, q }),
-    listGenres(),
+    listTracks({ page: 1, perPage: PER_PAGE, genre, q, includeExpired: true }),
+    listGenres(true),
     getCurrentRole(),
   ])
 
@@ -38,6 +45,7 @@ async function CatalogoContent({ genre, q }: CatalogoContentProps) {
       initialGenre={genre ?? null}
       initialQuery={q ?? null}
       canDownload={canDownload}
+      includeExpired
     />
   )
 }
@@ -55,12 +63,16 @@ export default async function MusicasRecentesPage({ searchParams }: MusicasPageP
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold text-white">Músicas recentes</h1>
         <p className="mt-1 text-sm text-gate-blue">
-          As últimas músicas postadas pela comunidade xDouglas
+          Histórico completo: toda música publicada continua aqui, mesmo depois de sair do início
         </p>
       </div>
 
-      {/* Grid com Suspense para loading */}
-      <Suspense fallback={<TrackGridSkeleton count={PER_PAGE} />}>
+      {/* Grid com Suspense para loading.
+          key força remount do TrackGrid quando genre/q muda via navegação
+          (ex.: clicar em outro gênero na sidebar) — sem isso, o TrackGrid
+          (client component) mantém seu estado local antigo e ignora os
+          novos dados vindos do servidor. */}
+      <Suspense key={`${genre ?? 'all'}::${q ?? ''}`} fallback={<TrackGridSkeleton count={PER_PAGE} />}>
         <CatalogoContent genre={genre} q={q} />
       </Suspense>
     </div>

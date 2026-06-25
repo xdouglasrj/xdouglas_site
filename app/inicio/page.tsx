@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { WelcomeToast } from '@/components/gate/WelcomeToast'
 import { Feed } from '@/components/social/feed'
 import { TrackCard } from '@/components/music/track-card'
@@ -34,37 +32,26 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center">
-        <Image
-          src="/brand/xdouglas-logo.png"
-          alt="xDouglas"
-          width={1200}
-          height={675}
-          priority
-          className="h-12 w-auto object-contain sm:h-28"
-        />
-      </div>
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user?.photoUrl} />
 
       {welcomeName && (
         <WelcomeToast name={welcomeName} firstToday={firstToday === '1'} />
       )}
 
-      <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
-        <Breadcrumbs />
-        <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
-        <p className="mt-2 max-w-md text-sm text-gate-blue">
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12 flex flex-col items-center">
+        <h1 className="text-2xl font-bold text-white text-center">Últimos lançamentos</h1>
+        <p className="mt-2 max-w-md text-sm text-gate-blue text-center">
           Veja o que a comunidade está postando, ou use o ícone de música na barra lateral
           para explorar por gênero.
         </p>
 
-        {/* Últimas músicas postadas */}
+        {/* Músicas mais recentes */}
         {latestTracks.length > 0 && (
-          <section className="mt-8 max-w-3xl">
+          <section className="mt-8 w-full max-w-3xl">
             <h2 className="text-sm font-bold uppercase tracking-widest text-gate-blue">
-              Últimas músicas postadas
+              Músicas mais recentes
             </h2>
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-3 divide-y divide-gate-azure/30 rounded-xl border border-gate-azure overflow-hidden">
               {latestTracks.map((track) => (
                 <TrackCard key={track.id} track={track} canDownload={canDownload} />
               ))}

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ProfileForm } from '@/components/profile/profile-form'
 import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
@@ -52,9 +51,8 @@ export default async function PerfilPage() {
     <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} />
 
-      <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">
-          <Breadcrumbs />
           <h1 className="text-2xl font-bold text-white">Perfil</h1>
           <p className="mt-1 text-sm text-gate-blue">
             {ROLE_LABEL[user.role] ?? user.role}

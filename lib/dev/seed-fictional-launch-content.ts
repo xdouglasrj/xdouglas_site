@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { TRACK_GENRES } from '@/lib/tracks/genres'
 
 // ============================================================
 // CONTEÚDO FICTÍCIO DE LANÇAMENTO — NÃO É CONTEÚDO REAL
@@ -21,6 +22,8 @@ import bcrypt from 'bcryptjs'
 //   await prisma.comment.deleteMany({ where: { authorId: { in: fakeUserIds } } })
 //   await prisma.like.deleteMany({ where: { userId: { in: fakeUserIds } } })
 //   await prisma.post.deleteMany({ where: { authorId: { in: fakeUserIds } } })
+//   await prisma.forumReply.deleteMany({ where: { authorId: { in: fakeUserIds } } })
+//   await prisma.forumThread.deleteMany({ where: { authorId: { in: fakeUserIds } } })
 //   await prisma.user.deleteMany({ where: { id: { in: fakeUserIds } } })
 // ============================================================
 
@@ -30,17 +33,14 @@ const FICTIONAL_ARTISTS_DATA = [
   { slug: 'sereia-do-cerrado', name: 'Sereia do Cerrado', bio: 'Voz de sertão, produção de nave espacial.' },
 ] as const
 
-const FICTIONAL_GENRES = [
-  'Forró Cyberpunk', 'Trap Caipira', 'Synthwave Tropical', 'Brega Espacial',
-  'Pagode Industrial', 'Funk Gregoriano', 'Sertanejo Gótico', 'Axé Lo-fi',
-] as const
+const FICTIONAL_GENRES = TRACK_GENRES
 
 const FICTIONAL_TRACK_TITLES = [
-  'Saudade.exe', 'Cupido Bugado', 'Madrugada 404', 'Beat de Liquidificador',
-  'Coração em Loop', 'Roça Neon', 'Pix na Veia', 'Forrobodó Quântico',
-  'Sina Digital', 'Arrocha Interestelar', 'Modão Holográfico', 'Vaquejada Turbo',
-  'Carimbó Robô', 'Brega Binário', 'Cangaço Synth', 'Vapor Sertanejo',
-  'Tecnobrega 2.0', 'Caatinga Bass', 'Xote do Futuro', 'Forró 8-bit',
+  'Bonde do Parquinho', 'Bagulho de Rua', 'Pulso Noturno', 'Resenha de Quintal',
+  'Asas do Sertão', 'Remix da Saudade', 'Treme Treme 22', 'Trap da Quebrada',
+  'Voo Sideral', 'Samba na Veia', 'Coração Caipira', 'Edit Tropical',
+  'Cadência Plástica', 'Voz da Laje', 'Synapse', 'Roda de Domingo',
+  'Modão de Verão', 'Mashup 99', 'Beat da Favela', 'Flow Underground',
 ] as const
 
 const FICTIONAL_USERS_DATA = [
@@ -56,12 +56,38 @@ const FICTIONAL_POSTS_DATA = [
   { authorIndex: 2, content: 'Tô amando a vibe dessa comunidade, muito bom ver gente trocando sobre produção aqui.' },
 ] as const
 
+const FICTIONAL_FORUM_THREADS_DATA = [
+  {
+    authorIndex: 3,
+    title: 'Qual BPM vocês usam pra Funk hoje em dia?',
+    body: 'Tô na dúvida entre 130 e 140 pra um set de Funk. Quem mais posta aqui costuma fazer o quê?',
+    replyAuthorIndex: 0,
+    reply: 'Aqui na quebrada tá rolando mais pra 130, mas depende muito do clima da pista.',
+  },
+  {
+    authorIndex: 1,
+    title: 'Dica de mixagem pra Rap/Trap com sample pesado',
+    body: 'Sempre que coloco um sample mais grave o vocal fica enterrado no Trap. Alguém tem dica de EQ?',
+    replyAuthorIndex: 2,
+    reply: 'Corta um pouco dos médios do sample e dá um boost leve no vocal, costuma resolver.',
+  },
+  {
+    authorIndex: 0,
+    title: 'Remix de Sertanejo pra pista Eletrônica, vale a pena?',
+    body: 'Penso em fazer um Remix de uma faixa de Sertanejo pro lado Eletrônico/Pagode. Já tentaram algo assim?',
+    replyAuthorIndex: 3,
+    reply: 'Já vi rolar muito bem em festa, contanto que o drop não fique forçado.',
+  },
+] as const
+
 export interface SeedFictionalLaunchContentResult {
   artists: number
   tracks: number
   users: number
   posts: number
   comments: number
+  forumThreads: number
+  forumReplies: number
 }
 
 /** Idempotente — pode ser chamado várias vezes sem duplicar nada. */
@@ -85,11 +111,17 @@ export async function seedFictionalLaunchContent(
 
     await prisma.track.upsert({
       where: { slug },
-      update: { publishedAt },
+      update: {
+        title: FICTIONAL_TRACK_TITLES[i],
+        genre,
+        artistId: artist.id,
+        producerName: artist.name,
+        publishedAt,
+      },
       create: {
         slug,
         title: FICTIONAL_TRACK_TITLES[i],
-        description: 'Música de demonstração — gênero fictício, sem áudio real ainda.',
+        description: 'Música de demonstração — sem áudio real ainda.',
         genre,
         bpm: 90 + ((i * 7) % 60),
         artistId: artist.id,
@@ -151,11 +183,35 @@ export async function seedFictionalLaunchContent(
     }
   }
 
+  // Tópicos de fórum com uma resposta cada — fórum fica vazio sem isso
+  let forumReplyCount = 0
+  for (const t of FICTIONAL_FORUM_THREADS_DATA) {
+    const author = users[t.authorIndex]
+    const existingThread = await prisma.forumThread.findFirst({
+      where: { authorId: author.id, title: t.title },
+    })
+    const thread =
+      existingThread ?? (await prisma.forumThread.create({ data: { authorId: author.id, title: t.title, body: t.body } }))
+
+    const replyAuthor = users[t.replyAuthorIndex]
+    const existingReply = await prisma.forumReply.findFirst({
+      where: { threadId: thread.id, authorId: replyAuthor.id },
+    })
+    if (!existingReply) {
+      await prisma.forumReply.create({
+        data: { threadId: thread.id, authorId: replyAuthor.id, body: t.reply },
+      })
+      forumReplyCount++
+    }
+  }
+
   return {
     artists: artists.length,
     tracks: FICTIONAL_TRACK_TITLES.length,
     users: users.length,
     posts: FICTIONAL_POSTS_DATA.length,
     comments: commentCount,
+    forumThreads: FICTIONAL_FORUM_THREADS_DATA.length,
+    forumReplies: forumReplyCount,
   }
 }

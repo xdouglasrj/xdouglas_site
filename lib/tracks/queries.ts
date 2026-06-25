@@ -72,16 +72,18 @@ export interface ListTracksOptions {
   genre?: string
   artistSlug?: string
   q?: string
+  /** Se true, ignora a janela de exibição (24/36/48h) e traz todo o histórico publicado. */
+  includeExpired?: boolean
 }
 
 export async function listTracks(opts: ListTracksOptions = {}) {
-  const { page = 1, perPage = 24, genre, artistSlug, q } = opts
+  const { page = 1, perPage = 24, genre, artistSlug, q, includeExpired = false } = opts
   const skip = (page - 1) * perPage
-  const cutoff = await getContentCutoffDate()
+  const cutoff = includeExpired ? null : await getContentCutoffDate()
 
   const where = {
     published: true,
-    publishedAt: { gte: cutoff },
+    ...(cutoff && { publishedAt: { gte: cutoff } }),
     ...(genre && { genre }),
     ...(artistSlug && { artist: { slug: artistSlug } }),
     ...(q && {
@@ -113,20 +115,22 @@ export async function listTracks(opts: ListTracksOptions = {}) {
   }
 }
 
+// Página de detalhe é acessível por link direto (ex.: a partir do histórico
+// em /musicas-recentes) mesmo após a faixa saí da janela de exibição —
+// por isso não aplica o corte de 24/36/48h aqui.
 export async function getTrackBySlug(slug: string): Promise<TrackPublic | null> {
-  const cutoff = await getContentCutoffDate()
   const raw = await prisma.track.findFirst({
-    where: { slug, published: true, publishedAt: { gte: cutoff } },
+    where: { slug, published: true },
     select: TRACK_SELECT,
   })
 
   return raw ? serializeTrack(raw) : null
 }
 
-export async function listGenres(): Promise<string[]> {
-  const cutoff = await getContentCutoffDate()
+export async function listGenres(includeExpired = false): Promise<string[]> {
+  const cutoff = includeExpired ? null : await getContentCutoffDate()
   const rows = await prisma.track.findMany({
-    where: { published: true, publishedAt: { gte: cutoff }, genre: { not: null } },
+    where: { published: true, ...(cutoff && { publishedAt: { gte: cutoff } }), genre: { not: null } },
     select: { genre: true },
     distinct: ['genre'],
     orderBy: { genre: 'asc' },

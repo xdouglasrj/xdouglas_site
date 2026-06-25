@@ -71,7 +71,7 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
   const approvedAt = formatDate(track.publishedAt)
 
   return (
-    <article className="group flex items-center gap-4 rounded-lg border border-gate-azure bg-white/5 px-4 py-3 hover:border-gate-pink hover:bg-white/[0.07] transition-colors">
+    <article className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/[0.06]">
       {/* Capa — miniatura, como o ícone de um arquivo */}
       <Link
         href={`/musicas/${track.slug}`}

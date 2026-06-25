@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { FileUpload } from './file-upload'
+import { TRACK_GENRES } from '@/lib/tracks/genres'
 
 // ============================================================
 // Tipos
@@ -160,7 +161,20 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
         <h2 className="text-sm font-medium text-neutral-300">Metadados técnicos</h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Input label="Gênero" value={values.genre} onChange={(e) => set('genre', e.target.value)} placeholder="Techno, House…" />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="genre" className="text-sm font-medium text-neutral-300">Gênero</label>
+            <select
+              id="genre"
+              value={values.genre}
+              onChange={(e) => set('genre', e.target.value)}
+              className="h-10 w-full rounded-md px-3 text-sm bg-neutral-900 text-white border border-neutral-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+            >
+              <option value="">Selecione…</option>
+              {TRACK_GENRES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
           <Input label="BPM" type="number" min="40" max="300" value={values.bpm} onChange={(e) => set('bpm', e.target.value)} placeholder="138" />
           <Input label="Tom" value={values.key} onChange={(e) => set('key', e.target.value)} placeholder="Am, C#…" />
         </div>

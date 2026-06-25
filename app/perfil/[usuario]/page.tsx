@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { FollowButton } from '@/components/profile/follow-button'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
 
@@ -78,10 +77,8 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
     <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} />
 
-      <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">
-          <Breadcrumbs />
-
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="relative w-16 h-16 shrink-0 rounded-full overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">

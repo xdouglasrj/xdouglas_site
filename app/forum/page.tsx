@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { listThreads } from '@/lib/forum/forum'
 
@@ -23,8 +22,7 @@ export default async function ForumPage() {
     <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} />
 
-      <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
-        <Breadcrumbs />
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="flex items-center justify-between max-w-2xl">
           <h1 className="text-2xl font-bold text-white">Fórum</h1>
           <Link

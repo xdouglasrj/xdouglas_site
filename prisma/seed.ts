@@ -83,12 +83,12 @@ async function main() {
     // Track de exemplo
     await prisma.track.upsert({
       where: { slug: 'track-exemplo-01' },
-      update: {},
+      update: { genre: 'Eletrônico' },
       create: {
         slug: 'track-exemplo-01',
         title: 'Noite Funda (Original Mix)',
-        description: 'Techno progressivo para as madrugadas.',
-        genre: 'Techno',
+        description: 'Eletrônica progressiva para as madrugadas.',
+        genre: 'Eletrônico',
         bpm: 138,
         artistId: artist.id,
         producerName: 'Douglas Original',
@@ -111,7 +111,8 @@ async function main() {
     const fictionalResult = await seedFictionalLaunchContent(prisma)
     console.log(
       `✅ Conteúdo fictício: ${fictionalResult.tracks} músicas, ${fictionalResult.users} usuários, ` +
-        `${fictionalResult.posts} posts, ${fictionalResult.comments} comentários`
+        `${fictionalResult.posts} posts, ${fictionalResult.comments} comentários, ` +
+        `${fictionalResult.forumThreads} tópicos de fórum, ${fictionalResult.forumReplies} respostas`
     )
 
     // Usuários fictícios também usados no fórum/denúncias abaixo (dev only)

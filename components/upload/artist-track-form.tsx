@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/admin/file-upload'
+import { TRACK_GENRES } from '@/lib/tracks/genres'
 
 interface FormValues {
   title: string
@@ -135,7 +136,12 @@ export function ArtistTrackForm() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
             <label className={labelClass}>Gênero</label>
-            <input value={values.genre} onChange={(e) => set('genre', e.target.value)} className={inputClass} placeholder="Techno, House…" />
+            <select value={values.genre} onChange={(e) => set('genre', e.target.value)} className={inputClass}>
+              <option value="">Selecione…</option>
+              {TRACK_GENRES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className={labelClass}>BPM</label>

@@ -7,7 +7,14 @@ export function SeedFictionalContentCard() {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<{ tracks: number; users: number; posts: number; comments: number } | null>(null)
+  const [result, setResult] = useState<{
+    tracks: number
+    users: number
+    posts: number
+    comments: number
+    forumThreads: number
+    forumReplies: number
+  } | null>(null)
 
   async function handleClick() {
     if (busy) return
@@ -34,9 +41,11 @@ export function SeedFictionalContentCard() {
     <div className="mt-6 rounded-xl border border-amber-800/60 bg-amber-950/20 p-5">
       <h2 className="text-sm font-semibold text-white">Conteúdo fictício de lançamento</h2>
       <p className="mt-1 text-xs text-neutral-400 max-w-md">
-        Adiciona 20 músicas, 3 artistas e alguns posts/comentários inventados —
-        só para o catálogo e o feed não ficarem vazios antes de existir
-        conteúdo real. Tudo fica claramente identificável no banco (slugs
+        Adiciona 20 músicas (Funk, Rap/Trap, Eletrônico, Pagode, Sertanejo e
+        Remix), 3 artistas, alguns posts/comentários e tópicos de fórum
+        inventados — só para o catálogo, o feed e o fórum não ficarem vazios
+        antes de existir conteúdo real. Tudo fica claramente identificável no
+        banco (slugs
         começando com <code>seed-ficticia-</code>, e-mails terminando em{' '}
         <code>@exemplo.com</code>) para você apagar quando quiser. Pode clicar
         de novo sem duplicar nada.
@@ -54,7 +63,8 @@ export function SeedFictionalContentCard() {
       {error && <p className="mt-3 text-xs text-rose-400">{error}</p>}
       {result && !error && (
         <p className="mt-3 text-xs text-emerald-400">
-          OK — {result.tracks} músicas, {result.users} usuários, {result.posts} posts, {result.comments} comentários.
+          OK — {result.tracks} músicas, {result.users} usuários, {result.posts} posts, {result.comments} comentários,{' '}
+          {result.forumThreads} tópicos de fórum, {result.forumReplies} respostas.
         </p>
       )}
     </div>

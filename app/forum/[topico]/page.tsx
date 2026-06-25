@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ReportButton } from '@/components/social/report-button'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { getThread } from '@/lib/forum/forum'
@@ -39,9 +38,7 @@ export default async function TopicoPage({ params }: PageProps) {
     <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} photoUrl={user.photoUrl} />
 
-      <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">
-        <Breadcrumbs />
-
+      <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-2xl">
           <article className="rounded-lg border border-gate-azure bg-white/5 p-5">
             <h1 className="text-xl font-bold text-white">{thread.title}</h1>

@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { TRACK_GENRES } from '@/lib/tracks/genres'
 
-const GENRES = ['Funk', 'Rap/Trap', 'Eletrônico', 'Pagode', 'Sertanejo', 'Remix']
+const GENRES = TRACK_GENRES
 
 type Panel = 'music' | 'search' | null
 
@@ -63,7 +65,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
       {/* MOBILE — topbar + menu em tela cheia (md:hidden)            */}
       {/* ============================================================ */}
       <div className="md:hidden">
-        <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gate-azure bg-gate-bg px-4">
+        <header className="sticky top-0 z-50 grid h-14 grid-cols-[2.5rem_1fr_auto] items-center border-b border-gate-azure bg-gate-bg px-4">
           <button
             onClick={() => setMobileOpen((v) => !v)}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
@@ -80,6 +82,14 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
               </svg>
             )}
           </button>
+          <Image
+            src="/brand/xdouglas-logo.png"
+            alt="xDouglas"
+            width={1200}
+            height={675}
+            priority
+            className="h-8 w-auto justify-self-center object-contain"
+          />
           <ThemeToggle />
         </header>
 
@@ -157,7 +167,22 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
       </div>
 
       {/* ============================================================ */}
-      {/* DESKTOP — trilho de ícones fixo (hidden md:flex)            */}
+      {/* DESKTOP — faixa fixa com a logo, só na área de conteúdo      */}
+      {/* (o trilho de ícones tem prioridade e fica no topo, sem vão)  */}
+      {/* ============================================================ */}
+      <header className="fixed left-16 right-0 top-0 z-30 hidden h-20 items-center justify-center bg-gradient-to-b from-gate-bg via-gate-bg to-transparent md:flex">
+        <Image
+          src="/brand/xdouglas-logo.png"
+          alt="xDouglas"
+          width={1200}
+          height={675}
+          priority
+          className="h-12 w-auto object-contain"
+        />
+      </header>
+
+      {/* ============================================================ */}
+      {/* DESKTOP — trilho de ícones fixo, do topo ao fim da tela      */}
       {/* ============================================================ */}
       <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
         <nav className="flex w-16 flex-col items-center gap-2 border-r border-gate-azure bg-gate-bg py-4">

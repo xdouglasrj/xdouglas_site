@@ -14,6 +14,8 @@ interface TrackGridProps {
   initialGenre?: string | null
   initialQuery?: string | null
   canDownload?: boolean
+  /** Se true, busca todo o histórico publicado (sem o corte de 24/36/48h). */
+  includeExpired?: boolean
 }
 
 const PER_PAGE = 20
@@ -25,6 +27,7 @@ export function TrackGrid({
   initialGenre = null,
   initialQuery = null,
   canDownload = true,
+  includeExpired = false,
 }: TrackGridProps) {
   const [tracks, setTracks] = useState<TrackPublic[]>(initialTracks)
   const [total, setTotal] = useState(initialTotal)
@@ -44,6 +47,7 @@ export function TrackGrid({
       })
       if (selectedGenre) params.set('genre', selectedGenre)
       if (query) params.set('q', query)
+      if (includeExpired) params.set('includeExpired', '1')
 
       const res = await fetch(`/api/musicas?${params}`)
       if (!res.ok) return
@@ -53,7 +57,7 @@ export function TrackGrid({
       setTracks(data.tracks)
       setTotal(data.total)
     },
-    [query]
+    [query, includeExpired]
   )
 
   // Mudança de gênero — reseta paginação
@@ -101,7 +105,7 @@ export function TrackGrid({
         />
       ) : (
         <>
-          <div className="flex flex-col gap-2 max-w-3xl mx-auto w-full">
+          <div className="max-w-3xl mx-auto w-full divide-y divide-gate-azure/30 rounded-xl border border-gate-azure overflow-hidden">
             {tracks.map((track) => (
               <TrackCard key={track.id} track={track} canDownload={canDownload} />
             ))}

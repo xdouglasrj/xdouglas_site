@@ -1,6 +1,6 @@
 export function TrackCardSkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-gate-azure bg-white/5 px-4 py-3 animate-pulse">
+    <div className="flex items-center gap-4 px-4 py-3 animate-pulse">
       {/* Capa */}
       <div className="w-12 h-12 shrink-0 rounded-md bg-white/10" />
 
@@ -24,7 +24,7 @@ export function TrackCardSkeleton() {
 
 export function TrackGridSkeleton({ count = 12 }: { count?: number }) {
   return (
-    <div className="flex flex-col gap-2 max-w-3xl mx-auto w-full">
+    <div className="max-w-3xl mx-auto w-full divide-y divide-gate-azure/30 rounded-xl border border-gate-azure overflow-hidden">
       {Array.from({ length: count }).map((_, i) => (
         <TrackCardSkeleton key={i} />
       ))}

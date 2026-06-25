@@ -14,11 +14,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const genre = searchParams.get('genre') ?? undefined
   const artistSlug = searchParams.get('artistSlug') ?? undefined
   const q = searchParams.get('q') ?? undefined
+  const includeExpired = searchParams.get('includeExpired') === '1'
 
   // Genres e tracks em paralelo
   const [result, genres] = await Promise.all([
-    listTracks({ page, perPage, genre, artistSlug, q }),
-    listGenres(),
+    listTracks({ page, perPage, genre, artistSlug, q, includeExpired }),
+    listGenres(includeExpired),
   ])
 
   return NextResponse.json(

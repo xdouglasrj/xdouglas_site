@@ -1,5 +1,3 @@
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-
 export default function PublicLayout({
   children,
 }: {
@@ -8,9 +6,6 @@ export default function PublicLayout({
   return (
     <div className="min-h-screen flex flex-col bg-gate-bg">
       <div className="flex-1">
-        <div className="max-w-2xl mx-auto px-4 pt-6">
-          <Breadcrumbs />
-        </div>
         {children}
       </div>
       <footer className="border-t border-gate-azure py-6 px-4">
