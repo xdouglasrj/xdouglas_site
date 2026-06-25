@@ -29,10 +29,10 @@ export function GateContent() {
         <Image
           src="/brand/xdouglas-logo.png"
           alt="xDouglas"
-          width={1000}
-          height={1000}
+          width={1200}
+          height={675}
           priority
-          className="h-[28rem] w-auto object-contain sm:h-[36rem] md:h-[42rem]"
+          className="h-auto w-full max-w-xs object-contain sm:max-w-sm md:max-w-lg"
         />
 
         <button
