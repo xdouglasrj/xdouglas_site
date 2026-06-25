@@ -1,4 +1,3 @@
-import { BrandBar } from '@/components/layout/brand-bar'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default function PublicLayout({
@@ -7,8 +6,7 @@ export default function PublicLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-gate-bg pt-14">
-      <BrandBar />
+    <div className="min-h-screen flex flex-col bg-gate-bg">
       <div className="flex-1">
         <div className="max-w-2xl mx-auto px-4 pt-6">
           <Breadcrumbs />

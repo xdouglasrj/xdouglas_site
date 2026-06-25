@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { BrandBar } from '@/components/layout/brand-bar'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { WelcomeToast } from '@/components/gate/WelcomeToast'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
@@ -22,8 +22,17 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
   const isArtist = user?.role === 'ARTIST' || user?.role === 'ARTIST_SUPPORTER'
 
   return (
-    <div className="min-h-screen bg-gate-bg pt-14">
-      <BrandBar />
+    <div className="min-h-screen bg-gate-bg">
+      <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center">
+        <Image
+          src="/brand/xdouglas-logo.png"
+          alt="xDouglas"
+          width={1200}
+          height={675}
+          priority
+          className="h-12 w-auto object-contain sm:h-28"
+        />
+      </div>
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user?.photoUrl} />
 
       {welcomeName && (

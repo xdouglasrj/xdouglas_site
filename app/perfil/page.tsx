@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
-import { BrandBar } from '@/components/layout/brand-bar'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { ProfileForm } from '@/components/profile/profile-form'
 import { prisma } from '@/lib/prisma'
@@ -48,8 +47,7 @@ export default async function PerfilPage() {
   const isArtist = user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'
 
   return (
-    <div className="min-h-screen bg-gate-bg pt-14">
-      <BrandBar />
+    <div className="min-h-screen bg-gate-bg">
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} />
 
       <main className="md:ml-16 px-4 sm:px-8 py-8 sm:py-12">

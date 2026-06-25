@@ -63,26 +63,24 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
       {/* MOBILE — topbar + menu em tela cheia (md:hidden)            */}
       {/* ============================================================ */}
       <div className="md:hidden">
-        <header className="sticky top-14 z-40 flex h-14 items-center justify-end border-b border-gate-azure bg-gate-bg px-4">
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              onClick={() => setMobileOpen((v) => !v)}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
-              aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
-              aria-expanded={mobileOpen}
-            >
-              {mobileOpen ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
-          </div>
+        <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-gate-azure bg-gate-bg px-4">
+          <button
+            onClick={() => setMobileOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
+            aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+          <ThemeToggle />
         </header>
 
         {mobileOpen && (
@@ -153,7 +151,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
       {/* ============================================================ */}
       {/* DESKTOP — trilho de ícones fixo (hidden md:flex)            */}
       {/* ============================================================ */}
-      <div ref={wrapperRef} className="fixed left-0 top-14 z-40 hidden h-[calc(100vh-3.5rem)] md:flex">
+      <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
         <nav className="flex w-16 flex-col items-center gap-2 border-r border-gate-azure bg-gate-bg py-4">
           <Link
             href="/inicio"
@@ -261,7 +259,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
 
         {/* Painel — gêneros */}
         {panel === 'music' && (
-          <div className="h-full w-64 max-w-[calc(100vw-4rem)] border-r border-gate-azure bg-gate-bg px-6 py-6 shadow-2xl overflow-y-auto">
+          <div className="h-screen w-64 max-w-[calc(100vw-4rem)] border-r border-gate-azure bg-gate-bg px-6 py-6 shadow-2xl overflow-y-auto">
             <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-gate-blue">
               Gêneros
             </h2>
@@ -283,7 +281,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
 
         {/* Painel — busca */}
         {panel === 'search' && (
-          <div className="h-full w-72 max-w-[calc(100vw-4rem)] border-r border-gate-azure bg-gate-bg px-6 py-6 shadow-2xl overflow-y-auto">
+          <div className="h-screen w-72 max-w-[calc(100vw-4rem)] border-r border-gate-azure bg-gate-bg px-6 py-6 shadow-2xl overflow-y-auto">
             <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-gate-blue">
               Buscar
             </h2>
