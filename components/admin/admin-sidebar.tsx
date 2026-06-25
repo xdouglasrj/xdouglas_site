@@ -74,9 +74,9 @@ export function AdminSidebar() {
   const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/cadastros')
 
   return (
-    <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
+    <div ref={wrapperRef} className="fixed left-0 top-14 z-40 hidden h-[calc(100vh-3.5rem)] md:flex">
       <nav
-        className="flex h-screen w-16 flex-col items-center gap-2 border-r border-gate-azure bg-gate-bg py-4"
+        className="flex h-full w-16 flex-col items-center gap-2 border-r border-gate-azure bg-gate-bg py-4"
         aria-label="Navegação admin"
       >
         <Link
@@ -153,7 +153,7 @@ export function AdminSidebar() {
 
       {/* Painel — convites e cadastros */}
       {peopleOpen && (
-        <div className="h-screen w-60 border-r border-gate-azure bg-gate-bg px-4 py-6 shadow-2xl">
+        <div className="h-full w-60 border-r border-gate-azure bg-gate-bg px-4 py-6 shadow-2xl">
           <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-gate-blue">
             Pessoas
           </h2>

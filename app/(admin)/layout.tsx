@@ -3,6 +3,7 @@ import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
+import { BrandBar } from '@/components/layout/brand-bar'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 
 export default async function AdminLayout({
@@ -23,7 +24,8 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gate-bg">
+    <div className="min-h-screen bg-gate-bg pt-14">
+      <BrandBar />
       {/* Sidebar — desktop, trilho de ícones fixo (padrão do site) */}
       <AdminSidebar />
 

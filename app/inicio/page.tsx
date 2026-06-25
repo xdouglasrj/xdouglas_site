@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
+import { BrandBar } from '@/components/layout/brand-bar'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { WelcomeToast } from '@/components/gate/WelcomeToast'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
@@ -21,7 +22,8 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
   const isArtist = user?.role === 'ARTIST' || user?.role === 'ARTIST_SUPPORTER'
 
   return (
-    <div className="min-h-screen bg-gate-bg">
+    <div className="min-h-screen bg-gate-bg pt-14">
+      <BrandBar />
       <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user?.photoUrl} />
 
       {welcomeName && (

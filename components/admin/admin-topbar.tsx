@@ -29,12 +29,8 @@ export function AdminTopbar() {
   }
 
   return (
-    <header className="md:hidden sticky top-0 z-40 border-b border-gate-azure bg-gate-bg">
-      <div className="h-14 flex items-center justify-between px-4">
-        <Link href="/admin/dashboard" className="font-logo text-xl text-white">
-          xDouglas
-        </Link>
-
+    <header className="md:hidden sticky top-14 z-30 border-b border-gate-azure bg-gate-bg">
+      <div className="h-14 flex items-center justify-end px-4">
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
