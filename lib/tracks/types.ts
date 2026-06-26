@@ -24,6 +24,7 @@ export interface TrackPublic {
   audioFormat: string
   audioSizeBytes: string | null // BigInt serializado como string
   downloadCount: number
+  likeCount: number
   publishedAt: string | null    // ISO string
   artist: ArtistPublic
 }

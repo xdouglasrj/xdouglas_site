@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { EditProfileButton } from '@/components/profile/edit-profile-button'
 import { ProfileTracks } from '@/components/profile/profile-tracks'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
+import { getArtistLikeCount } from '@/lib/social/track-likes'
 import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -71,10 +72,11 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const isViewerArtist = viewer.role === 'ARTIST' || viewer.role === 'ARTIST_SUPPORTER'
   const isProfileArtist = profile.role === 'ARTIST' || profile.role === 'ARTIST_SUPPORTER'
 
-  const [counts, followingAlready, tracks] = await Promise.all([
+  const [counts, followingAlready, tracks, likeCount] = await Promise.all([
     getFollowCounts(profile.id),
     isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
     profile.artist ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
+    profile.artist ? getArtistLikeCount(profile.artist.id) : Promise.resolve(0),
   ])
 
   // O perfil mostra só o que foi configurado em "Editar perfil" — vale
@@ -127,9 +129,17 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
             {profile.artist && <span className="text-white/40"> · {profile.artist.name}</span>}
           </p>
 
-          <div className="mt-4 flex gap-6 text-sm">
+          <div className="mt-4 flex items-center gap-6 text-sm">
             <FollowListModal userId={profile.id} type="followers" count={counts.followers} label="seguidores" />
             <FollowListModal userId={profile.id} type="following" count={counts.following} label="seguindo" />
+            {profile.artist && (
+              <span className="flex items-center gap-1.5 text-white/80">
+                <svg className="w-3.5 h-3.5 text-gate-pink" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M8 13.5s-5.5-3.36-7-6.6C-0.1 4.2 1.3 2 3.8 2c1.4 0 2.7.8 3.3 2 0.6-1.2 1.9-2 3.3-2 2.5 0 3.9 2.2 2.8 4.9-1.5 3.24-7 6.6-7 6.6z" />
+                </svg>
+                <strong className="text-white">{likeCount}</strong> curtidas
+              </span>
+            )}
           </div>
 
           {profile.artist?.bio && (

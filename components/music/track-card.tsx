@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAnalytics } from '@/components/analytics/use-analytics'
 import { ListenButton } from './listen-button'
+import { TrackLikeButton } from './track-like-button'
 import type { TrackPublic } from '@/lib/tracks/types'
 
 // ============================================================
@@ -131,6 +132,7 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
 
       {/* Ações */}
       <div className="flex items-center gap-1.5 shrink-0">
+        <TrackLikeButton trackId={track.id} initialCount={track.likeCount} compact />
         <ListenButton trackId={track.id} title={track.title} compact />
 
         {canDownload && (

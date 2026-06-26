@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getTrackBySlug } from '@/lib/tracks/queries'
 import { TrackDownloadButton } from './track-download-button'
 import { ListenButton } from '@/components/music/listen-button'
+import { TrackLikeButton } from '@/components/music/track-like-button'
 import { getCurrentRole } from '@/lib/auth/role'
 
 export const revalidate = 120
@@ -144,6 +145,7 @@ export default async function TrackDetailPage({
           <div className="mt-auto flex flex-wrap items-center gap-3 pt-2">
             <ListenButton trackId={track.id} title={track.title} />
             {canDownload && <TrackDownloadButton track={track} />}
+            <TrackLikeButton trackId={track.id} initialCount={track.likeCount} />
           </div>
         </div>
       </div>

@@ -148,6 +148,7 @@ model User {
   followers     Follow[]      @relation("Following")
   posts         Post[]
   likes         Like[]
+  trackLikes    TrackLike[]
   comments      Comment[]
   forumThreads  ForumThread[]
   forumReplies  ForumReply[]
@@ -339,6 +340,7 @@ model Track {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   downloads Download[]
+  likes     TrackLike[]
 
   @@index([slug])
   @@index([artistId])
@@ -346,6 +348,20 @@ model Track {
   @@index([genre])
   @@index([submittedById])
   @@map("tracks")
+}
+
+model TrackLike {
+  id        String   @id @default(uuid())
+  trackId   String   @map("track_id")
+  track     Track    @relation(fields: [trackId], references: [id])
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([trackId, userId])
+  @@index([trackId])
+  @@index([userId])
+  @@map("track_likes")
 }
 
 // =============================================================

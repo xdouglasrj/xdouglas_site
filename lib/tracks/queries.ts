@@ -30,6 +30,7 @@ const TRACK_SELECT = {
       photoUrl: true,
     },
   },
+  _count: { select: { likes: true } },
 } as const
 
 // ── Serialização ─────────────────────────────────────────────
@@ -56,9 +57,12 @@ function serializeTrack(raw: {
     bio: string | null
     photoUrl: string | null
   }
+  _count: { likes: number }
 }): TrackPublic {
+  const { _count, ...rest } = raw
   return {
-    ...raw,
+    ...rest,
+    likeCount: _count.likes,
     audioSizeBytes: raw.audioSizeBytes?.toString() ?? null,
     publishedAt: raw.publishedAt?.toISOString() ?? null,
   }
