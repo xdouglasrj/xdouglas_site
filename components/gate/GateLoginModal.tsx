@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { broadcastLogin } from '@/lib/auth/cross-tab-logout'
 
@@ -10,11 +10,23 @@ interface GateLoginModalProps {
   onSignupClick: () => void
 }
 
+const REMEMBER_USERNAME_KEY = 'xd_remember_username'
+
 export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModalProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberUsername, setRememberUsername] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_USERNAME_KEY)
+    if (saved) {
+      setUsername(saved)
+      setRememberUsername(true)
+    }
+  }, [])
 
   if (!isOpen) return null
 
@@ -30,6 +42,11 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
       })
       if (res.ok) {
         const data = await res.json()
+        if (rememberUsername) {
+          localStorage.setItem(REMEMBER_USERNAME_KEY, username)
+        } else {
+          localStorage.removeItem(REMEMBER_USERNAME_KEY)
+        }
         broadcastLogin()
         if (data.user?.role === 'ADMIN') {
           window.location.href = '/admin/dashboard'
@@ -88,15 +105,34 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-gate-blue">
               Senha
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-              className="w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+                className="w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 pr-11 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gate-blue transition-colors hover:text-white"
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.58a2 2 0 002.83 2.83M9.88 5.09A9.77 9.77 0 0112 5c5 0 9 4.5 9.5 7-.36 1.13-1.07 2.41-2.06 3.59M6.61 6.61C4.6 8 3.36 9.94 2.5 12c.85 2.05 2.1 3.99 4.11 5.39A9.77 9.77 0 0012 19" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12S5.5 5 12 5s9.5 7 9.5 7-3 7-9.5 7-9.5-7-9.5-7z" />
+                    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            </div>
             <Link
               href="/esqueci-senha"
               className="mt-1.5 inline-block text-xs text-gate-blue transition hover:text-gate-pink"
@@ -104,6 +140,16 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
               Esqueci minha senha
             </Link>
           </div>
+
+          <label className="flex items-center gap-2 text-xs text-gate-blue">
+            <input
+              type="checkbox"
+              checked={rememberUsername}
+              onChange={(e) => setRememberUsername(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-gate-azure bg-white/5 accent-gate-pink"
+            />
+            Salvar meu usuário neste dispositivo
+          </label>
 
           {error && <p className="text-sm text-gate-pink">{error}</p>}
 
