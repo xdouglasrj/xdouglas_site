@@ -113,16 +113,16 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
         {approvedAt && (
           <p className="mt-0.5 text-[11px] text-white/30 truncate">aprovada em {approvedAt}</p>
         )}
-      </div>
 
-      {/* Tags de metadados — escondem em telas estreitas */}
-      <div className="hidden sm:flex flex-wrap items-center gap-1.5 shrink-0">
-        {track.genre && <MetaTag>{track.genre}</MetaTag>}
-        {track.bpm && <MetaTag>{track.bpm} BPM</MetaTag>}
-        {fileSize && <MetaTag>{fileSize}</MetaTag>}
-        <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-white/5 text-gate-blue border border-gate-azure">
-          {track.audioFormat}
-        </span>
+        {/* Tags de metadados — empilhadas sob o nome, nunca espremem o título */}
+        <div className="hidden sm:flex flex-wrap items-center gap-1.5 mt-1.5">
+          {track.genre && <MetaTag>{track.genre}</MetaTag>}
+          {track.bpm && <MetaTag>{track.bpm} BPM</MetaTag>}
+          {fileSize && <MetaTag>{fileSize}</MetaTag>}
+          <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-white/5 text-gate-blue border border-gate-azure">
+            {track.audioFormat}
+          </span>
+        </div>
       </div>
 
       {/* Contador de downloads */}
