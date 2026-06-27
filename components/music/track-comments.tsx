@@ -36,6 +36,7 @@ export function TrackComments({ trackId }: { trackId: string }) {
   const [comments, setComments] = useState<TrackCommentView[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +63,10 @@ export function TrackComments({ trackId }: { trackId: string }) {
     fetch('/api/perfil')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (active) setCurrentUserId(data?.user?.id ?? null)
+        if (active) {
+          setCurrentUserId(data?.user?.id ?? null)
+          setIsAdmin(data?.user?.role === 'ADMIN')
+        }
       })
       .catch(() => {})
 
@@ -149,6 +153,7 @@ export function TrackComments({ trackId }: { trackId: string }) {
 
         {comments?.map((c) => {
           const isOwner = currentUserId !== null && currentUserId === c.author.id
+          const canDelete = isOwner || isAdmin
           const isEditing = editingId === c.id
 
           return (
@@ -216,23 +221,23 @@ export function TrackComments({ trackId }: { trackId: string }) {
                 {!isEditing && (
                   <div className="flex items-center gap-3 mt-0.5">
                     {isOwner && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(c)}
-                          className="text-xs text-white/30 hover:text-gate-pink transition"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteComment(c.id)}
-                          disabled={deletingId === c.id}
-                          className="text-xs text-white/30 hover:text-red-400 transition disabled:opacity-50"
-                        >
-                          {deletingId === c.id ? 'Excluindo…' : 'Excluir'}
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(c)}
+                        className="text-xs text-white/30 hover:text-gate-pink transition"
+                      >
+                        Editar
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => deleteComment(c.id)}
+                        disabled={deletingId === c.id}
+                        className="text-xs text-white/30 hover:text-red-400 transition disabled:opacity-50"
+                      >
+                        {deletingId === c.id ? 'Excluindo…' : 'Excluir'}
+                      </button>
                     )}
                     <ReportButton targetType="COMMENT" targetId={c.id} />
                   </div>
