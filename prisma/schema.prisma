@@ -89,6 +89,23 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum SupportTicketStatus {
+  PENDING
+  RESOLVED
+}
+
+enum SupportCategory {
+  BUG
+  SUGESTAO
+  DUVIDA
+  OUTRO
+}
+
+enum SupportAttachmentType {
+  IMAGE
+  VIDEO
+}
+
 // =============================================================
 // USERS — base de todos os papéis (Fase 1 usa apenas ADMIN)
 // =============================================================
@@ -153,6 +170,7 @@ model User {
   forumThreads  ForumThread[]
   forumReplies  ForumReply[]
   reportsMade   Report[]      @relation("ReportsMade")
+  supportTickets SupportTicket[]
 
   @@index([email])
   @@index([role])
@@ -272,6 +290,29 @@ model Report {
   @@index([targetType, targetId])
   @@index([createdAt])
   @@map("reports")
+}
+
+// =============================================================
+// SUPORTE — chamados abertos pelos membros
+// =============================================================
+
+model SupportTicket {
+  id              String                 @id @default(uuid())
+  userId          String                 @map("user_id")
+  user            User                   @relation(fields: [userId], references: [id])
+  category        SupportCategory        @default(OUTRO)
+  message         String
+  // Anexo opcional — foto ou vídeo do problema relatado
+  attachmentKey   String?                @map("attachment_key")
+  attachmentUrl   String?                @map("attachment_url")
+  attachmentType  SupportAttachmentType? @map("attachment_type")
+  status          SupportTicketStatus    @default(PENDING)
+  resolvedAt      DateTime?              @map("resolved_at")
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("support_tickets")
 }
 
 // =============================================================

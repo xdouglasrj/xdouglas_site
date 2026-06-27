@@ -46,6 +46,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    label: 'Suporte',
+    href: '/admin/suporte',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="6.5" />
+        <path d="M6.2 6.2a1.8 1.8 0 1 1 2.4 1.6c-.5.2-.7.6-.7 1v.4" />
+        <circle cx="8" cy="11.2" r="0.5" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
 ] as const
 
 const PEOPLE_ITEMS = [

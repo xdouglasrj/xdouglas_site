@@ -119,6 +119,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
               <MobileLink href="/inicio" onClick={() => setMobileOpen(false)} label="Início" />
               <MobileLink href="/musicas-recentes" onClick={() => setMobileOpen(false)} label="Músicas recentes" />
               <MobileLink href="/forum" onClick={() => setMobileOpen(false)} label="Fórum" />
+              <MobileLink href="/suporte" onClick={() => setMobileOpen(false)} label="Suporte" />
 
               {(isArtist || isAdmin) && (
                 <MobileLink href="/upload" onClick={() => setMobileOpen(false)} label="Upload de música" />
@@ -251,6 +252,19 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </Link>
+
+          <Link
+            href="/suporte"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+            aria-label="Suporte"
+            title="Suporte"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.6" />
+              <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
             </svg>
           </Link>
 
