@@ -34,16 +34,42 @@ const TEMA_ANTI_FLASH = `
 })();
 `
 
+const TITULO_PADRAO = 'xDouglas está de volta'
+const DESCRICAO_PADRAO =
+  'Plataforma privada para produtores, DJs e artistas. Música, cultura e comunidade.'
+
 export const metadata: Metadata = {
+  metadataBase: new URL('https://xdouglas.com.br'),
   title: {
-    default: 'xDouglas está de volta',
+    default: TITULO_PADRAO,
     template: '%s | xDouglas',
   },
-  description:
-    'Plataforma privada para produtores, DJs e artistas. Música, cultura e comunidade.',
+  description: DESCRICAO_PADRAO,
   robots: {
     index: false,
     follow: false,
+  },
+  openGraph: {
+    title: TITULO_PADRAO,
+    description: DESCRICAO_PADRAO,
+    url: 'https://xdouglas.com.br',
+    siteName: 'xDouglas',
+    locale: 'pt_BR',
+    type: 'website',
+    images: [
+      {
+        url: '/brand/xdouglas-logo.png',
+        width: 1200,
+        height: 675,
+        alt: 'xDouglas',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITULO_PADRAO,
+    description: DESCRICAO_PADRAO,
+    images: ['/brand/xdouglas-logo.png'],
   },
 }
 
