@@ -28,6 +28,7 @@ const TRACK_SELECT = {
       name: true,
       bio: true,
       photoUrl: true,
+      user: { select: { handle: true } },
     },
   },
   _count: { select: { likes: true } },
@@ -56,12 +57,15 @@ function serializeTrack(raw: {
     name: string
     bio: string | null
     photoUrl: string | null
+    user: { handle: string | null } | null
   }
   _count: { likes: number }
 }): TrackPublic {
-  const { _count, ...rest } = raw
+  const { _count, artist, ...rest } = raw
+  const { user, ...artistRest } = artist
   return {
     ...rest,
+    artist: { ...artistRest, userHandle: user?.handle ?? null },
     likeCount: _count.likes,
     audioSizeBytes: raw.audioSizeBytes?.toString() ?? null,
     publishedAt: raw.publishedAt?.toISOString() ?? null,

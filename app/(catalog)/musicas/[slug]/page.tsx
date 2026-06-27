@@ -90,7 +90,11 @@ export default async function TrackDetailPage({
             </h1>
             <p className="mt-1.5 text-gate-blue">
               <Link
-                href={`/musicas-recentes?artistSlug=${track.artist.slug}`}
+                href={
+                  track.artist.userHandle
+                    ? `/perfil/${track.artist.userHandle}`
+                    : `/musicas-recentes?artistSlug=${track.artist.slug}`
+                }
                 className="hover:text-white transition-colors"
               >
                 {track.artist.name}

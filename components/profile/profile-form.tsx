@@ -94,6 +94,10 @@ export function ProfileFormFields({
   const [savingName, setSavingName] = useState(false)
   const [nameMessage, setNameMessage] = useState<string | null>(null)
 
+  const [artisticNameValue, setArtisticNameValue] = useState(artisticName ?? '')
+  const [savingArtisticName, setSavingArtisticName] = useState(false)
+  const [artisticNameMessage, setArtisticNameMessage] = useState<string | null>(null)
+
   const [handleValue, setHandleValue] = useState(handle ?? '')
   const [savingHandle, setSavingHandle] = useState(false)
   const [handleMessage, setHandleMessage] = useState<string | null>(null)
@@ -211,6 +215,26 @@ export function ProfileFormFields({
       setNameMessage('Erro ao atualizar nome.')
     } finally {
       setSavingName(false)
+    }
+  }
+
+  async function handleArtisticNameSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (savingArtisticName || !artisticNameValue.trim()) return
+    setSavingArtisticName(true)
+    setArtisticNameMessage(null)
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ artisticName: artisticNameValue.trim() }),
+      })
+      setArtisticNameMessage(res.ok ? 'Nome artístico atualizado.' : 'Erro ao atualizar nome artístico.')
+      if (res.ok) router.refresh()
+    } catch {
+      setArtisticNameMessage('Erro ao atualizar nome artístico.')
+    } finally {
+      setSavingArtisticName(false)
     }
   }
 
@@ -350,12 +374,6 @@ export function ProfileFormFields({
               <dd className="text-white/80 truncate">{username}</dd>
             </div>
           )}
-          {artisticName && (
-            <div className="flex justify-between gap-4">
-              <dt className="text-gate-blue">Nome artístico</dt>
-              <dd className="text-white/80 truncate">{artisticName}</dd>
-            </div>
-          )}
           {phone && (
             <div className="flex justify-between gap-4">
               <dt className="text-gate-blue">WhatsApp</dt>
@@ -439,6 +457,33 @@ export function ProfileFormFields({
 
         {privacyError && <p className="mt-2 text-[11px] text-red-400">{privacyError}</p>}
       </section>
+
+      {/* Nome artístico — é o que aparece nas músicas e no perfil público */}
+      {isArtist && (
+        <form onSubmit={handleArtisticNameSubmit} className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+          <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Nome artístico</h2>
+          <p className="mt-1 text-[11px] text-white/40">
+            É o nome exibido nas suas músicas e no seu perfil — diferente do seu nome real.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={artisticNameValue}
+              onChange={(e) => setArtisticNameValue(e.target.value)}
+              maxLength={50}
+              className="min-w-0 flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+            />
+            <button
+              type="submit"
+              disabled={savingArtisticName}
+              className="rounded-md bg-gate-pink px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {savingArtisticName ? 'Salvando…' : 'Salvar'}
+            </button>
+          </div>
+          {artisticNameMessage && <span className="mt-1.5 block text-[11px] text-gate-blue">{artisticNameMessage}</span>}
+        </form>
+      )}
 
       {/* Nome */}
       <form onSubmit={handleNameSubmit} className="rounded-lg border border-gate-azure bg-white/5 p-3.5">

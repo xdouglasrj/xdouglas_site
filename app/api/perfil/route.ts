@@ -42,6 +42,7 @@ export const GET = withAuth(async (_request, auth) => {
 
 const updateSchema = z.object({
   name: z.string().min(1).max(120).optional(),
+  artisticName: z.string().min(2).max(50).optional(),
   handle: z.string().min(3).max(24).regex(HANDLE_REGEX, 'Use apenas letras minúsculas, números e "_"').optional(),
   currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(8).max(72).optional(),
@@ -71,9 +72,10 @@ export const PATCH = withAuth(async (request, auth) => {
     )
   }
 
-  const { name, handle, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
+  const { name, artisticName, handle, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
   const data: {
     name?: string
+    artisticName?: string
     handle?: string
     password?: string
     photoKey?: string
@@ -85,6 +87,10 @@ export const PATCH = withAuth(async (request, auth) => {
 
   if (name !== undefined) {
     data.name = name
+  }
+
+  if (artisticName !== undefined) {
+    data.artisticName = artisticName
   }
 
   if (handle !== undefined) {
@@ -135,6 +141,14 @@ export const PATCH = withAuth(async (request, auth) => {
       data,
       select: { id: true, email: true, username: true, handle: true, name: true, role: true, photoUrl: true },
     })
+
+    // Perfil de Artist (se existir) reflete o nome artístico exibido nas faixas
+    if (artisticName !== undefined) {
+      await prisma.artist.updateMany({
+        where: { userId: auth.userId },
+        data: { name: artisticName },
+      })
+    }
 
     return NextResponse.json({ ok: true, user: updated })
   } catch (err: unknown) {

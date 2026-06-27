@@ -9,6 +9,7 @@ export interface ArtistPublic {
   name: string
   bio: string | null
   photoUrl: string | null
+  userHandle: string | null
 }
 
 export interface TrackPublic {
