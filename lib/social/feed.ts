@@ -89,6 +89,20 @@ export async function addComment(postId: string, authorId: string, content: stri
   })
 }
 
+/** Remove o post — autor ou admin podem excluir. Retorna false se não autorizado. */
+export async function deletePost(postId: string, userId: string, isAdmin: boolean): Promise<boolean> {
+  const post = await prisma.post.findUnique({ where: { id: postId } })
+  if (!post) return false
+  if (post.authorId !== userId && !isAdmin) return false
+
+  await prisma.$transaction([
+    prisma.comment.deleteMany({ where: { postId } }),
+    prisma.like.deleteMany({ where: { postId } }),
+    prisma.post.delete({ where: { id: postId } }),
+  ])
+  return true
+}
+
 export async function listComments(postId: string) {
   const cutoff = await getContentCutoffDate()
   return prisma.comment.findMany({

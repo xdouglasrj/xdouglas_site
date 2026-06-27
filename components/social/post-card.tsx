@@ -9,6 +9,7 @@ export interface FeedPostView {
   content: string
   createdAt: string
   author: {
+    id: string
     handle: string | null
     name: string | null
     artisticName: string | null
@@ -36,10 +37,18 @@ function formatDate(iso: string) {
   })
 }
 
-export function PostCard({ post }: { post: FeedPostView }) {
+interface PostCardProps {
+  post: FeedPostView
+  currentUserId: string | null
+  isAdmin: boolean
+  onDeleted: (postId: string) => void
+}
+
+export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardProps) {
   const [liked, setLiked] = useState(post.likedByMe)
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [comments, setComments] = useState<CommentView[] | null>(null)
@@ -47,6 +56,19 @@ export function PostCard({ post }: { post: FeedPostView }) {
   const [newComment, setNewComment] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
   const [sendingComment, setSendingComment] = useState(false)
+
+  const canDelete = isAdmin || (currentUserId !== null && currentUserId === post.author.id)
+
+  async function deletePost() {
+    if (deleting) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/social/posts/${post.id}`, { method: 'DELETE' })
+      if (res.ok) onDeleted(post.id)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   async function toggleLike() {
     if (busy) return
@@ -114,12 +136,22 @@ export function PostCard({ post }: { post: FeedPostView }) {
             </svg>
           )}
         </Link>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <Link href={`/perfil/${post.author.handle}`} className="text-sm font-semibold text-white hover:text-gate-pink truncate block">
             {authorName(post.author)}
           </Link>
           <p className="text-xs text-white/40">{formatDate(post.createdAt)}</p>
         </div>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={deletePost}
+            disabled={deleting}
+            className="text-xs text-white/30 hover:text-red-400 transition disabled:opacity-50 shrink-0"
+          >
+            {deleting ? 'Excluindo…' : 'Excluir'}
+          </button>
+        )}
       </div>
 
       <p className="mt-3 text-sm text-white/90 whitespace-pre-wrap break-words">{post.content}</p>

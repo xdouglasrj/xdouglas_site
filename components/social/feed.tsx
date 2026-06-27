@@ -7,6 +7,8 @@ import { PostCard, type FeedPostView } from './post-card'
 export function Feed() {
   const [posts, setPosts] = useState<FeedPostView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -24,7 +26,19 @@ export function Feed() {
 
   useEffect(() => {
     load()
+
+    fetch('/api/perfil')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        setCurrentUserId(data?.user?.id ?? null)
+        setIsAdmin(data?.user?.role === 'ADMIN')
+      })
+      .catch(() => {})
   }, [load])
+
+  function handleDeleted(postId: string) {
+    setPosts((prev) => prev?.filter((p) => p.id !== postId) ?? prev)
+  }
 
   return (
     <div className="mt-6 flex flex-col gap-4 max-w-xl">
@@ -41,7 +55,13 @@ export function Feed() {
       )}
 
       {posts?.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard
+          key={post.id}
+          post={post}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          onDeleted={handleDeleted}
+        />
       ))}
     </div>
   )
