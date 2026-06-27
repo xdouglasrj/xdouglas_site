@@ -13,7 +13,7 @@ Scripts para publicar o xDouglas online usando o terminal da sua máquina (que t
 ## Ordem de execução
 
 1. **GitHub** — autentica via navegador, commita o que tiver pendente e faz push da branch `main` para o remoto.
-2. **Vercel** — cria o projeto `xdouglas`, sobe as 17 variáveis de ambiente, linka o repo GitHub para auto-deploy em `main`, dispara o primeiro deploy.
+2. **Vercel** — cria o projeto `xdouglas`, sobe as 18 variáveis de ambiente, linka o repo GitHub para auto-deploy em `main`, dispara o primeiro deploy.
 3. **Resend** — verifica domínio, valida a chave e sobe `RESEND_API_KEY` + `EMAIL_FROM` na Vercel (precisa de `VERCEL_TOKEN` no ambiente).
 
 ```powershell
@@ -40,8 +40,8 @@ powershell -ExecutionPolicy Bypass -File scripts\online\setup-resend.ps1
 ### `setup-vercel.ps1`
 
 - Pede o token da Vercel uma vez (prompt seguro, não grava em disco).
-- Lê `.env.local` (fallback para `.env.example`) e sobe 17 variáveis:
-  - **Plain**: `DATABASE_URL`, `DIRECT_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_HOSTNAME`, `R2_PUBLIC_URL`, `IP_API_URL`, `NEXT_PUBLIC_APP_URL`, `EMAIL_FROM`, `NODE_ENV`
+- Lê `.env.local` (fallback para `.env.example`) e sobe 18 variáveis:
+  - **Plain**: `DATABASE_URL`, `DIRECT_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME_PUBLIC`, `R2_BUCKET_NAME_PRIVATE`, `R2_PUBLIC_HOSTNAME`, `R2_PUBLIC_URL`, `IP_API_URL`, `NEXT_PUBLIC_APP_URL`, `EMAIL_FROM`, `NODE_ENV`
   - **Sensitive**: `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `ANALYTICS_ENCRYPTION_KEY`, `RESEND_API_KEY`, `CRON_SECRET`
 - Aplica em **production + preview + development** (idempotente — se já existe, considera atualizado).
 - **Bloqueia** se `DATABASE_URL` ou `DIRECT_URL` ainda apontarem para `localhost`. Sem banco gerenciado o deploy morre.
@@ -64,7 +64,7 @@ As mesmas que estão no `.env.example`. O script le do `.env.local` se existir. 
 - `DATABASE_URL` / `DIRECT_URL` — apontar para Postgres gerenciado (Supabase / Neon / Railway). Em produção, `DIRECT_URL` deve ser a URL **não-pooled** (sem `pgbouncer` no meio) para as migrations.
 - `JWT_SECRET` / `REFRESH_TOKEN_SECRET` — gere com `openssl rand -hex 32`.
 - `ANALYTICS_ENCRYPTION_KEY` — idem.
-- `R2_*` — credenciais do Cloudflare R2 (bucket `xdouglas-audio`). Sem isso o upload e o stream quebram.
+- `R2_*` — credenciais do Cloudflare R2, dois buckets: `xdouglas-media` (público — capas/avatars/suporte) e `xdouglas-audio-private` (privado — áudio/vinheta, só via URL assinada). Sem isso o upload e o stream quebram.
 - `EMAIL_FROM` — remetente em um domínio **verificado** no Resend.
 
 ## Pós-deploy

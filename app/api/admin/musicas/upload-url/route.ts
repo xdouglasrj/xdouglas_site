@@ -102,7 +102,10 @@ export const POST = withRole('ARTIST', async (request: NextRequest) => {
           'original-filename': encodeURIComponent(filename),
           'uploaded-by': 'xdouglas-admin',
         },
-      }
+      },
+      // Áudio fica no bucket privado (só acessível via URL assinada);
+      // capa fica no bucket público, servida direto.
+      kind === 'audio' ? 'private' : 'public'
     )
 
     return apiSuccess({

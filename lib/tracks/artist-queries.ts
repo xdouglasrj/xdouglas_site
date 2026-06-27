@@ -119,7 +119,7 @@ export async function submitTrack(input: SubmitTrackInput, userId: string) {
 // ============================================================
 
 export async function listPublishedTracksByArtist(artistId: string) {
-  return prisma.track.findMany({
+  const tracks = await prisma.track.findMany({
     where: { artistId, published: true },
     orderBy: { publishedAt: 'desc' },
     select: {
@@ -128,9 +128,16 @@ export async function listPublishedTracksByArtist(artistId: string) {
       title: true,
       genre: true,
       coverUrl: true,
+      producerName: true,
       publishedAt: true,
+      _count: { select: { likes: true } },
     },
   })
+
+  return tracks.map(({ _count, ...track }) => ({
+    ...track,
+    likeCount: _count.likes,
+  }))
 }
 
 export async function listMySubmissions(userId: string) {

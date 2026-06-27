@@ -6,6 +6,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import type {
   StorageService,
+  StorageBucket,
   UploadOptions,
   SignedUploadUrl,
   SignedDownloadUrl,
@@ -31,26 +32,34 @@ function getR2Client(): S3Client {
 
 export class R2StorageProvider implements StorageService {
   private client: S3Client
-  private bucket: string
+  private bucketPublic: string
+  private bucketPrivate: string
   private publicUrl: string
 
   constructor() {
     this.client = getR2Client()
-    this.bucket = process.env.R2_BUCKET_NAME ?? ''
+    this.bucketPublic = process.env.R2_BUCKET_NAME_PUBLIC ?? ''
+    this.bucketPrivate = process.env.R2_BUCKET_NAME_PRIVATE ?? ''
     this.publicUrl = process.env.R2_PUBLIC_URL ?? ''
 
-    if (!this.bucket) throw new Error('R2_BUCKET_NAME não definido')
+    if (!this.bucketPublic) throw new Error('R2_BUCKET_NAME_PUBLIC não definido')
+    if (!this.bucketPrivate) throw new Error('R2_BUCKET_NAME_PRIVATE não definido')
     if (!this.publicUrl) throw new Error('R2_PUBLIC_URL não definido')
+  }
+
+  private resolveBucket(bucket: StorageBucket): string {
+    return bucket === 'private' ? this.bucketPrivate : this.bucketPublic
   }
 
   async getSignedUploadUrl(
     key: string,
-    options: UploadOptions
+    options: UploadOptions,
+    bucket: StorageBucket = 'public'
   ): Promise<SignedUploadUrl> {
     const TTL_SECONDS = 300 // 5 minutos para o upload completar
 
     const command = new PutObjectCommand({
-      Bucket: this.bucket,
+      Bucket: this.resolveBucket(bucket),
       Key: key,
       ContentType: options.contentType,
       ...(options.metadata && { Metadata: options.metadata }),
@@ -69,13 +78,14 @@ export class R2StorageProvider implements StorageService {
 
   async getSignedDownloadUrl(
     key: string,
-    ttlSeconds = 900 // 15 minutos padrão
+    ttlSeconds = 900, // 15 minutos padrão
+    bucket: StorageBucket = 'public'
   ): Promise<SignedDownloadUrl> {
     // R2 usa GetObjectCommand para download pré-assinado
     const { GetObjectCommand } = await import('@aws-sdk/client-s3')
 
     const command = new GetObjectCommand({
-      Bucket: this.bucket,
+      Bucket: this.resolveBucket(bucket),
       Key: key,
     })
 
@@ -89,9 +99,9 @@ export class R2StorageProvider implements StorageService {
     }
   }
 
-  async delete(key: string): Promise<void> {
+  async delete(key: string, bucket: StorageBucket = 'public'): Promise<void> {
     await this.client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: key })
+      new DeleteObjectCommand({ Bucket: this.resolveBucket(bucket), Key: key })
     )
   }
 

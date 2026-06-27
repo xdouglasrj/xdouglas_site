@@ -167,7 +167,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
             </dl>
           </section>
 
-          <ProfileTracks tracks={tracks} />
+          <ProfileTracks tracks={tracks} artistName={profile.artist?.name ?? ''} />
         </div>
       </main>
     </div>

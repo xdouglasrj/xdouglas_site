@@ -31,7 +31,15 @@ const nextConfig: NextConfig = {
   },
 
   // Variáveis que o Edge Middleware pode acessar (sem expor ao client)
-  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'sharp'],
+  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'sharp', 'ffmpeg-static'],
+
+  // O binário do ffmpeg-static não é "importado" via require/import normal
+  // (é referenciado por caminho de arquivo), então o file tracing do Next
+  // não inclui ele sozinho na função serverless — força a inclusão aqui.
+  // Só a rota de download carrega esse peso extra, não o resto do site.
+  outputFileTracingIncludes: {
+    '/api/download': ['./node_modules/ffmpeg-static/**'],
+  },
 
   // Catálogo foi renomeado para "Músicas recentes" — preserva links antigos
   async redirects() {

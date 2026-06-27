@@ -373,6 +373,14 @@ model Track {
   coverKey      String? @map("cover_key")      // chave R2 da capa
   coverUrl      String? @map("cover_url")      // URL pública CDN
 
+  // Cache da versão "música + vinheta" servida no download (gerada sob
+  // demanda no primeiro download após publicar ou após trocar a vinheta
+  // de download — fica salva pra não reprocessar em todo clique).
+  // downloadAudioVinhetaKey guarda qual vinheta foi usada nessa versão,
+  // pra saber quando precisa regenerar.
+  downloadAudioKey       String? @map("download_audio_key")
+  downloadAudioVinhetaKey String? @map("download_audio_vinheta_key")
+
   // Controle
   published     Boolean  @default(false)
   publishedAt   DateTime? @map("published_at")
@@ -648,6 +656,16 @@ model AppSettings {
   // Janela de exibição pública de músicas e comentários (em horas) — depois
   // desse prazo, somem do catálogo/feed mas continuam no banco (soft-hide).
   contentExpirationHours Int   @default(24) @map("content_expiration_hours")
+
+  // Vinheta tocada dinamicamente pelo player ao fim de cada faixa (opção 2
+  // do plano: arquivo separado, nunca concatenado no áudio original). Nulo
+  // = nenhuma vinheta configurada, player só toca a faixa normalmente.
+  vinhetaKey          String?  @map("vinheta_key")
+
+  // Vinheta colada fisicamente (ffmpeg) no final do arquivo entregue no
+  // download — separada da vinheta do player porque, depois de baixado,
+  // não existe mais player controlando nada. Nulo = download sai sem vinheta.
+  vinhetaDownloadKey  String?  @map("vinheta_download_key")
 
   updatedAt           DateTime @updatedAt @map("updated_at")
 

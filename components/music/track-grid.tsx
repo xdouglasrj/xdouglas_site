@@ -125,7 +125,7 @@ export function TrackGrid({
         />
       ) : (
         <>
-          <div className="max-w-3xl mx-auto w-full divide-y divide-gate-azure/30 rounded-xl border border-gate-azure overflow-hidden">
+          <div className="max-w-3xl mx-auto w-full flex flex-col gap-3">
             {tracks.map((track) => (
               <TrackCard key={track.id} track={track} canDownload={canDownload} />
             ))}

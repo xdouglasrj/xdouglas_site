@@ -84,7 +84,7 @@ export const DELETE = withRole('ADMIN', async (_req: NextRequest, auth, params) 
     // Remove arquivos do R2 em background — não bloqueia a resposta
     const storage = getStorage()
     Promise.all([
-      storage.delete(audioKey).catch((e) =>
+      storage.delete(audioKey, 'private').catch((e) =>
         console.error('[R2 delete audio]', e)
       ),
       coverKey

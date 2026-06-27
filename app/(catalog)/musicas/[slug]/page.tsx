@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getTrackBySlug } from '@/lib/tracks/queries'
 import { TrackDownloadButton } from './track-download-button'
-import { ListenButton } from '@/components/music/listen-button'
+import { WaveformPlayer } from '@/components/music/waveform-player'
 import { TrackLikeButton } from '@/components/music/track-like-button'
 import { getCurrentRole } from '@/lib/auth/role'
 
@@ -141,11 +141,13 @@ export default async function TrackDetailPage({
             </p>
           )}
 
-          {/* Botões de ouvir / download */}
-          <div className="mt-auto flex flex-wrap items-center gap-3 pt-2">
-            <ListenButton trackId={track.id} title={track.title} />
-            {canDownload && <TrackDownloadButton track={track} />}
-            <TrackLikeButton trackId={track.id} initialCount={track.likeCount} />
+          {/* Player + ações */}
+          <div className="mt-auto flex flex-col gap-3 pt-2">
+            <WaveformPlayer trackId={track.id} title={track.title} showCover={false} />
+            <div className="flex flex-wrap items-center gap-3">
+              {canDownload && <TrackDownloadButton track={track} />}
+              <TrackLikeButton trackId={track.id} initialCount={track.likeCount} />
+            </div>
           </div>
         </div>
       </div>

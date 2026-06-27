@@ -15,6 +15,13 @@ export interface SignedDownloadUrl {
   expiresAt: Date
 }
 
+/**
+ * 'public'  — bucket com acesso público (capas, avatars, anexos de suporte)
+ * 'private' — bucket sem acesso público (áudio de música e vinheta) — só
+ *              acessível via URL assinada com TTL curto
+ */
+export type StorageBucket = 'public' | 'private'
+
 export interface StorageService {
   /**
    * Gera URL pré-assinada para upload direto (browser → storage)
@@ -22,7 +29,8 @@ export interface StorageService {
    */
   getSignedUploadUrl(
     key: string,
-    options: UploadOptions
+    options: UploadOptions,
+    bucket?: StorageBucket
   ): Promise<SignedUploadUrl>
 
   /**
@@ -30,16 +38,17 @@ export interface StorageService {
    */
   getSignedDownloadUrl(
     key: string,
-    ttlSeconds?: number
+    ttlSeconds?: number,
+    bucket?: StorageBucket
   ): Promise<SignedDownloadUrl>
 
   /**
    * Deleta um objeto do storage
    */
-  delete(key: string): Promise<void>
+  delete(key: string, bucket?: StorageBucket): Promise<void>
 
   /**
-   * Retorna URL pública (apenas para objetos em bucket público, ex: capas)
+   * Retorna URL pública — só existe pro bucket público (capas/avatars)
    */
   getPublicUrl(key: string): string
 }

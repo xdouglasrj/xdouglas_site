@@ -6,6 +6,8 @@ import { trackEvent } from '@/lib/analytics/events'
 import { buildEventContext } from '@/lib/analytics/context'
 import { getActiveHashKey, hashIp } from '@/lib/analytics/hash'
 import { extractIp } from '@/lib/analytics/geo'
+import { getVinhetaDownloadKey } from '@/lib/settings/vinheta'
+import { bakeVinhetaIntoTrack } from '@/lib/audio/concat-vinheta'
 import type { NextRequest } from 'next/server'
 
 // ============================================================
@@ -100,6 +102,8 @@ export async function processDownload(
       published: true,
       audioKey: true,      // NUNCA vai para o frontend
       audioFormat: true,
+      downloadAudioKey: true,
+      downloadAudioVinhetaKey: true,
     },
   })
 
@@ -117,6 +121,10 @@ export async function processDownload(
     }
   }
 
+  // ── 5b. Resolve a chave do áudio a servir — com vinheta colada,
+  // se houver uma configurada (gerada sob demanda, com cache) ──
+  const audioKeyToServe = await resolveDownloadAudioKey(track)
+
   // ── 6. Gera URL assinada no R2 ───────────────────────────
   let downloadUrl: string
   let signedUrlExpiry: Date
@@ -124,8 +132,9 @@ export async function processDownload(
 
   try {
     const signed = await storage.getSignedDownloadUrl(
-      track.audioKey,
-      DOWNLOAD_URL_TTL_SECONDS
+      audioKeyToServe,
+      DOWNLOAD_URL_TTL_SECONDS,
+      'private'
     )
     downloadUrl = signed.downloadUrl
     signedUrlExpiry = signed.expiresAt
@@ -273,7 +282,7 @@ export async function processStream(
 
   try {
     const storage = getStorage()
-    const signed = await storage.getSignedDownloadUrl(track.audioKey, STREAM_URL_TTL_SECONDS)
+    const signed = await storage.getSignedDownloadUrl(track.audioKey, STREAM_URL_TTL_SECONDS, 'private')
 
     return {
       ok: true,
@@ -285,5 +294,55 @@ export async function processStream(
       ok: false,
       error: { code: 'STORAGE_ERROR', message: 'Erro ao preparar a faixa. Tente novamente.' },
     }
+  }
+}
+
+// ============================================================
+// Resolve qual chave de áudio servir no download — original ou
+// com vinheta colada. Gera (e cacheia em `downloadAudioKey`) a
+// versão com vinheta sob demanda; se a vinheta configurada mudou
+// desde a última vez, regenera. Qualquer falha no processamento
+// cai de volta pro áudio original — nunca bloqueia o download.
+// ============================================================
+
+async function resolveDownloadAudioKey(track: {
+  id: string
+  audioKey: string
+  downloadAudioKey: string | null
+  downloadAudioVinhetaKey: string | null
+}): Promise<string> {
+  const vinhetaDownloadKey = await getVinhetaDownloadKey()
+
+  // Sem vinheta de download configurada — sempre o original
+  if (!vinhetaDownloadKey) return track.audioKey
+
+  // Já tem versão cacheada com a vinheta atual
+  if (track.downloadAudioKey && track.downloadAudioVinhetaKey === vinhetaDownloadKey) {
+    return track.downloadAudioKey
+  }
+
+  try {
+    const bakedKey = await bakeVinhetaIntoTrack({
+      trackId: track.id,
+      audioKey: track.audioKey,
+      vinhetaKey: vinhetaDownloadKey,
+    })
+
+    // Remove a versão cacheada anterior (de uma vinheta antiga), se existir
+    const previousKey = track.downloadAudioKey
+    await prisma.track.update({
+      where: { id: track.id },
+      data: { downloadAudioKey: bakedKey, downloadAudioVinhetaKey: vinhetaDownloadKey },
+    })
+    if (previousKey && previousKey !== bakedKey) {
+      getStorage().delete(previousKey, 'private').catch((e) =>
+        console.error('[Download] Falha ao limpar versão antiga com vinheta:', e)
+      )
+    }
+
+    return bakedKey
+  } catch (err) {
+    console.error('[Download] Falha ao colar vinheta no arquivo, servindo original:', err)
+    return track.audioKey
   }
 }

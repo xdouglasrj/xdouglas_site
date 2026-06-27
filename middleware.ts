@@ -17,7 +17,7 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 // páginas) sem nunca ter feito login.
 const MEMBER_PREFIXES = [
   '/inicio', '/musicas', '/upload', '/perfil', '/forum', '/busca',
-  '/api/musicas', '/api/download', '/api/stream', '/api/perfil',
+  '/api/musicas', '/api/download', '/api/stream', '/api/vinheta', '/api/perfil',
   '/api/social', '/api/forum', '/api/reports', '/api/usuarios',
 ]
 
@@ -100,6 +100,7 @@ export const config = {
     '/api/musicas/:path*',
     '/api/download/:path*',
     '/api/stream/:path*',
+    '/api/vinheta/:path*',
     '/api/perfil/:path*',
     '/api/social/:path*',
     '/api/forum/:path*',
