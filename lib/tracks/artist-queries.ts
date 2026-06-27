@@ -68,9 +68,9 @@ export async function getOrCreateArtistProfile(userId: string) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, username: true },
+    select: { name: true, username: true, artisticName: true },
   })
-  const name = user?.name?.trim() || user?.username?.trim() || 'Artista'
+  const name = user?.artisticName?.trim() || user?.name?.trim() || user?.username?.trim() || 'Artista'
   const slug = await generateUniqueArtistSlug(name)
 
   return prisma.artist.create({

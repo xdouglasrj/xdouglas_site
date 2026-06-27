@@ -167,6 +167,7 @@ model User {
   likes         Like[]
   trackLikes    TrackLike[]
   comments      Comment[]
+  trackComments TrackComment[]
   forumThreads  ForumThread[]
   forumReplies  ForumReply[]
   reportsMade   Report[]      @relation("ReportsMade")
@@ -390,6 +391,7 @@ model Track {
 
   downloads Download[]
   likes     TrackLike[]
+  comments  TrackComment[]
 
   @@index([slug])
   @@index([artistId])
@@ -397,6 +399,22 @@ model Track {
   @@index([genre])
   @@index([submittedById])
   @@map("tracks")
+}
+
+model TrackComment {
+  id        String    @id @default(uuid())
+  trackId   String    @map("track_id")
+  track     Track     @relation(fields: [trackId], references: [id])
+  authorId  String    @map("author_id")
+  author    User      @relation(fields: [authorId], references: [id])
+  content   String
+  // Preenchido quando o autor edita o comentário — usado para mostrar
+  // "Comentário editado" com a data/hora abaixo do texto
+  editedAt  DateTime? @map("edited_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([trackId])
+  @@map("track_comments")
 }
 
 model TrackLike {

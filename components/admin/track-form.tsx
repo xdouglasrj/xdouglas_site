@@ -135,9 +135,9 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
             className="h-10 w-full rounded-md px-3 text-sm bg-neutral-900 text-white border border-neutral-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
             required
           >
-            <option value="">Selecionar artista…</option>
+            <option value="" className="text-black">Selecionar artista…</option>
             {artists.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+              <option key={a.id} value={a.id} className="text-black">{a.name}</option>
             ))}
           </select>
         </div>
@@ -169,9 +169,9 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
               onChange={(e) => set('genre', e.target.value)}
               className="h-10 w-full rounded-md px-3 text-sm bg-neutral-900 text-white border border-neutral-700 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
             >
-              <option value="">Selecione…</option>
+              <option value="" className="text-black">Selecione…</option>
               {TRACK_GENRES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g} className="text-black">{g}</option>
               ))}
             </select>
           </div>

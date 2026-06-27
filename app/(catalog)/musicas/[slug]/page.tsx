@@ -6,6 +6,7 @@ import { getTrackBySlug } from '@/lib/tracks/queries'
 import { TrackDownloadButton } from './track-download-button'
 import { WaveformPlayer } from '@/components/music/waveform-player'
 import { TrackLikeButton } from '@/components/music/track-like-button'
+import { TrackComments } from '@/components/music/track-comments'
 import { getCurrentRole } from '@/lib/auth/role'
 
 export const revalidate = 120
@@ -178,6 +179,8 @@ export default async function TrackDetailPage({
           </div>
         </section>
       )}
+
+      <TrackComments trackId={track.id} />
     </div>
   )
 }

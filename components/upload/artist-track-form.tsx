@@ -137,9 +137,9 @@ export function ArtistTrackForm() {
           <div>
             <label className={labelClass}>Gênero</label>
             <select value={values.genre} onChange={(e) => set('genre', e.target.value)} className={inputClass}>
-              <option value="">Selecione…</option>
+              <option value="" className="text-black">Selecione…</option>
               {TRACK_GENRES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g} className="text-black">{g}</option>
               ))}
             </select>
           </div>
