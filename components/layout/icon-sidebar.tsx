@@ -118,6 +118,7 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
             <nav className="flex flex-col gap-1">
               <MobileLink href="/inicio" onClick={() => setMobileOpen(false)} label="Início" />
               <MobileLink href="/musicas-recentes" onClick={() => setMobileOpen(false)} label="Músicas recentes" />
+              <MobileLink href="/comentarios" onClick={() => setMobileOpen(false)} label="Comentários" />
               <MobileLink href="/forum" onClick={() => setMobileOpen(false)} label="Fórum" />
               <MobileLink href="/suporte" onClick={() => setMobileOpen(false)} label="Suporte" />
 
@@ -243,6 +244,18 @@ export function IconSidebar({ isAdmin = false, isArtist = false, photoUrl = null
               </svg>
             </Link>
           )}
+
+          <Link
+            href="/comentarios"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+            aria-label="Comentários"
+            title="Comentários"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" />
+              <path strokeLinecap="round" d="M7.5 9h9M7.5 12.5h6" />
+            </svg>
+          </Link>
 
           <Link
             href="/forum"

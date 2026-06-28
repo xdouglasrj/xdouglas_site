@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ReportButton } from './report-button'
+import { CommentRateLimitModal } from './comment-rate-limit-modal'
+
+const COMMENT_MAX_LENGTH = 500
 
 export interface FeedPostView {
   id: string
@@ -52,10 +55,12 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [comments, setComments] = useState<CommentView[] | null>(null)
+  const [commentTotal, setCommentTotal] = useState(0)
   const [commentCount, setCommentCount] = useState(post.commentCount)
   const [newComment, setNewComment] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
   const [sendingComment, setSendingComment] = useState(false)
+  const [rateLimitRetryAt, setRateLimitRetryAt] = useState<string | null>(null)
 
   const canDelete = isAdmin || (currentUserId !== null && currentUserId === post.author.id)
 
@@ -95,6 +100,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
         const res = await fetch(`/api/social/posts/${post.id}/comments`)
         const data = await res.json()
         setComments(data.comments ?? [])
+        setCommentTotal(data.total ?? 0)
       } finally {
         setLoadingComments(false)
       }
@@ -111,11 +117,14 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: newComment.trim() }),
       })
+      const data = await res.json()
       if (res.ok) {
-        const data = await res.json()
-        setComments((prev) => [...(prev ?? []), data.comment])
+        setComments((prev) => [...(prev ?? []), data.comment].slice(-10))
+        setCommentTotal((t) => t + 1)
         setCommentCount((c) => c + 1)
         setNewComment('')
+      } else if (res.status === 429 && data.retryAt) {
+        setRateLimitRetryAt(data.retryAt)
       }
     } finally {
       setSendingComment(false)
@@ -211,23 +220,39 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
             <p className="text-xs text-white/30">Nenhum comentário ainda.</p>
           )}
 
-          <form onSubmit={submitComment} className="flex gap-2">
-            <input
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              maxLength={1000}
-              placeholder="Escreva um comentário…"
-              className="flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:border-gate-pink"
-            />
-            <button
-              type="submit"
-              disabled={sendingComment || !newComment.trim()}
-              className="rounded-md bg-gate-pink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+          {commentTotal > 10 && (
+            <Link
+              href={`/comentarios/${post.id}`}
+              className="self-start text-xs font-medium text-gate-pink hover:underline"
             >
-              Enviar
-            </button>
+              Ver todos os {commentTotal} comentários
+            </Link>
+          )}
+
+          <form onSubmit={submitComment} className="flex flex-col gap-1">
+            <div className="flex gap-2">
+              <input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                maxLength={COMMENT_MAX_LENGTH}
+                placeholder="Escreva um comentário…"
+                className="flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:border-gate-pink"
+              />
+              <button
+                type="submit"
+                disabled={sendingComment || !newComment.trim()}
+                className="rounded-md bg-gate-pink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+              >
+                Enviar
+              </button>
+            </div>
+            <span className="self-end text-[11px] text-white/30">{newComment.length}/{COMMENT_MAX_LENGTH}</span>
           </form>
         </div>
+      )}
+
+      {rateLimitRetryAt && (
+        <CommentRateLimitModal retryAt={rateLimitRetryAt} onClose={() => setRateLimitRetryAt(null)} />
       )}
     </article>
   )

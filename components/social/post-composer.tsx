@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+const MAX_LENGTH = 500
+
 interface PostComposerProps {
   onPosted: () => void
 }
@@ -41,12 +43,15 @@ export function PostComposer({ onPosted }: PostComposerProps) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={3}
-        maxLength={2000}
+        maxLength={MAX_LENGTH}
         placeholder="Compartilhe algo com a comunidade…"
         className="w-full resize-none rounded-md border border-gate-azure bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
       />
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-1.5 flex items-center justify-between">
         {error ? <span className="text-xs text-red-400">{error}</span> : <span />}
+        <span className="text-[11px] text-white/30">{content.length}/{MAX_LENGTH}</span>
+      </div>
+      <div className="mt-2 flex items-center justify-end">
         <button
           type="submit"
           disabled={busy || !content.trim()}

@@ -18,7 +18,7 @@ export const GET = withAuth(async (request: NextRequest, auth) => {
 // ============================================================
 
 const bodySchema = z.object({
-  content: z.string().trim().min(1, 'Escreva algo para publicar').max(2000),
+  content: z.string().trim().min(1, 'Escreva algo para publicar').max(500),
 })
 
 export const POST = withAuth(async (request: NextRequest, auth) => {
