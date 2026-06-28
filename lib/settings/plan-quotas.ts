@@ -7,6 +7,6 @@ export const PLAN_QUOTA_MB: Record<UserPlan, number> = {
   PAID: 1024,
 }
 
-export function getPlanQuotaBytes(plan: UserPlan): number {
-  return PLAN_QUOTA_MB[plan] * 1024 * 1024
+export function getPlanQuotaBytes(plan: UserPlan, bonusStorageMb = 0): number {
+  return (PLAN_QUOTA_MB[plan] + bonusStorageMb) * 1024 * 1024
 }

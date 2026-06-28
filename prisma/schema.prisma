@@ -115,6 +115,12 @@ enum StorePurchaseStatus {
   REFUNDED
 }
 
+enum PaymentOrderStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -262,6 +268,7 @@ model User {
 
   pointsHistory           PointsHistory[]
   storePurchases          StorePurchase[]
+  paymentOrders           PaymentOrder[]
   referredWaitlistEntries Waitlist[]      @relation("WaitlistReferrals")
 
   adminSessions   AdminSession[]
@@ -909,6 +916,31 @@ model StorePurchase {
   @@index([storeItemId, purchasedAt])
   @@index([status])
   @@map("store_purchases")
+}
+
+// Pedido de cobrança em dinheiro real via InfinitePay (PIX/cartão) —
+// separado do StorePurchase (que é pago em pontos). orderNsu é o
+// identificador que vai e volta da InfinitePay (link, webhook, redirect).
+model PaymentOrder {
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  user            User               @relation(fields: [userId], references: [id])
+  orderNsu        String             @unique @map("order_nsu")
+  product         String // ex: "EXTRA_STORAGE_1GB" — chave do que será liberado ao confirmar
+  amountCents     Int                @map("amount_cents")
+  status          PaymentOrderStatus @default(PENDING)
+  checkoutUrl     String?            @map("checkout_url")
+  transactionNsu  String?            @map("transaction_nsu")
+  invoiceSlug     String?            @map("invoice_slug")
+  captureMethod   String?            @map("capture_method") // "pix" | "credit_card"
+  paidAmountCents Int?               @map("paid_amount_cents")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("payment_orders")
 }
 
 // Marco histórico: usuário cruzou o preço do item mais caro de uma loje

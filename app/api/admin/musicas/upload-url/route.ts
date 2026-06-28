@@ -92,10 +92,10 @@ export const POST = withRole('ARTIST', async (request: NextRequest, auth) => {
     if (auth.role !== 'ADMIN') {
       const user = await prisma.user.findUnique({
         where: { id: auth.userId },
-        select: { plan: true },
+        select: { plan: true, bonusStorageMb: true },
       })
       const plan = user?.plan ?? 'FREE'
-      const quotaBytes = getPlanQuotaBytes(plan)
+      const quotaBytes = getPlanQuotaBytes(plan, user?.bonusStorageMb ?? 0)
       const usedBytes = await getUserStorageUsedBytes(auth.userId)
 
       if (usedBytes + sizeBytes > quotaBytes) {

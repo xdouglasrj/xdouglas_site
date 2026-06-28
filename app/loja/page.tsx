@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
@@ -8,6 +9,7 @@ import { getCatalogForUser } from '@/lib/store/purchase-service'
 import { getLevelName } from '@/lib/points/levels'
 import { StoreCatalog } from './store-catalog'
 import { StorageSubscriptionCard } from './storage-subscription-card'
+import { PaymentReturnBanner } from './payment-return-banner'
 import { Ranking } from './ranking'
 
 export const metadata: Metadata = { title: 'Loja de pontos' }
@@ -61,6 +63,10 @@ export default async function LojaPage() {
               <p className="text-lg font-bold text-gate-pink">{spendableBalance.toLocaleString('pt-BR')} pts</p>
             </div>
           </div>
+
+          <Suspense fallback={null}>
+            <PaymentReturnBanner />
+          </Suspense>
 
           <StoreCatalog items={items} myPurchases={myPurchases} spendableBalance={spendableBalance} />
 
