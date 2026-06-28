@@ -25,6 +25,21 @@ export function useAnalytics() {
       track('page_view')
     },
 
+    /** Dispara quando o usuário inicia a reprodução de uma faixa */
+    trackPlayStart(trackId: string) {
+      track('play_start', trackId)
+    },
+
+    /** Dispara quando a reprodução atinge 30 segundos ouvidos */
+    trackPlay30s(trackId: string, durationSec?: number) {
+      track('play_30s', trackId, { durationSec })
+    },
+
+    /** Dispara quando a faixa é ouvida até o fim */
+    trackPlayComplete(trackId: string, durationSec?: number) {
+      track('play_complete', trackId, { durationSec })
+    },
+
     /** Se o usuário deu consentimento */
     hasConsent,
 

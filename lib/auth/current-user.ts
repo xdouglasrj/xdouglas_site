@@ -7,6 +7,7 @@ export interface CurrentUserBasics {
   role: string
   photoUrl: string | null
   handle: string | null
+  mappingEnabled: boolean
 }
 
 export async function getCurrentUserBasics(): Promise<CurrentUserBasics | null> {
@@ -16,9 +17,15 @@ export async function getCurrentUserBasics(): Promise<CurrentUserBasics | null> 
     const payload = await verifyAccessToken(token)
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { photoUrl: true, handle: true },
+      select: { photoUrl: true, handle: true, mappingEnabled: true },
     })
-    return { id: payload.userId, role: payload.role, photoUrl: user?.photoUrl ?? null, handle: user?.handle ?? null }
+    return {
+      id: payload.userId,
+      role: payload.role,
+      photoUrl: user?.photoUrl ?? null,
+      handle: user?.handle ?? null,
+      mappingEnabled: user?.mappingEnabled ?? false,
+    }
   } catch {
     return null
   }

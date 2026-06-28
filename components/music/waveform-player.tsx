@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import { useAnalytics } from '@/components/analytics/use-analytics'
 
 // ============================================================
 // Player com waveform — formato "post de áudio" (capa + botão
@@ -35,14 +36,25 @@ export function WaveformPlayer({
   const [playingVinheta, setPlayingVinheta] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const vinhetaTriedRef = useRef(false)
+  const playStartFiredRef = useRef(false)
+  const played30sRef = useRef(false)
+  const completedRef = useRef(false)
   const barsRef = useRef<HTMLDivElement | null>(null)
   const heights = useMemo(() => generateBars(trackId, barCount), [trackId, barCount])
+  const { trackPlayStart, trackPlay30s, trackPlayComplete } = useAnalytics()
 
   useEffect(() => {
     return () => {
       audioRef.current?.pause()
     }
   }, [])
+
+  // Faixa diferente — não deve herdar o progresso de play da anterior.
+  useEffect(() => {
+    playStartFiredRef.current = false
+    played30sRef.current = false
+    completedRef.current = false
+  }, [trackId])
 
   // Ao fim da faixa, tenta encadear a vinheta (arquivo separado, tocado
   // dinamicamente pelo player — nunca concatenado no áudio original).
@@ -92,8 +104,24 @@ export function WaveformPlayer({
 
       const audio = new Audio(data.streamUrl)
       audio.addEventListener('loadedmetadata', () => setDuration(audio.duration))
-      audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime))
+      audio.addEventListener('timeupdate', () => {
+        setCurrentTime(audio.currentTime)
+        if (!played30sRef.current && audio.currentTime >= 30) {
+          played30sRef.current = true
+          trackPlay30s(trackId, audio.duration)
+        }
+      })
+      audio.addEventListener('play', () => {
+        if (!playStartFiredRef.current) {
+          playStartFiredRef.current = true
+          trackPlayStart(trackId)
+        }
+      })
       audio.addEventListener('ended', async () => {
+        if (!completedRef.current) {
+          completedRef.current = true
+          trackPlayComplete(trackId, audio.duration)
+        }
         if (!vinhetaTriedRef.current) {
           vinhetaTriedRef.current = true
           const played = await tryPlayVinheta(audio)

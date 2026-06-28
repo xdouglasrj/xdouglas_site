@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 // ============================================================
 // Queries de analytics — SEMPRE filtram download_suspeito=false
@@ -29,6 +30,47 @@ export interface DeviceBreakdown {
 export interface CountryCount {
   country: string
   count: number
+}
+
+export interface PlayFunnel {
+  playStarts: number
+  play30s: number
+  playComplete: number
+  under30s: number   // playStarts - play30s (ouviu menos de 30s)
+}
+
+export interface PlaysByDay {
+  date: string
+  playStarts: number
+  play30s: number
+  playComplete: number
+}
+
+export interface DeviceOsBreakdown {
+  device: string
+  os: string
+  label: string
+  count: number
+  pct: number
+}
+
+export interface GeoBreakdown {
+  country: string
+  region: string
+  city: string
+  count: number
+}
+
+export interface GeoPoint {
+  latitude: number
+  longitude: number
+  count: number
+}
+
+export interface TrackOverview {
+  downloads: number
+  playFunnel: PlayFunnel
+  topCountry: string | null
 }
 
 export interface DashboardSummary {
@@ -120,9 +162,10 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   }
 }
 
-/** Downloads por dia nos últimos N dias (padrão 30) */
-export async function getDownloadsByDay(days = 30): Promise<DailyCount[]> {
+/** Downloads por dia nos últimos N dias (padrão 30) — global ou por faixa */
+export async function getDownloadsByDay(days = 30, trackId?: string): Promise<DailyCount[]> {
   const since = daysAgo(days)
+  const trackFilter = trackId ? Prisma.sql`AND track_id = ${trackId}` : Prisma.empty
 
   // Prisma não tem groupBy por dia nativamente — usa queryRaw
   const rows = await prisma.$queryRaw<{ date: string; count: bigint }[]>`
@@ -133,6 +176,7 @@ export async function getDownloadsByDay(days = 30): Promise<DailyCount[]> {
     WHERE
       download_suspeito = false
       AND created_at >= ${since}
+      ${trackFilter}
     GROUP BY 1
     ORDER BY 1
   `
@@ -252,4 +296,188 @@ export async function getTopCountries(
     country: r.country,
     count: Number(r.count),
   }))
+}
+
+/** Funil de reprodução (início / 30s / completo) — global ou por faixa */
+export async function getPlayFunnel(days = 30, trackId?: string): Promise<PlayFunnel> {
+  const since = daysAgo(days)
+  const trackFilter = trackId ? Prisma.sql`AND track_id = ${trackId}` : Prisma.empty
+
+  const rows = await prisma.$queryRaw<{ event_type: string; count: bigint }[]>`
+    SELECT event_type, COUNT(*)::bigint AS count
+    FROM analytics_events
+    WHERE event_type IN ('PLAY_START', 'PLAY_30S', 'PLAY_COMPLETE')
+      AND created_at >= ${since}
+      ${trackFilter}
+    GROUP BY 1
+  `
+
+  const map = new Map(rows.map((r) => [r.event_type, Number(r.count)]))
+  const playStarts = map.get('PLAY_START') ?? 0
+  const play30s = map.get('PLAY_30S') ?? 0
+  const playComplete = map.get('PLAY_COMPLETE') ?? 0
+
+  return {
+    playStarts,
+    play30s,
+    playComplete,
+    under30s: Math.max(0, playStarts - play30s),
+  }
+}
+
+/** Série diária do funil de reprodução — global ou por faixa */
+export async function getPlaysByDay(days = 30, trackId?: string): Promise<PlaysByDay[]> {
+  const since = daysAgo(days)
+  const trackFilter = trackId ? Prisma.sql`AND track_id = ${trackId}` : Prisma.empty
+
+  const rows = await prisma.$queryRaw<{ date: string; event_type: string; count: bigint }[]>`
+    SELECT
+      DATE_TRUNC('day', created_at)::date::text AS date,
+      event_type,
+      COUNT(*)::bigint AS count
+    FROM analytics_events
+    WHERE event_type IN ('PLAY_START', 'PLAY_30S', 'PLAY_COMPLETE')
+      AND created_at >= ${since}
+      ${trackFilter}
+    GROUP BY 1, 2
+    ORDER BY 1
+  `
+
+  const byDate = new Map<string, PlaysByDay>()
+  for (const r of rows) {
+    const entry =
+      byDate.get(r.date) ?? { date: r.date, playStarts: 0, play30s: 0, playComplete: 0 }
+    if (r.event_type === 'PLAY_START') entry.playStarts = Number(r.count)
+    if (r.event_type === 'PLAY_30S') entry.play30s = Number(r.count)
+    if (r.event_type === 'PLAY_COMPLETE') entry.playComplete = Number(r.count)
+    byDate.set(r.date, entry)
+  }
+
+  const result: PlaysByDay[] = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = toDateStr(d)
+    result.push(byDate.get(key) ?? { date: key, playStarts: 0, play30s: 0, playComplete: 0 })
+  }
+  return result
+}
+
+/** Breakdown combinado device+OS (ex: mobile/iOS, desktop/Windows) — global ou por faixa */
+export async function getDeviceOsBreakdown(
+  days = 30,
+  trackId?: string
+): Promise<DeviceOsBreakdown[]> {
+  const since = daysAgo(days)
+  const trackFilter = trackId ? Prisma.sql`AND track_id = ${trackId}` : Prisma.empty
+
+  const rows = await prisma.$queryRaw<{ device: string; os: string; count: bigint }[]>`
+    SELECT
+      COALESCE(device, 'unknown') AS device,
+      COALESCE(os, 'outro') AS os,
+      COUNT(*)::bigint AS count
+    FROM analytics_events
+    WHERE event_type IN ('PAGE_VIEW', 'MUSIC_VIEW', 'PLAY_START')
+      AND created_at >= ${since}
+      ${trackFilter}
+    GROUP BY 1, 2
+    ORDER BY count DESC
+  `
+
+  const total = rows.reduce((sum, r) => sum + Number(r.count), 0)
+
+  return rows.map((r) => ({
+    device: r.device,
+    os: r.os,
+    label: `${r.device} / ${r.os}`,
+    count: Number(r.count),
+    pct: total > 0 ? Math.round((Number(r.count) / total) * 100) : 0,
+  }))
+}
+
+/** Ranking geográfico (país/região/cidade) de uma faixa — combina downloads + plays */
+export async function getGeoBreakdownByTrack(
+  trackId: string,
+  days = 30
+): Promise<GeoBreakdown[]> {
+  const since = daysAgo(days)
+
+  const rows = await prisma.$queryRaw<
+    { country: string; region: string; city: string; count: bigint }[]
+  >`
+    SELECT
+      COALESCE(country, 'Desconhecido') AS country,
+      COALESCE(region, 'Desconhecida') AS region,
+      COALESCE(city, 'Desconhecida') AS city,
+      COUNT(*)::bigint AS count
+    FROM downloads
+    WHERE track_id = ${trackId} AND download_suspeito = false AND created_at >= ${since}
+    GROUP BY 1, 2, 3
+    UNION ALL
+    SELECT
+      COALESCE(country, 'Desconhecido') AS country,
+      COALESCE(region, 'Desconhecida') AS region,
+      COALESCE(city, 'Desconhecida') AS city,
+      COUNT(*)::bigint AS count
+    FROM analytics_events
+    WHERE track_id = ${trackId} AND event_type = 'PLAY_START' AND created_at >= ${since}
+    GROUP BY 1, 2, 3
+  `
+
+  const map = new Map<string, GeoBreakdown>()
+  for (const r of rows) {
+    const key = `${r.country}|${r.region}|${r.city}`
+    const existing = map.get(key)
+    if (existing) existing.count += Number(r.count)
+    else map.set(key, { country: r.country, region: r.region, city: r.city, count: Number(r.count) })
+  }
+
+  return [...map.values()].sort((a, b) => b.count - a.count)
+}
+
+/** Pontos lat/long agregados de uma faixa (downloads + plays), para o mapa de pontos */
+export async function getGeoPoints(trackId: string, days = 30): Promise<GeoPoint[]> {
+  const since = daysAgo(days)
+
+  const rows = await prisma.$queryRaw<{ latitude: number; longitude: number; count: bigint }[]>`
+    SELECT latitude, longitude, SUM(count)::bigint AS count FROM (
+      SELECT latitude, longitude, COUNT(*)::bigint AS count
+      FROM downloads
+      WHERE track_id = ${trackId} AND download_suspeito = false AND created_at >= ${since}
+        AND latitude IS NOT NULL AND longitude IS NOT NULL
+      GROUP BY 1, 2
+      UNION ALL
+      SELECT latitude, longitude, COUNT(*)::bigint AS count
+      FROM analytics_events
+      WHERE track_id = ${trackId} AND created_at >= ${since}
+        AND latitude IS NOT NULL AND longitude IS NOT NULL
+      GROUP BY 1, 2
+    ) combined
+    GROUP BY 1, 2
+  `
+
+  return rows.map((r) => ({
+    latitude: Number(r.latitude),
+    longitude: Number(r.longitude),
+    count: Number(r.count),
+  }))
+}
+
+/** Resumo de uma faixa específica para o dashboard do artista */
+export async function getTrackOverview(trackId: string, days = 30): Promise<TrackOverview> {
+  const since = daysAgo(days)
+
+  const [downloads, playFunnel, geo] = await Promise.all([
+    prisma.download.count({
+      where: { trackId, downloadSuspeito: false, createdAt: { gte: since } },
+    }),
+    getPlayFunnel(days, trackId),
+    getGeoBreakdownByTrack(trackId, days),
+  ])
+
+  return {
+    downloads,
+    playFunnel,
+    topCountry: geo[0]?.country ?? null,
+  }
 }

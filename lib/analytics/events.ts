@@ -56,6 +56,8 @@ export async function trackEvent(
         country: context.country,
         region: context.region,
         city: context.city,
+        latitude: context.latitude,
+        longitude: context.longitude,
         device: context.device,
         browser: context.browser,
         os: context.os,
@@ -90,4 +92,16 @@ export function trackDownloadStart(trackId: string, context: EventContext) {
 
 export function trackDownloadComplete(trackId: string, context: EventContext) {
   return trackEvent('DOWNLOAD_COMPLETE', { ...context, trackId })
+}
+
+export function trackPlayStart(trackId: string, context: EventContext) {
+  return trackEvent('PLAY_START', { ...context, trackId })
+}
+
+export function trackPlay30s(trackId: string, context: EventContext) {
+  return trackEvent('PLAY_30S', { ...context, trackId })
+}
+
+export function trackPlayComplete(trackId: string, context: EventContext) {
+  return trackEvent('PLAY_COMPLETE', { ...context, trackId })
 }

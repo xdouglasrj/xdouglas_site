@@ -161,12 +161,20 @@ export default async function AdminMusicasPage() {
 
                   {/* Ações */}
                   <td className="px-4 py-3">
-                    <TrackActions
-                      trackId={track.id}
-                      slug={track.slug}
-                      published={track.published}
-                      pinned={track.pinned}
-                    />
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/admin/musicas/${track.id}/analytics`}
+                        className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors whitespace-nowrap"
+                      >
+                        Estatísticas
+                      </Link>
+                      <TrackActions
+                        trackId={track.id}
+                        slug={track.slug}
+                        published={track.published}
+                        pinned={track.pinned}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

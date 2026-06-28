@@ -14,12 +14,23 @@ import { usePathname } from 'next/navigation'
 // Contexto
 // ============================================================
 
+type AnalyticsEventType =
+  | 'page_view'
+  | 'music_view'
+  | 'play_start'
+  | 'play_30s'
+  | 'play_complete'
+
 interface AnalyticsContextValue {
   sessionId: string | null
   hasConsent: boolean
   giveConsent: () => void
   revokeConsent: () => void
-  track: (type: 'page_view' | 'music_view', trackId?: string) => void
+  track: (
+    type: AnalyticsEventType,
+    trackId?: string,
+    metadata?: { durationSec?: number }
+  ) => void
 }
 
 const AnalyticsContext = createContext<AnalyticsContextValue | null>(null)
@@ -106,9 +117,13 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   // ── Função de track ──────────────────────────────────────
 
-  function track(type: 'page_view' | 'music_view', trackId?: string) {
+  function track(
+    type: AnalyticsEventType,
+    trackId?: string,
+    metadata?: { durationSec?: number }
+  ) {
     if (!sessionId || !hasConsent) return
-    sendEvent(type, sessionId, { path: pathname, trackId })
+    sendEvent(type, sessionId, { path: pathname, trackId, metadata })
   }
 
   return (
@@ -137,9 +152,9 @@ export function useAnalyticsContext(): AnalyticsContextValue {
 // ============================================================
 
 function sendEvent(
-  type: 'page_view' | 'music_view',
+  type: AnalyticsEventType,
   sessionId: string,
-  extra: { path: string; trackId?: string }
+  extra: { path: string; trackId?: string; metadata?: { durationSec?: number } }
 ) {
   const payload = {
     type,
@@ -147,6 +162,7 @@ function sendEvent(
     path: extra.path,
     trackId: extra.trackId,
     referrer: document.referrer || undefined,
+    metadata: extra.metadata,
   }
 
   // Usa sendBeacon quando disponível (não bloqueia unload da página)

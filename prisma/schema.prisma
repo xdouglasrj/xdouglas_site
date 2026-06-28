@@ -79,6 +79,9 @@ enum EventType {
   WAITLIST_JOIN
   CONSENT_GIVEN
   CONSENT_REVOKED
+  PLAY_START
+  PLAY_30S
+  PLAY_COMPLETE
 }
 
 enum ReportTargetType {
@@ -118,68 +121,72 @@ enum SupportAttachmentType {
 // =============================================================
 
 model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
+  id                     String    @id @default(uuid())
+  email                  String    @unique
   // Identificador de LOGIN — privado, nunca exibido publicamente nem usado
   // em rotas/links de perfil (ver "handle" abaixo para o @ público)
-  username   String?  @unique @map("username")
-  password   String   // bcrypt hash
-  name       String?
+  username               String?   @unique @map("username")
+  password               String // bcrypt hash
+  name                   String?
   // @ público da comunidade — usado em /perfil/<handle> e nas menções no
   // fórum/feed. Gerado a partir do nome no cadastro; o usuário pode trocar
   // depois em "Editar perfil". Separado do username de login por segurança:
   // o username não deve ser descobrível publicamente (evita facilitar
   // ataques de força bruta no login a partir do perfil público).
-  handle     String?  @unique @map("handle")
-  role       Role     @default(GUEST)
+  handle                 String?   @unique @map("handle")
+  role                   Role      @default(GUEST)
   // Cota de armazenamento de upload — ver lib/settings/plan-quotas.ts
-  plan       UserPlan @default(FREE)
-  active     Boolean  @default(true)
+  plan                   UserPlan  @default(FREE)
+  active                 Boolean   @default(true)
   // Código de convite informado no cadastro de músico/produtor — validado manualmente por agora
-  inviteCode String?  @map("invite_code")
-  phone      String?
+  inviteCode             String?   @map("invite_code")
+  phone                  String?
   // Nome artístico — preenchido no cadastro para quem não é Ouvinte
-  artisticName String? @map("artistic_name")
-  newsletterOptIn Boolean @default(false) @map("newsletter_opt_in")
-  lastLoginAt DateTime? @map("last_login_at")
+  artisticName           String?   @map("artistic_name")
+  newsletterOptIn        Boolean   @default(false) @map("newsletter_opt_in")
+  lastLoginAt            DateTime? @map("last_login_at")
   // Bloqueado pelo admin — impede novo cadastro com mesmo email/usuário/whatsapp
-  blocked    Boolean  @default(false)
-  blockedAt  DateTime? @map("blocked_at")
+  blocked                Boolean   @default(false)
+  blockedAt              DateTime? @map("blocked_at")
   // Foto de perfil — chave R2 + URL pública CDN
-  photoKey   String?  @map("photo_key")
-  photoUrl   String?  @map("photo_url")
+  photoKey               String?   @map("photo_key")
+  photoUrl               String?   @map("photo_url")
   // Privacidade — o próprio usuário decide se email/telefone aparecem
   // para outros membros. O admin sempre vê todos os dados, independente
   // dessas flags.
-  showEmail  Boolean  @default(false) @map("show_email")
-  showPhone  Boolean  @default(false) @map("show_phone")
+  showEmail              Boolean   @default(false) @map("show_email")
+  showPhone              Boolean   @default(false) @map("show_phone")
   // Visibilidade do nome real — só se aplica a artistas (ouvintes sempre exibem o nome)
-  showName   Boolean  @default(true) @map("show_name")
+  showName               Boolean   @default(true) @map("show_name")
+  // Acesso à dashboard de estatísticas por faixa (plays, geo, device) em
+  // /minhas-musicas — liberado manualmente pelo admin por usuário, será a
+  // base de um plano pago futuro
+  mappingEnabled         Boolean   @default(false) @map("mapping_enabled")
   // Redefinição de senha — apenas o hash do token é armazenado, nunca o token original
-  resetPasswordTokenHash  String?   @unique @map("reset_password_token_hash")
-  resetPasswordExpiresAt  DateTime? @map("reset_password_expires_at")
+  resetPasswordTokenHash String?   @unique @map("reset_password_token_hash")
+  resetPasswordExpiresAt DateTime? @map("reset_password_expires_at")
   // Marca quando o token foi efetivamente usado para trocar a senha —
   // permite distinguir "link já usado" de "link inválido/expirado"
-  resetPasswordUsedAt     DateTime? @map("reset_password_used_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  resetPasswordUsedAt    DateTime? @map("reset_password_used_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
-  adminSessions AdminSession[]
-  auditLogs     AuditLog[]
-  artist        Artist?
-  submittedTracks Track[] @relation("TrackSubmittedBy")
+  adminSessions   AdminSession[]
+  auditLogs       AuditLog[]
+  artist          Artist?
+  submittedTracks Track[]        @relation("TrackSubmittedBy")
 
   // Social — seguir, feed, fórum, denúncias
-  following     Follow[]      @relation("Follower")
-  followers     Follow[]      @relation("Following")
-  posts         Post[]
-  likes         Like[]
-  trackLikes    TrackLike[]
-  comments      Comment[]
-  trackComments TrackComment[]
-  forumThreads  ForumThread[]
-  forumReplies  ForumReply[]
-  reportsMade   Report[]      @relation("ReportsMade")
+  following      Follow[]        @relation("Follower")
+  followers      Follow[]        @relation("Following")
+  posts          Post[]
+  likes          Like[]
+  trackLikes     TrackLike[]
+  comments       Comment[]
+  trackComments  TrackComment[]
+  forumThreads   ForumThread[]
+  forumReplies   ForumReply[]
+  reportsMade    Report[]        @relation("ReportsMade")
   supportTickets SupportTicket[]
 
   @@index([email])
@@ -219,8 +226,8 @@ model Post {
   pinned    Boolean   @default(false)
   pinnedAt  DateTime? @map("pinned_at")
 
-  likes     Like[]
-  comments  Comment[]
+  likes    Like[]
+  comments Comment[]
 
   @@index([authorId])
   @@index([createdAt])
@@ -242,18 +249,18 @@ model Like {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  postId    String   @map("post_id")
-  post      Post     @relation(fields: [postId], references: [id])
-  authorId  String   @map("author_id")
-  author    User     @relation(fields: [authorId], references: [id])
+  id        String    @id @default(uuid())
+  postId    String    @map("post_id")
+  post      Post      @relation(fields: [postId], references: [id])
+  authorId  String    @map("author_id")
+  author    User      @relation(fields: [authorId], references: [id])
   content   String
   // Fixado pelo admin — enquanto true, ignora a janela de expiração (some
   // do soft-hide e do cron de limpeza) e aparece sempre no topo dos
   // comentários do post
   pinned    Boolean   @default(false)
   pinnedAt  DateTime? @map("pinned_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([postId])
   @@index([pinned])
@@ -265,14 +272,14 @@ model Comment {
 // =============================================================
 
 model ForumThread {
-  id        String       @id @default(uuid())
-  authorId  String       @map("author_id")
-  author    User         @relation(fields: [authorId], references: [id])
+  id        String   @id @default(uuid())
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id])
   title     String
   body      String
-  createdAt DateTime     @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  replies   ForumReply[]
+  replies ForumReply[]
 
   @@index([authorId])
   @@index([createdAt])
@@ -297,15 +304,15 @@ model ForumReply {
 // =============================================================
 
 model Report {
-  id          String           @id @default(uuid())
-  reporterId  String           @map("reporter_id")
-  reporter    User             @relation("ReportsMade", fields: [reporterId], references: [id])
-  targetType  ReportTargetType @map("target_type")
-  targetId    String           @map("target_id")
-  reason      String
-  status      ReportStatus     @default(PENDING)
-  resolvedAt  DateTime?        @map("resolved_at")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  id         String           @id @default(uuid())
+  reporterId String           @map("reporter_id")
+  reporter   User             @relation("ReportsMade", fields: [reporterId], references: [id])
+  targetType ReportTargetType @map("target_type")
+  targetId   String           @map("target_id")
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  resolvedAt DateTime?        @map("resolved_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
 
   @@index([status])
   @@index([targetType, targetId])
@@ -318,18 +325,18 @@ model Report {
 // =============================================================
 
 model SupportTicket {
-  id              String                 @id @default(uuid())
-  userId          String                 @map("user_id")
-  user            User                   @relation(fields: [userId], references: [id])
-  category        SupportCategory        @default(OUTRO)
-  message         String
+  id             String                 @id @default(uuid())
+  userId         String                 @map("user_id")
+  user           User                   @relation(fields: [userId], references: [id])
+  category       SupportCategory        @default(OUTRO)
+  message        String
   // Anexo opcional — foto ou vídeo do problema relatado
-  attachmentKey   String?                @map("attachment_key")
-  attachmentUrl   String?                @map("attachment_url")
-  attachmentType  SupportAttachmentType? @map("attachment_type")
-  status          SupportTicketStatus    @default(PENDING)
-  resolvedAt      DateTime?              @map("resolved_at")
-  createdAt       DateTime               @default(now()) @map("created_at")
+  attachmentKey  String?                @map("attachment_key")
+  attachmentUrl  String?                @map("attachment_url")
+  attachmentType SupportAttachmentType? @map("attachment_type")
+  status         SupportTicketStatus    @default(PENDING)
+  resolvedAt     DateTime?              @map("resolved_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
 
   @@index([status])
   @@index([createdAt])
@@ -341,21 +348,21 @@ model SupportTicket {
 // =============================================================
 
 model Artist {
-  id          String   @id @default(uuid())
-  slug        String   @unique
-  name        String
-  bio         String?
-  photoKey    String?  @map("photo_key")   // chave R2
-  photoUrl    String?  @map("photo_url")   // URL pública CDN
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  name      String
+  bio       String?
+  photoKey  String?  @map("photo_key") // chave R2
+  photoUrl  String?  @map("photo_url") // URL pública CDN
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Perfil de artista autogerenciado por um usuário (role ARTIST) que
   // faz upload das próprias músicas — nulo para artistas cadastrados
   // manualmente pelo admin
-  userId      String?  @unique @map("user_id")
-  user        User?    @relation(fields: [userId], references: [id])
+  userId String? @unique @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
 
   tracks Track[]
 
@@ -369,17 +376,17 @@ model Artist {
 // =============================================================
 
 model Track {
-  id          String   @id @default(uuid())
-  slug        String   @unique
+  id          String  @id @default(uuid())
+  slug        String  @unique
   title       String
   description String?
   genre       String?
   bpm         Int?
-  key         String?  // tom musical
+  key         String? // tom musical
 
   // Artistas
-  artistId    String   @map("artist_id")
-  artist      Artist   @relation(fields: [artistId], references: [id])
+  artistId     String  @map("artist_id")
+  artist       Artist  @relation(fields: [artistId], references: [id])
   producerName String? @map("producer_name") // pode não ser usuário da plataforma
 
   // Usuário (role ARTIST) que enviou a faixa pelo upload da comunidade —
@@ -388,30 +395,30 @@ model Track {
   submittedBy   User?   @relation("TrackSubmittedBy", fields: [submittedById], references: [id])
 
   // Storage R2
-  audioKey      String  @map("audio_key")      // chave R2 do arquivo de áudio
-  audioFormat   String  @map("audio_format")   // mp3 | wav | flac
+  audioKey       String  @map("audio_key") // chave R2 do arquivo de áudio
+  audioFormat    String  @map("audio_format") // mp3 | wav | flac
   audioSizeBytes BigInt? @map("audio_size_bytes")
-  coverKey      String? @map("cover_key")      // chave R2 da capa
-  coverUrl      String? @map("cover_url")      // URL pública CDN
+  coverKey       String? @map("cover_key") // chave R2 da capa
+  coverUrl       String? @map("cover_url") // URL pública CDN
 
   // Cache da versão "música + vinheta" servida no download (gerada sob
   // demanda no primeiro download após publicar ou após trocar a vinheta
   // de download — fica salva pra não reprocessar em todo clique).
   // downloadAudioVinhetaKey guarda qual vinheta foi usada nessa versão,
   // pra saber quando precisa regenerar.
-  downloadAudioKey       String? @map("download_audio_key")
+  downloadAudioKey        String? @map("download_audio_key")
   downloadAudioVinhetaKey String? @map("download_audio_vinheta_key")
 
   // Controle
-  published     Boolean  @default(false)
+  published     Boolean   @default(false)
   publishedAt   DateTime? @map("published_at")
-  downloadCount Int      @default(0) @map("download_count")
+  downloadCount Int       @default(0) @map("download_count")
   // Fixada pelo admin no feed (/musicas-recentes) — enquanto true, ignora
   // a janela de expiração (24/36/48h) e aparece sempre no topo
-  pinned        Boolean  @default(false)
+  pinned        Boolean   @default(false)
   pinnedAt      DateTime? @map("pinned_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   downloads Download[]
   likes     TrackLike[]
@@ -466,28 +473,28 @@ model TrackLike {
 // =============================================================
 
 model Download {
-  id              String         @id @default(uuid())
-  trackId         String         @map("track_id")
-  track           Track          @relation(fields: [trackId], references: [id])
+  id      String @id @default(uuid())
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id])
 
   // Geolocalização processada (sem IP)
-  country         String?
-  region          String?
-  city            String?
-  latitude        Float?
-  longitude       Float?
+  country   String?
+  region    String?
+  city      String?
+  latitude  Float?
+  longitude Float?
 
   // Device info processado
-  device          String?        // mobile | desktop | tablet
-  browser         String?
-  os              String?
+  device  String? // mobile | desktop | tablet
+  browser String?
+  os      String?
 
   // Controle
-  status          DownloadStatus @default(INICIADO)
-  signedUrlExpiry DateTime?      @map("signed_url_expiry")
-  downloadSuspeito Boolean       @default(false) @map("download_suspeito")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  completedAt     DateTime?      @map("completed_at")
+  status           DownloadStatus @default(INICIADO)
+  signedUrlExpiry  DateTime?      @map("signed_url_expiry")
+  downloadSuspeito Boolean        @default(false) @map("download_suspeito")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  completedAt      DateTime?      @map("completed_at")
 
   @@index([trackId])
   @@index([downloadSuspeito])
@@ -507,11 +514,11 @@ model AnalyticsRawEvent {
   eventType EventType @map("event_type")
 
   // IP anonimizado — NUNCA o IP original
-  ipHash    String?   @map("ip_hash")    // SHA-256(IP + salt_do_periodo)
-  hashKeyId String?   @map("hash_key_id") // referência ao AnalyticsHashKey usado
+  ipHash    String? @map("ip_hash") // SHA-256(IP + salt_do_periodo)
+  hashKeyId String? @map("hash_key_id") // referência ao AnalyticsHashKey usado
 
   // Device / contexto técnico
-  userAgent String?   @map("user_agent")
+  userAgent String? @map("user_agent")
   device    String?
   browser   String?
   os        String?
@@ -525,16 +532,16 @@ model AnalyticsRawEvent {
   longitude Float?
 
   // Contexto do evento
-  trackId   String?   @map("track_id")  // presente em eventos de música
-  sessionId String?   @map("session_id") // gerado no client, não vinculado a user
+  trackId   String? @map("track_id") // presente em eventos de música
+  sessionId String? @map("session_id") // gerado no client, não vinculado a user
   metadata  Json?
 
-  createdAt DateTime  @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
   // TTL: deletar após 90 dias via job ou cron
-  expiresAt DateTime  @map("expires_at")
+  expiresAt DateTime @map("expires_at")
 
   @@index([eventType])
-  @@index([expiresAt])  // índice para deleção por expiração
+  @@index([expiresAt]) // índice para deleção por expiração
   @@index([ipHash])
   @@index([createdAt])
   @@map("analytics_raw_events")
@@ -552,18 +559,20 @@ model AnalyticsEvent {
   country   String?
   region    String?
   city      String?
+  latitude  Float?
+  longitude Float?
 
   // Device info
-  device    String?
-  browser   String?
-  os        String?
+  device  String?
+  browser String?
+  os      String?
 
   // Contexto
-  trackId   String?   @map("track_id")
-  sessionId String?   @map("session_id")
+  trackId   String? @map("track_id")
+  sessionId String? @map("session_id")
   metadata  Json?
 
-  createdAt DateTime  @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([eventType])
   @@index([trackId])
@@ -579,13 +588,13 @@ model AnalyticsEvent {
 // =============================================================
 
 model AnalyticsHashKey {
-  id          String   @id @default(uuid())
+  id            String   @id @default(uuid())
   // salt armazenado criptografado — nunca em texto puro
-  saltEncrypted String @map("salt_encrypted")
-  periodStart DateTime @map("period_start")
-  periodEnd   DateTime @map("period_end")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
+  saltEncrypted String   @map("salt_encrypted")
+  periodStart   DateTime @map("period_start")
+  periodEnd     DateTime @map("period_end")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
 
   @@index([active])
   @@index([periodEnd])
@@ -597,22 +606,22 @@ model AnalyticsHashKey {
 // =============================================================
 
 model AdminSession {
-  id           String   @id @default(uuid())
-  userId       String   @map("user_id")
-  user         User     @relation(fields: [userId], references: [id])
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
 
   // Tokens nunca armazenados — apenas hash SHA-256
-  accessTokenHash  String   @unique @map("access_token_hash")
-  refreshTokenHash String   @unique @map("refresh_token_hash")
+  accessTokenHash  String @unique @map("access_token_hash")
+  refreshTokenHash String @unique @map("refresh_token_hash")
 
   // Contexto da sessão
-  ipHash    String?  @map("ip_hash")
-  userAgent String?  @map("user_agent")
+  ipHash    String? @map("ip_hash")
+  userAgent String? @map("user_agent")
   device    String?
 
-  expiresAt DateTime @map("expires_at")
+  expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([accessTokenHash])
@@ -626,15 +635,15 @@ model AdminSession {
 // =============================================================
 
 model AuditLog {
-  id        String      @id @default(uuid())
-  userId    String      @map("user_id")
-  user      User        @relation(fields: [userId], references: [id])
-  action    AuditAction
-  entityId  String?     @map("entity_id")   // ID da entidade afetada
-  entityType String?    @map("entity_type") // "track" | "artist" etc
-  metadata  Json?       // diff antes/depois, contexto extra
-  ipHash    String?     @map("ip_hash")
-  createdAt DateTime    @default(now()) @map("created_at")
+  id         String      @id @default(uuid())
+  userId     String      @map("user_id")
+  user       User        @relation(fields: [userId], references: [id])
+  action     AuditAction
+  entityId   String?     @map("entity_id") // ID da entidade afetada
+  entityType String?     @map("entity_type") // "track" | "artist" etc
+  metadata   Json? // diff antes/depois, contexto extra
+  ipHash     String?     @map("ip_hash")
+  createdAt  DateTime    @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([action])
@@ -647,19 +656,19 @@ model AuditLog {
 // =============================================================
 
 model Waitlist {
-  id            String              @id @default(uuid())
-  email         String              @unique
-  name          String?
-  phone         String?
-  tipoUsuario   WaitlistTipoUsuario @map("tipo_usuario")
-  message       String?             // campo livre opcional
-  consentedAt   DateTime            @map("consented_at") // LGPD: momento do aceite
-  invitedAt     DateTime?           @map("invited_at")   // preenchido quando convite for aceito
+  id          String              @id @default(uuid())
+  email       String              @unique
+  name        String?
+  phone       String?
+  tipoUsuario WaitlistTipoUsuario @map("tipo_usuario")
+  message     String? // campo livre opcional
+  consentedAt DateTime            @map("consented_at") // LGPD: momento do aceite
+  invitedAt   DateTime?           @map("invited_at") // preenchido quando convite for aceito
   // Chave aleatória gerada ao aceitar o convite — usada no link de cadastro
-  inviteCode    String?             @unique @map("invite_code")
+  inviteCode  String?             @unique @map("invite_code")
   // Momento em que o convite foi consumido (cadastro concluído) — single-use
-  usedAt        DateTime?           @map("used_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
+  usedAt      DateTime?           @map("used_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
 
   @@index([tipoUsuario])
   @@index([invitedAt])
@@ -671,13 +680,13 @@ model Waitlist {
 // =============================================================
 
 model ConsentEvent {
-  id          String    @id @default(uuid())
-  sessionId   String    @map("session_id")  // ID anônimo de sessão
-  eventType   String    @map("event_type")  // "CONSENT_GIVEN" | "CONSENT_REVOKED"
-  consentType String    @map("consent_type") // "analytics" | "all"
-  ipHash      String?   @map("ip_hash")
-  userAgent   String?   @map("user_agent")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  sessionId   String   @map("session_id") // ID anônimo de sessão
+  eventType   String   @map("event_type") // "CONSENT_GIVEN" | "CONSENT_REVOKED"
+  consentType String   @map("consent_type") // "analytics" | "all"
+  ipHash      String?  @map("ip_hash")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([sessionId])
   @@index([createdAt])
@@ -689,33 +698,33 @@ model ConsentEvent {
 // =============================================================
 
 model AppSettings {
-  id                  String   @id @default("singleton")
+  id                  String  @id @default("singleton")
   // Aceite automático de convites (piloto automático com limite)
-  autoAcceptEnabled   Boolean  @default(false) @map("auto_accept_enabled")
-  autoAcceptRemaining Int      @default(0) @map("auto_accept_remaining")
+  autoAcceptEnabled   Boolean @default(false) @map("auto_accept_enabled")
+  autoAcceptRemaining Int     @default(0) @map("auto_accept_remaining")
 
   // Limites de upload de áudio por tipo de conteúdo (em MB)
-  musicMaxSizeMb      Int      @default(10)  @map("music_max_size_mb")
-  podcastMaxSizeMb    Int      @default(100) @map("podcast_max_size_mb")
+  musicMaxSizeMb   Int     @default(10) @map("music_max_size_mb")
+  podcastMaxSizeMb Int     @default(100) @map("podcast_max_size_mb")
   // Upload de podcast existe como modelo de configuração, mas a função
   // ainda não foi liberada para os artistas — desligado por padrão.
-  podcastEnabled      Boolean  @default(false) @map("podcast_enabled")
+  podcastEnabled   Boolean @default(false) @map("podcast_enabled")
 
   // Janela de exibição pública de músicas e comentários (em horas) — depois
   // desse prazo, somem do catálogo/feed mas continuam no banco (soft-hide).
-  contentExpirationHours Int   @default(24) @map("content_expiration_hours")
+  contentExpirationHours Int @default(24) @map("content_expiration_hours")
 
   // Vinheta tocada dinamicamente pelo player ao fim de cada faixa (opção 2
   // do plano: arquivo separado, nunca concatenado no áudio original). Nulo
   // = nenhuma vinheta configurada, player só toca a faixa normalmente.
-  vinhetaKey          String?  @map("vinheta_key")
+  vinhetaKey String? @map("vinheta_key")
 
   // Vinheta colada fisicamente (ffmpeg) no final do arquivo entregue no
   // download — separada da vinheta do player porque, depois de baixado,
   // não existe mais player controlando nada. Nulo = download sai sem vinheta.
-  vinhetaDownloadKey  String?  @map("vinheta_download_key")
+  vinhetaDownloadKey String? @map("vinheta_download_key")
 
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
 }

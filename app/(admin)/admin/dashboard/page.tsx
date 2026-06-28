@@ -5,16 +5,22 @@ import {
   getDownloadsByDay,
   getVisitorsByDay,
   getTopTracks,
-  getDeviceBreakdown,
   getTopCountries,
+  getDeviceOsBreakdown,
+  getPlayFunnel,
+  getPlaysByDay,
 } from '@/lib/analytics/queries'
 import { prisma } from '@/lib/prisma'
 import { DownloadsChart } from '@/components/admin/charts/downloads-chart'
 import { VisitorsChart } from '@/components/admin/charts/visitors-chart'
-import { DeviceChart } from '@/components/admin/charts/device-chart'
+import { DeviceOsChart } from '@/components/admin/charts/device-os-chart'
+import { PlayFunnelChart } from '@/components/admin/charts/play-funnel-chart'
+import { PlaysChart } from '@/components/admin/charts/plays-chart'
 import { TopTracksTable } from '@/components/admin/top-tracks-table'
 import { RecentDownloadsFeed } from '@/components/admin/recent-downloads-feed'
 import { PeriodSelector } from '@/components/admin/period-selector'
+import { MetricCard } from '@/components/admin/metric-card'
+import { ChartCard } from '@/components/admin/chart-card'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
@@ -39,8 +45,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     downloadsByDay,
     visitorsByDay,
     topTracks,
-    deviceBreakdown,
+    deviceOsBreakdown,
     topCountries,
+    playFunnel,
+    playsByDay,
     totalTracks,
     suspiciousCount,
     recentDownloads,
@@ -49,8 +57,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getDownloadsByDay(days),
     getVisitorsByDay(days),
     getTopTracks(10),
-    getDeviceBreakdown(days),
+    getDeviceOsBreakdown(days),
     getTopCountries(days, 8),
+    getPlayFunnel(days),
+    getPlaysByDay(days),
     prisma.track.count({ where: { published: true } }),
     prisma.download.count({
       where: {
@@ -134,7 +144,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </ChartCard>
       </div>
 
-      {/* Linha 2 — tabelas e breakdown */}
+      {/* Linha 2 — funil de plays + plays por dia */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <ChartCard title="Funil de reprodução">
+          <PlayFunnelChart data={playFunnel} />
+        </ChartCard>
+
+        <ChartCard title="Reproduções por dia">
+          <PlaysChart data={playsByDay} />
+        </ChartCard>
+      </div>
+
+      {/* Linha 3 — tabelas e breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         {/* Top músicas — ocupa 2 colunas */}
         <div className="lg:col-span-2">
@@ -143,13 +164,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </ChartCard>
         </div>
 
-        {/* Dispositivos */}
-        <ChartCard title="Dispositivos">
-          <DeviceChart data={deviceBreakdown} />
+        {/* Dispositivos + sistema operacional */}
+        <ChartCard title="Dispositivos e sistema">
+          <DeviceOsChart data={deviceOsBreakdown} />
         </ChartCard>
       </div>
 
-      {/* Linha 3 — países + feed recente */}
+      {/* Linha 4 — países + feed recente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartCard title="Top países">
           <CountriesTable data={topCountries} />
@@ -176,53 +197,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 }
 
 // ── Sub-componentes ───────────────────────────────────────────
-
-function MetricCard({
-  label,
-  value,
-  sub,
-  highlight = false,
-}: {
-  label: string
-  value: number
-  sub: string
-  highlight?: boolean
-}) {
-  return (
-    <div className={[
-      'rounded-xl border p-5',
-      highlight
-        ? 'border-rose-800/60 bg-rose-950/20'
-        : 'border-neutral-800 bg-neutral-900',
-    ].join(' ')}>
-      <p className="text-xs text-neutral-500 uppercase tracking-wide truncate">
-        {label}
-      </p>
-      <p className={[
-        'text-2xl font-bold mt-2 tabular-nums',
-        highlight ? 'text-rose-400' : 'text-white',
-      ].join(' ')}>
-        {value.toLocaleString('pt-BR')}
-      </p>
-      <p className="text-xs text-neutral-600 mt-0.5">{sub}</p>
-    </div>
-  )
-}
-
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-5">
-      <h2 className="text-sm font-medium text-neutral-300 mb-5">{title}</h2>
-      {children}
-    </div>
-  )
-}
 
 function CountriesTable({
   data,

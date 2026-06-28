@@ -11,6 +11,9 @@ import type { EventType } from '@prisma/client'
 const CLIENT_EVENT_MAP: Record<string, EventType> = {
   page_view: 'PAGE_VIEW',
   music_view: 'MUSIC_VIEW',
+  play_start: 'PLAY_START',
+  play_30s: 'PLAY_30S',
+  play_complete: 'PLAY_COMPLETE',
 }
 
 // ============================================================
@@ -18,11 +21,16 @@ const CLIENT_EVENT_MAP: Record<string, EventType> = {
 // ============================================================
 
 const eventSchema = z.object({
-  type: z.enum(['page_view', 'music_view']),
+  type: z.enum(['page_view', 'music_view', 'play_start', 'play_30s', 'play_complete']),
   sessionId: z.string().uuid('sessionId deve ser um UUID'),
   trackId: z.string().uuid().optional(),
   path: z.string().max(500),
   referrer: z.string().max(500).optional(),
+  metadata: z
+    .object({
+      durationSec: z.number().nonnegative().optional(),
+    })
+    .optional(),
 })
 
 // ============================================================
@@ -46,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 400 })
   }
 
-  const { type, sessionId, trackId, path, referrer } = parsed.data
+  const { type, sessionId, trackId, path, referrer, metadata } = parsed.data
   const eventType = CLIENT_EVENT_MAP[type]
 
   // Processa em background — não await
@@ -54,7 +62,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     sessionId,
     trackId,
     referer: referrer ?? request.headers.get('referer') ?? undefined,
-    metadata: { path },
+    metadata: { path, ...metadata },
   }).then((ctx) => trackEvent(eventType, ctx)).catch(() => {
     // Silencioso — analytics nunca quebra a experiência
   })

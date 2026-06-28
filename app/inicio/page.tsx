@@ -32,7 +32,7 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user?.photoUrl} handle={user?.handle} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} mappingEnabled={user?.mappingEnabled} photoUrl={user?.photoUrl} handle={user?.handle} />
 
       {welcomeName && (
         <WelcomeToast name={welcomeName} firstToday={firstToday === '1'} />

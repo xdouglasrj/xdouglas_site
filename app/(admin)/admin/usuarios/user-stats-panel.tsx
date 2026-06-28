@@ -1,5 +1,6 @@
 import type { UserStatsRow } from '@/lib/admin/user-stats'
 import { PlanToggle } from './plan-toggle'
+import { MappingToggle } from './mapping-toggle'
 
 function formatMb(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
@@ -21,6 +22,7 @@ export function UserStatsPanel({ rows }: { rows: UserStatsRow[] }) {
           <tr className="border-b border-neutral-800">
             <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Usuário</th>
             <th className="text-center px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Plano</th>
+            <th className="text-center px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Mapeamento</th>
             <th className="text-right px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Músicas</th>
             <th className="text-right px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Espaço usado</th>
             <th className="text-right px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">Curtidas</th>
@@ -42,6 +44,9 @@ export function UserStatsPanel({ rows }: { rows: UserStatsRow[] }) {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <PlanToggle userId={row.id} plan={row.plan} />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <MappingToggle userId={row.id} enabled={row.mappingEnabled} />
                 </td>
                 <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
                   {row.trackCount.toLocaleString('pt-BR')}

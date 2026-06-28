@@ -7,6 +7,7 @@ export interface UserStatsRow {
   displayName: string
   handle: string | null
   plan: UserPlan
+  mappingEnabled: boolean
   trackCount: number
   storageUsedBytes: number
   storageQuotaBytes: number
@@ -35,6 +36,7 @@ export async function getUserStatsPanel(): Promise<UserStatsRow[]> {
       handle: true,
       artisticName: true,
       plan: true,
+      mappingEnabled: true,
       artist: { select: { id: true } },
       _count: { select: { submittedTracks: true, following: true, followers: true } },
     },
@@ -73,6 +75,7 @@ export async function getUserStatsPanel(): Promise<UserStatsRow[]> {
       displayName: u.artisticName ?? u.name ?? u.handle ?? 'Sem nome',
       handle: u.handle,
       plan: u.plan,
+      mappingEnabled: u.mappingEnabled,
       trackCount: u._count.submittedTracks,
       storageUsedBytes: storageByUserId.get(u.id) ?? 0,
       storageQuotaBytes: getPlanQuotaBytes(u.plan),

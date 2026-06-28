@@ -40,7 +40,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
 
   const viewer = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true, photoUrl: true, handle: true },
+    select: { id: true, role: true, photoUrl: true, handle: true, mappingEnabled: true },
   })
   if (!viewer) redirect('/')
 
@@ -92,7 +92,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} photoUrl={viewer.photoUrl} handle={viewer.handle} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} mappingEnabled={viewer.mappingEnabled} photoUrl={viewer.photoUrl} handle={viewer.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">

@@ -49,7 +49,7 @@ export default async function BuscaPage({ searchParams }: BuscaPageProps) {
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} photoUrl={user.photoUrl} handle={user.handle} />
+      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} mappingEnabled={user.mappingEnabled} photoUrl={user.photoUrl} handle={user.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-3xl mx-auto">
