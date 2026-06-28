@@ -63,6 +63,7 @@ const PEOPLE_ITEMS = [
   { label: 'Pedidos recebidos', href: '/admin/convites' },
   { label: 'Convites pendentes', href: '/admin/convites-aceitos' },
   { label: 'Cadastro ativo', href: '/admin/cadastros' },
+  { label: 'Usuários', href: '/admin/usuarios' },
 ] as const
 
 // ============================================================
@@ -93,7 +94,10 @@ export function AdminSidebar() {
     window.location.href = '/'
   }
 
-  const peopleActive = pathname.startsWith('/admin/convites') || pathname.startsWith('/admin/cadastros')
+  const peopleActive =
+    pathname.startsWith('/admin/convites') ||
+    pathname.startsWith('/admin/cadastros') ||
+    pathname.startsWith('/admin/usuarios')
 
   return (
     <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">

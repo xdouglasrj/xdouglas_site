@@ -33,6 +33,13 @@ enum Role {
   ADMIN
 }
 
+// Plano de armazenamento do usuário — define a cota de espaço usada nos
+// uploads de música (ver lib/settings/plan-quotas.ts pelos valores em MB)
+enum UserPlan {
+  FREE
+  PAID
+}
+
 enum DownloadStatus {
   INICIADO
   CONCLUIDO
@@ -125,6 +132,8 @@ model User {
   // ataques de força bruta no login a partir do perfil público).
   handle     String?  @unique @map("handle")
   role       Role     @default(GUEST)
+  // Cota de armazenamento de upload — ver lib/settings/plan-quotas.ts
+  plan       UserPlan @default(FREE)
   active     Boolean  @default(true)
   // Código de convite informado no cadastro de músico/produtor — validado manualmente por agora
   inviteCode String?  @map("invite_code")
@@ -686,7 +695,7 @@ model AppSettings {
   autoAcceptRemaining Int      @default(0) @map("auto_accept_remaining")
 
   // Limites de upload de áudio por tipo de conteúdo (em MB)
-  musicMaxSizeMb      Int      @default(20)  @map("music_max_size_mb")
+  musicMaxSizeMb      Int      @default(10)  @map("music_max_size_mb")
   podcastMaxSizeMb    Int      @default(100) @map("podcast_max_size_mb")
   // Upload de podcast existe como modelo de configuração, mas a função
   // ainda não foi liberada para os artistas — desligado por padrão.

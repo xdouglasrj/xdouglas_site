@@ -28,7 +28,11 @@ const inputClass =
   'w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40'
 const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-wider text-gate-blue'
 
-export function ArtistTrackForm() {
+interface ArtistTrackFormProps {
+  maxAudioSizeMb: number
+}
+
+export function ArtistTrackForm({ maxAudioSizeMb }: ArtistTrackFormProps) {
   const router = useRouter()
   const [values, setValues] = useState<FormValues>(EMPTY)
   const [loading, setLoading] = useState(false)
@@ -162,7 +166,7 @@ export function ArtistTrackForm() {
           kind="audio"
           accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/aiff,.mp3,.wav,.flac,.aiff"
           label="Arquivo de áudio *"
-          hint="MP3, WAV, FLAC ou AIFF · máximo 500MB"
+          hint={`MP3, WAV, FLAC ou AIFF · máximo ${maxAudioSizeMb}MB`}
           currentKey={values.audioKey || undefined}
           onUpload={({ storageKey, sizeBytes }) => {
             const ext = storageKey.split('.').pop() ?? 'mp3'

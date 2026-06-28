@@ -3,6 +3,9 @@ import { z } from 'zod'
 import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
 import { getStorage } from '@/lib/storage'
 import { getUploadLimits } from '@/lib/settings/upload-limits'
+import { getPlanQuotaBytes } from '@/lib/settings/plan-quotas'
+import { getUserStorageUsedBytes } from '@/lib/storage/usage'
+import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 
 // ============================================================
@@ -36,7 +39,7 @@ const uploadUrlSchema = z.object({
   sizeBytes: z.number().positive().max(2000 * 1024 * 1024), // teto absoluto de sanidade
 })
 
-export const POST = withRole('ARTIST', async (request: NextRequest) => {
+export const POST = withRole('ARTIST', async (request: NextRequest, auth) => {
   let body: unknown
   try {
     body = await request.json()
@@ -82,6 +85,28 @@ export const POST = withRole('ARTIST', async (request: NextRequest) => {
         400,
         'FILE_TOO_LARGE'
       )
+    }
+
+    // Cota de armazenamento por plano — só se aplica a quem está enviando
+    // a própria música (artista). O admin importando catálogo não tem cota.
+    if (auth.role !== 'ADMIN') {
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { plan: true },
+      })
+      const plan = user?.plan ?? 'FREE'
+      const quotaBytes = getPlanQuotaBytes(plan)
+      const usedBytes = await getUserStorageUsedBytes(auth.userId)
+
+      if (usedBytes + sizeBytes > quotaBytes) {
+        const quotaMb = Math.round(quotaBytes / (1024 * 1024))
+        const usedMb = (usedBytes / (1024 * 1024)).toFixed(1)
+        return apiError(
+          `Espaço insuficiente no seu plano (${plan === 'PAID' ? 'pago' : 'grátis'}). Usado: ${usedMb}MB de ${quotaMb}MB.`,
+          400,
+          'QUOTA_EXCEEDED'
+        )
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import { getCurrentRole } from '@/lib/auth/role'
 import { listMySubmissions } from '@/lib/tracks/artist-queries'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
+import { getUploadLimits } from '@/lib/settings/upload-limits'
 import { ArtistTrackForm } from '@/components/upload/artist-track-form'
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function UploadPage() {
   const token = await getAccessToken()
   const payload = token ? await verifyAccessToken(token) : null
   const submissions = payload ? await listMySubmissions(payload.userId) : []
+  const { musicMaxSizeMb } = await getUploadLimits()
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
@@ -33,7 +35,7 @@ export default async function UploadPage() {
         </p>
       </div>
 
-      <ArtistTrackForm />
+      <ArtistTrackForm maxAudioSizeMb={musicMaxSizeMb} />
 
       {submissions.length > 0 && (
         <section className="mt-12">

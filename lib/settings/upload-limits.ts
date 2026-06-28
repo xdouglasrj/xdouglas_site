@@ -12,7 +12,7 @@ export interface UploadLimitsSettings {
 export async function getUploadLimits(): Promise<UploadLimitsSettings> {
   const s = await prisma.appSettings.findUnique({ where: { id: SINGLETON_ID } })
   return {
-    musicMaxSizeMb: s?.musicMaxSizeMb ?? 20,
+    musicMaxSizeMb: s?.musicMaxSizeMb ?? 10,
     podcastMaxSizeMb: s?.podcastMaxSizeMb ?? 100,
     podcastEnabled: s?.podcastEnabled ?? false,
   }
@@ -26,7 +26,7 @@ export async function setUploadLimits(
     where: { id: SINGLETON_ID },
     create: {
       id: SINGLETON_ID,
-      musicMaxSizeMb: data.musicMaxSizeMb ?? 20,
+      musicMaxSizeMb: data.musicMaxSizeMb ?? 10,
       podcastMaxSizeMb: data.podcastMaxSizeMb ?? 100,
       podcastEnabled: data.podcastEnabled ?? false,
     },

@@ -53,12 +53,21 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
   const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [musicMaxSizeMb, setMusicMaxSizeMb] = useState(10)
 
   // Carrega artistas para o select
   useEffect(() => {
     fetch('/api/admin/artistas')
       .then((r) => r.json())
       .then((d) => setArtists(d.artists ?? []))
+      .catch(() => {})
+  }, [])
+
+  // Carrega o limite de tamanho de upload configurado em Configurações
+  useEffect(() => {
+    fetch('/api/admin/settings/upload-limits')
+      .then((r) => r.json())
+      .then((d) => { if (d.musicMaxSizeMb) setMusicMaxSizeMb(d.musicMaxSizeMb) })
       .catch(() => {})
   }, [])
 
@@ -191,7 +200,7 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
             kind="audio"
             accept="audio/mpeg,audio/wav,audio/x-wav,audio/flac,audio/aiff,.mp3,.wav,.flac,.aiff"
             label="Arquivo de áudio *"
-            hint="MP3, WAV, FLAC ou AIFF · máximo 500MB"
+            hint={`MP3, WAV, FLAC ou AIFF · máximo ${musicMaxSizeMb}MB`}
             currentKey={values.audioKey || undefined}
             onUpload={({ storageKey, sizeBytes }) => {
               const ext = storageKey.split('.').pop() ?? 'mp3'
