@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && prisma generate && node scripts/backfill-handles.mjs && next build",
+    "build": "prisma migrate deploy && prisma generate && node scripts/backfill-handles.mjs && tsx prisma/seed.ts && next build",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
