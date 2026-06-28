@@ -1,16 +1,20 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
-import { updateTrackComment, deleteTrackComment, TRACK_COMMENT_MAX_LENGTH } from '@/lib/social/track-comments'
+import { updateTrackComment, deleteTrackComment, toggleTrackCommentPin, TRACK_COMMENT_MAX_LENGTH } from '@/lib/social/track-comments'
 
 // ============================================================
-// PATCH /api/social/tracks/[id]/comments/[commentId] — edita
-// (só o autor do comentário pode editar)
+// PATCH /api/social/tracks/[id]/comments/[commentId]
+// - { content } edita (só o autor do comentário pode editar)
+// - { pinned } fixa/desafixa (só admin)
 // ============================================================
 
-const bodySchema = z.object({
-  content: z.string().trim().min(1, 'Escreva um comentário').max(TRACK_COMMENT_MAX_LENGTH, `Máximo de ${TRACK_COMMENT_MAX_LENGTH} caracteres`),
-})
+const bodySchema = z.union([
+  z.object({
+    content: z.string().trim().min(1, 'Escreva um comentário').max(TRACK_COMMENT_MAX_LENGTH, `Máximo de ${TRACK_COMMENT_MAX_LENGTH} caracteres`),
+  }),
+  z.object({ pinned: z.boolean() }),
+])
 
 export const PATCH = withAuth(async (request: NextRequest, auth, params) => {
   const commentId = params?.commentId
@@ -26,6 +30,12 @@ export const PATCH = withAuth(async (request: NextRequest, auth, params) => {
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
+  }
+
+  if ('pinned' in parsed.data) {
+    if (auth.role !== 'ADMIN') return apiError('Apenas administradores podem fixar comentários', 403, 'FORBIDDEN')
+    const comment = await toggleTrackCommentPin(commentId, parsed.data.pinned)
+    return apiSuccess({ comment })
   }
 
   const comment = await updateTrackComment(commentId, auth.userId, parsed.data.content)

@@ -8,9 +8,10 @@ interface TrackActionsProps {
   trackId: string
   slug: string
   published: boolean
+  pinned: boolean
 }
 
-export function TrackActions({ trackId, slug, published }: TrackActionsProps) {
+export function TrackActions({ trackId, slug, published, pinned }: TrackActionsProps) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
@@ -21,6 +22,20 @@ export function TrackActions({ trackId, slug, published }: TrackActionsProps) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'publish', published: !published }),
+      })
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleTogglePin() {
+    setBusy(true)
+    try {
+      await fetch(`/api/admin/musicas/${trackId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pin', pinned: !pinned }),
       })
       router.refresh()
     } finally {
@@ -63,6 +78,27 @@ export function TrackActions({ trackId, slug, published }: TrackActionsProps) {
           <path d="M11 2l3 3-8 8H3v-3l8-8z" />
         </svg>
       </Link>
+
+      {/* Fixar / Desafixar no feed */}
+      <button
+        onClick={handleTogglePin}
+        disabled={busy}
+        className="p-1.5 text-neutral-600 hover:text-neutral-300 rounded transition-colors disabled:opacity-40"
+        title={pinned ? 'Desafixar do feed' : 'Fixar no feed'}
+      >
+        <svg
+          className={`w-3.5 h-3.5 ${pinned ? 'text-amber-400' : ''}`}
+          viewBox="0 0 16 16"
+          fill={pinned ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+        </svg>
+      </button>
 
       {/* Publicar / Despublicar */}
       <button

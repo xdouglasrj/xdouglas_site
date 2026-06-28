@@ -78,8 +78,16 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
         onClick={() => trackMusicView(track.id)}
         className="group block"
       >
-        <h2 className="font-semibold text-white text-sm truncate group-hover:text-gate-pink transition-colors">
-          {track.title}
+        <h2 className="font-semibold text-white text-sm truncate group-hover:text-gate-pink transition-colors flex items-center gap-1.5">
+          {track.pinned && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-amber-950/60 text-amber-400 border border-amber-800/60 shrink-0">
+              <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+              </svg>
+              Fixada
+            </span>
+          )}
+          <span className="truncate">{track.title}</span>
         </h2>
         <p className="mt-0.5 text-xs text-gate-blue truncate">
           {track.artist.name}

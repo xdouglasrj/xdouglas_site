@@ -205,12 +205,17 @@ model Post {
   author    User      @relation(fields: [authorId], references: [id])
   content   String
   createdAt DateTime  @default(now()) @map("created_at")
+  // Fixado pelo admin — enquanto true, aparece sempre no topo do feed,
+  // por tempo indeterminado, até o admin desativar o fixo
+  pinned    Boolean   @default(false)
+  pinnedAt  DateTime? @map("pinned_at")
 
   likes     Like[]
   comments  Comment[]
 
   @@index([authorId])
   @@index([createdAt])
+  @@index([pinned])
   @@map("posts")
 }
 
@@ -234,9 +239,15 @@ model Comment {
   authorId  String   @map("author_id")
   author    User     @relation(fields: [authorId], references: [id])
   content   String
+  // Fixado pelo admin — enquanto true, ignora a janela de expiração (some
+  // do soft-hide e do cron de limpeza) e aparece sempre no topo dos
+  // comentários do post
+  pinned    Boolean   @default(false)
+  pinnedAt  DateTime? @map("pinned_at")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([postId])
+  @@index([pinned])
   @@map("comments")
 }
 
@@ -386,6 +397,10 @@ model Track {
   published     Boolean  @default(false)
   publishedAt   DateTime? @map("published_at")
   downloadCount Int      @default(0) @map("download_count")
+  // Fixada pelo admin no feed (/musicas-recentes) — enquanto true, ignora
+  // a janela de expiração (24/36/48h) e aparece sempre no topo
+  pinned        Boolean  @default(false)
+  pinnedAt      DateTime? @map("pinned_at")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -398,6 +413,7 @@ model Track {
   @@index([published])
   @@index([genre])
   @@index([submittedById])
+  @@index([pinned])
   @@map("tracks")
 }
 
@@ -411,9 +427,14 @@ model TrackComment {
   // Preenchido quando o autor edita o comentário — usado para mostrar
   // "Comentário editado" com a data/hora abaixo do texto
   editedAt  DateTime? @map("edited_at")
+  // Fixado pelo admin — enquanto true, ignora a janela de expiração e
+  // aparece sempre no topo dos comentários da música
+  pinned    Boolean   @default(false)
+  pinnedAt  DateTime? @map("pinned_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([trackId])
+  @@index([pinned])
   @@map("track_comments")
 }
 

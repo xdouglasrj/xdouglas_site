@@ -14,7 +14,7 @@ export async function cleanupExpiredComments(): Promise<{
   const cutoff = await getContentCutoffDate()
 
   const result = await prisma.comment.deleteMany({
-    where: { createdAt: { lt: cutoff } },
+    where: { createdAt: { lt: cutoff }, pinned: false },
   })
 
   return { deleted: result.count, ranAt: new Date().toISOString() }

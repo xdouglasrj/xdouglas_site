@@ -21,6 +21,7 @@ const TRACK_SELECT = {
   audioSizeBytes: true,
   downloadCount: true,
   publishedAt: true,
+  pinned: true,
   artist: {
     select: {
       id: true,
@@ -51,6 +52,7 @@ function serializeTrack(raw: {
   audioSizeBytes: bigint | null
   downloadCount: number
   publishedAt: Date | null
+  pinned: boolean
   artist: {
     id: string
     slug: string
@@ -89,11 +91,11 @@ export interface ListTracksOptions {
 }
 
 const SORT_ORDER_BY = {
-  recent: { publishedAt: 'desc' as const },
-  name: { title: 'asc' as const },
-  artist: { artist: { name: 'asc' as const } },
-  downloads: { downloadCount: 'desc' as const },
-} satisfies Record<TrackSortBy, object>
+  recent: [{ pinned: 'desc' as const }, { publishedAt: 'desc' as const }],
+  name: [{ pinned: 'desc' as const }, { title: 'asc' as const }],
+  artist: [{ pinned: 'desc' as const }, { artist: { name: 'asc' as const } }],
+  downloads: [{ pinned: 'desc' as const }, { downloadCount: 'desc' as const }],
+} satisfies Record<TrackSortBy, object[]>
 
 export async function listTracks(opts: ListTracksOptions = {}) {
   const { page = 1, perPage = 24, genre, artistSlug, q, includeExpired = false, sortBy = 'recent' } = opts
@@ -102,14 +104,20 @@ export async function listTracks(opts: ListTracksOptions = {}) {
 
   const where = {
     published: true,
-    ...(cutoff && { publishedAt: { gte: cutoff } }),
+    // Música fixada pelo admin ignora a janela de expiração — continua
+    // aparecendo no feed mesmo após o corte de 24/36/48h
+    ...(cutoff && { OR: [{ pinned: true }, { publishedAt: { gte: cutoff } }] }),
     ...(genre && { genre }),
     ...(artistSlug && { artist: { slug: artistSlug } }),
     ...(q && {
-      OR: [
-        { title: { contains: q, mode: 'insensitive' as const } },
-        { producerName: { contains: q, mode: 'insensitive' as const } },
-        { artist: { name: { contains: q, mode: 'insensitive' as const } } },
+      AND: [
+        {
+          OR: [
+            { title: { contains: q, mode: 'insensitive' as const } },
+            { producerName: { contains: q, mode: 'insensitive' as const } },
+            { artist: { name: { contains: q, mode: 'insensitive' as const } } },
+          ],
+        },
       ],
     }),
   }

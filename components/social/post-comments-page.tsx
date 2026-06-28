@@ -19,6 +19,7 @@ interface CommentView {
   id: string
   content: string
   createdAt: string
+  pinned: boolean
   author: CommentAuthor
 }
 
@@ -51,6 +52,8 @@ export function PostCommentsPage({ postId }: { postId: string }) {
   const [newComment, setNewComment] = useState('')
   const [sending, setSending] = useState(false)
   const [rateLimitRetryAt, setRateLimitRetryAt] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -67,7 +70,9 @@ export function PostCommentsPage({ postId }: { postId: string }) {
         setPost(postData.post)
         setComments(commentsData?.comments ?? [])
         setTotalComments(commentsData?.total ?? 0)
-        setOffset(commentsData?.comments?.length ?? 0)
+        // offset acompanha só os comentários não-fixados consumidos —
+        // os fixados não entram na paginação por skip/take
+        setOffset((commentsData?.comments?.length ?? 0) - (commentsData?.pinnedCount ?? 0))
       })
       .catch(() => {
         if (active) setError('Erro de conexão.')
@@ -75,6 +80,14 @@ export function PostCommentsPage({ postId }: { postId: string }) {
       .finally(() => {
         if (active) setLoading(false)
       })
+
+    fetch('/api/perfil')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active) setIsAdmin(data?.user?.role === 'ADMIN')
+      })
+      .catch(() => {})
+
     return () => {
       active = false
     }
@@ -93,6 +106,28 @@ export function PostCommentsPage({ postId }: { postId: string }) {
       }
     } finally {
       setLoadingMore(false)
+    }
+  }
+
+  async function toggleCommentPin(comment: CommentView) {
+    if (pinningId) return
+    setPinningId(comment.id)
+    try {
+      const res = await fetch(`/api/social/comments/${comment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: !comment.pinned }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments((prev) => {
+          if (!prev) return prev
+          const updated = prev.map((c) => (c.id === comment.id ? data.comment : c))
+          return updated.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned))
+        })
+      }
+    } finally {
+      setPinningId(null)
     }
   }
 
@@ -178,9 +213,29 @@ export function PostCommentsPage({ postId }: { postId: string }) {
               <p className="text-xs">
                 <span className="font-semibold text-white">{authorName(c.author)}</span>{' '}
                 <span className="text-white/30">{formatDate(c.createdAt)}</span>
+                {c.pinned && (
+                  <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-amber-950/60 text-amber-400 border border-amber-800/60">
+                    <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+                    </svg>
+                    Fixado
+                  </span>
+                )}
               </p>
               <p className="text-sm text-white/80 break-words">{c.content}</p>
-              <ReportButton targetType="COMMENT" targetId={c.id} />
+              <div className="flex items-center gap-3">
+                <ReportButton targetType="COMMENT" targetId={c.id} />
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => toggleCommentPin(c)}
+                    disabled={pinningId === c.id}
+                    className="text-xs text-white/30 hover:text-amber-400 transition disabled:opacity-50"
+                  >
+                    {pinningId === c.id ? '…' : c.pinned ? 'Desafixar' : 'Fixar'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ))}

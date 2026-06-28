@@ -24,8 +24,19 @@ export async function addTrackComment(trackId: string, authorId: string, content
 export async function listTrackComments(trackId: string) {
   const cutoff = await getContentCutoffDate()
   return prisma.trackComment.findMany({
-    where: { trackId, createdAt: { gte: cutoff } },
-    orderBy: { createdAt: 'asc' },
+    // Comentário fixado pelo admin ignora a janela de expiração — continua
+    // visível mesmo após o corte de 24/36/48h
+    where: { trackId, OR: [{ pinned: true }, { createdAt: { gte: cutoff } }] },
+    orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    include: { author: { select: AUTHOR_SELECT } },
+  })
+}
+
+/** Fixa/desafixa um comentário — só admin pode chamar (checado na rota). */
+export async function toggleTrackCommentPin(commentId: string, pinned: boolean) {
+  return prisma.trackComment.update({
+    where: { id: commentId },
+    data: { pinned, pinnedAt: pinned ? new Date() : null },
     include: { author: { select: AUTHOR_SELECT } },
   })
 }

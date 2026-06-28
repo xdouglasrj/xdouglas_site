@@ -40,6 +40,15 @@ export function Feed() {
     setPosts((prev) => prev?.filter((p) => p.id !== postId) ?? prev)
   }
 
+  function handlePinned(postId: string, pinned: boolean) {
+    setPosts((prev) => {
+      if (!prev) return prev
+      const updated = prev.map((p) => (p.id === postId ? { ...p, pinned } : p))
+      // Estável: mantém a ordem relativa entre os já fixados e os demais
+      return updated.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned))
+    })
+  }
+
   return (
     <div className="mt-6 flex flex-col gap-4 max-w-xl">
       <PostComposer onPosted={load} />
@@ -61,6 +70,7 @@ export function Feed() {
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onDeleted={handleDeleted}
+          onPinned={handlePinned}
         />
       ))}
     </div>

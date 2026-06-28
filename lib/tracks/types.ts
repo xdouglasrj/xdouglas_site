@@ -27,6 +27,7 @@ export interface TrackPublic {
   downloadCount: number
   likeCount: number
   publishedAt: string | null    // ISO string
+  pinned: boolean
   artist: ArtistPublic
 }
 

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminMusicasPage() {
   const tracks = await prisma.track.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
     select: {
       id: true,
       slug: true,
@@ -17,6 +17,7 @@ export default async function AdminMusicasPage() {
       genre: true,
       audioFormat: true,
       published: true,
+      pinned: true,
       downloadCount: true,
       coverUrl: true,
       createdAt: true,
@@ -110,7 +111,12 @@ export default async function AdminMusicasPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-neutral-200 truncate">
+                        <p className="font-medium text-neutral-200 truncate flex items-center gap-1.5">
+                          {track.pinned && (
+                            <svg className="w-3 h-3 text-amber-400 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                              <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+                            </svg>
+                          )}
                           {track.title}
                         </p>
                         <p className="text-xs text-neutral-600 truncate">
@@ -159,6 +165,7 @@ export default async function AdminMusicasPage() {
                       trackId={track.id}
                       slug={track.slug}
                       published={track.published}
+                      pinned={track.pinned}
                     />
                   </td>
                 </tr>

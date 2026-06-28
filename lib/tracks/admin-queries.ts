@@ -202,6 +202,29 @@ export async function togglePublish(id: string, publish: boolean, userId: string
   return track
 }
 
+export async function togglePin(id: string, pinned: boolean, userId: string) {
+  const track = await prisma.track.update({
+    where: { id },
+    data: {
+      pinned,
+      pinnedAt: pinned ? new Date() : null,
+    },
+    select: { id: true, title: true, pinned: true },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'TRACK_UPDATE',
+      entityId: id,
+      entityType: 'track',
+      metadata: { action: pinned ? 'pin' : 'unpin' },
+    },
+  })
+
+  return track
+}
+
 export async function deleteTrack(id: string, userId: string) {
   const track = await prisma.track.findUnique({
     where: { id },

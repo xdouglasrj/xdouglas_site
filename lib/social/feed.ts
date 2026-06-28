@@ -26,6 +26,7 @@ export interface FeedPost {
   id: string
   content: string
   createdAt: Date
+  pinned: boolean
   author: FeedAuthor
   likeCount: number
   commentCount: number
@@ -53,12 +54,13 @@ export async function listFeed(viewerId: string, page = 1): Promise<{ posts: Fee
   const [count, rows] = await Promise.all([
     prisma.post.count(),
     prisma.post.findMany({
-      orderBy: { createdAt: 'desc' },
+      // Fixado pelo admin aparece sempre primeiro, por tempo indeterminado
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * FEED_PAGE_SIZE,
       take: FEED_PAGE_SIZE,
       include: {
         author: { select: AUTHOR_SELECT },
-        _count: { select: { likes: true, comments: { where: { createdAt: { gte: cutoff } } } } },
+        _count: { select: { likes: true, comments: { where: { OR: [{ pinned: true }, { createdAt: { gte: cutoff } }] } } } },
         likes: { where: { userId: viewerId }, select: { id: true } },
       },
     }),
@@ -68,6 +70,7 @@ export async function listFeed(viewerId: string, page = 1): Promise<{ posts: Fee
     id: p.id,
     content: p.content,
     createdAt: p.createdAt,
+    pinned: p.pinned,
     author: p.author,
     likeCount: p._count.likes,
     commentCount: p._count.comments,
@@ -119,6 +122,14 @@ export async function getPost(postId: string) {
   })
 }
 
+/** Fixa/desafixa um post no topo do feed — só admin pode chamar (checado na rota). */
+export async function togglePostPin(postId: string, pinned: boolean) {
+  return prisma.post.update({
+    where: { id: postId },
+    data: { pinned, pinnedAt: pinned ? new Date() : null },
+  })
+}
+
 /** Remove o post — autor ou admin podem excluir. Retorna false se não autorizado. */
 export async function deletePost(postId: string, userId: string, isAdmin: boolean): Promise<boolean> {
   const post = await prisma.post.findUnique({ where: { id: postId } })
@@ -133,41 +144,81 @@ export async function deletePost(postId: string, userId: string, isAdmin: boolea
   return true
 }
 
-/** Os N comentários mais recentes (ordem cronológica), mais o total. */
+const PINNED_AUTHOR_SELECT = { author: { select: AUTHOR_SELECT } } as const
+
+/** Comentários fixados do post (sempre visíveis, em qualquer página). */
+function listPinnedComments(postId: string) {
+  return prisma.comment.findMany({
+    where: { postId, pinned: true },
+    orderBy: { createdAt: 'asc' },
+    include: PINNED_AUTHOR_SELECT,
+  })
+}
+
+/**
+ * Os N comentários mais recentes (ordem cronológica), com os fixados
+ * sempre prefixados no topo, mais o total (fixados + dentro da janela).
+ * `pinnedCount` informa quantos itens do array são fixados — usado pelo
+ * front pra acertar o `offset` da paginação em listAllComments.
+ */
 export async function listComments(postId: string, limit = COMMENTS_FEED_LIMIT) {
   const cutoff = await getContentCutoffDate()
-  const where = { postId, createdAt: { gte: cutoff } }
+  const unpinnedWhere = { postId, pinned: false, createdAt: { gte: cutoff } }
 
-  const [total, rows] = await Promise.all([
-    prisma.comment.count({ where }),
+  const [pinned, unpinnedTotal, rows] = await Promise.all([
+    listPinnedComments(postId),
+    prisma.comment.count({ where: unpinnedWhere }),
     prisma.comment.findMany({
-      where,
+      where: unpinnedWhere,
       orderBy: { createdAt: 'desc' },
       take: limit,
-      include: { author: { select: AUTHOR_SELECT } },
+      include: PINNED_AUTHOR_SELECT,
     }),
   ])
 
-  return { comments: rows.reverse(), total }
+  return {
+    comments: [...pinned, ...rows.reverse()],
+    total: unpinnedTotal + pinned.length,
+    pinnedCount: pinned.length,
+  }
 }
 
-/** Comentários paginados (lote dos mais recentes a partir de `offset`) — usado na página de comentários. */
+/**
+ * Comentários paginados (lote dos mais recentes a partir de `offset`) —
+ * usado na página de comentários. Os fixados só vêm na primeira página
+ * (offset 0) pra não duplicar quando o front carrega mais.
+ */
 export async function listAllComments(postId: string, limit = 20, offset = 0) {
   const cutoff = await getContentCutoffDate()
-  const where = { postId, createdAt: { gte: cutoff } }
+  const unpinnedWhere = { postId, pinned: false, createdAt: { gte: cutoff } }
 
-  const [total, rows] = await Promise.all([
-    prisma.comment.count({ where }),
+  const [pinned, pinnedTotal, unpinnedTotal, rows] = await Promise.all([
+    offset === 0 ? listPinnedComments(postId) : Promise.resolve([]),
+    prisma.comment.count({ where: { postId, pinned: true } }),
+    prisma.comment.count({ where: unpinnedWhere }),
     prisma.comment.findMany({
-      where,
+      where: unpinnedWhere,
       orderBy: { createdAt: 'desc' },
       skip: offset,
       take: limit,
-      include: { author: { select: AUTHOR_SELECT } },
+      include: PINNED_AUTHOR_SELECT,
     }),
   ])
 
-  return { comments: rows.reverse(), total }
+  return {
+    comments: [...pinned, ...rows.reverse()],
+    total: unpinnedTotal + pinnedTotal,
+    pinnedCount: pinned.length,
+  }
+}
+
+/** Fixa/desafixa um comentário do feed — só admin pode chamar (checado na rota). */
+export async function togglePostCommentPin(commentId: string, pinned: boolean) {
+  return prisma.comment.update({
+    where: { id: commentId },
+    data: { pinned, pinnedAt: pinned ? new Date() : null },
+    include: { author: { select: AUTHOR_SELECT } },
+  })
 }
 
 /**
@@ -179,7 +230,7 @@ export async function listAllComments(postId: string, limit = 20, offset = 0) {
  */
 export async function listGlobalComments(limit = 20, offset = 0) {
   const cutoff = await getContentCutoffDate()
-  const where = { createdAt: { gte: cutoff } }
+  const where = { OR: [{ pinned: true }, { createdAt: { gte: cutoff } }] }
 
   const [total, rows] = await Promise.all([
     prisma.comment.count({ where }),

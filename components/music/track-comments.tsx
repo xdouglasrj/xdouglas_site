@@ -19,6 +19,7 @@ interface TrackCommentView {
   content: string
   createdAt: string
   editedAt: string | null
+  pinned: boolean
   author: CommentAuthor
 }
 
@@ -45,6 +46,7 @@ export function TrackComments({ trackId }: { trackId: string }) {
   const [editValue, setEditValue] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -129,6 +131,28 @@ export function TrackComments({ trackId }: { trackId: string }) {
     }
   }
 
+  async function togglePin(comment: TrackCommentView) {
+    if (pinningId) return
+    setPinningId(comment.id)
+    try {
+      const res = await fetch(`/api/social/tracks/${trackId}/comments/${comment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: !comment.pinned }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments((prev) => {
+          if (!prev) return prev
+          const updated = prev.map((c) => (c.id === comment.id ? data.comment : c))
+          return updated.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned))
+        })
+      }
+    } finally {
+      setPinningId(null)
+    }
+  }
+
   async function deleteComment(commentId: string) {
     if (deletingId) return
     setDeletingId(commentId)
@@ -176,6 +200,14 @@ export function TrackComments({ trackId }: { trackId: string }) {
                     <span className="font-semibold text-white">{authorName(c.author)}</span>
                   )}{' '}
                   <span className="text-white/30">{formatDate(c.createdAt)}</span>
+                  {c.pinned && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-amber-950/60 text-amber-400 border border-amber-800/60">
+                      <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+                      </svg>
+                      Fixado
+                    </span>
+                  )}
                 </p>
 
                 {isEditing ? (
@@ -237,6 +269,16 @@ export function TrackComments({ trackId }: { trackId: string }) {
                         className="text-xs text-white/30 hover:text-red-400 transition disabled:opacity-50"
                       >
                         {deletingId === c.id ? 'Excluindo…' : 'Excluir'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => togglePin(c)}
+                        disabled={pinningId === c.id}
+                        className="text-xs text-white/30 hover:text-amber-400 transition disabled:opacity-50"
+                      >
+                        {pinningId === c.id ? '…' : c.pinned ? 'Desafixar' : 'Fixar'}
                       </button>
                     )}
                     <ReportButton targetType="COMMENT" targetId={c.id} />

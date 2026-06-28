@@ -11,6 +11,7 @@ export interface FeedPostView {
   id: string
   content: string
   createdAt: string
+  pinned: boolean
   author: {
     id: string
     handle: string | null
@@ -27,6 +28,7 @@ interface CommentView {
   id: string
   content: string
   createdAt: string
+  pinned: boolean
   author: { handle: string | null; name: string | null; artisticName: string | null; photoUrl: string | null }
 }
 
@@ -45,13 +47,15 @@ interface PostCardProps {
   currentUserId: string | null
   isAdmin: boolean
   onDeleted: (postId: string) => void
+  onPinned: (postId: string, pinned: boolean) => void
 }
 
-export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardProps) {
+export function PostCard({ post, currentUserId, isAdmin, onDeleted, onPinned }: PostCardProps) {
   const [liked, setLiked] = useState(post.likedByMe)
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pinningPost, setPinningPost] = useState(false)
 
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [comments, setComments] = useState<CommentView[] | null>(null)
@@ -61,6 +65,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
   const [loadingComments, setLoadingComments] = useState(false)
   const [sendingComment, setSendingComment] = useState(false)
   const [rateLimitRetryAt, setRateLimitRetryAt] = useState<string | null>(null)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   const canDelete = isAdmin || (currentUserId !== null && currentUserId === post.author.id)
 
@@ -72,6 +77,21 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
       if (res.ok) onDeleted(post.id)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function togglePostPin() {
+    if (pinningPost) return
+    setPinningPost(true)
+    try {
+      const res = await fetch(`/api/social/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: !post.pinned }),
+      })
+      if (res.ok) onPinned(post.id, !post.pinned)
+    } finally {
+      setPinningPost(false)
     }
   }
 
@@ -107,6 +127,28 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
     }
   }
 
+  async function toggleCommentPin(comment: CommentView) {
+    if (pinningId) return
+    setPinningId(comment.id)
+    try {
+      const res = await fetch(`/api/social/comments/${comment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: !comment.pinned }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments((prev) => {
+          if (!prev) return prev
+          const updated = prev.map((c) => (c.id === comment.id ? data.comment : c))
+          return updated.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned))
+        })
+      }
+    } finally {
+      setPinningId(null)
+    }
+  }
+
   async function submitComment(e: React.FormEvent) {
     e.preventDefault()
     if (sendingComment || !newComment.trim()) return
@@ -119,7 +161,12 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
       })
       const data = await res.json()
       if (res.ok) {
-        setComments((prev) => [...(prev ?? []), data.comment].slice(-10))
+        setComments((prev) => {
+          const list = prev ?? []
+          const pinned = list.filter((c) => c.pinned)
+          const unpinned = list.filter((c) => !c.pinned)
+          return [...pinned, ...[...unpinned, data.comment].slice(-10)]
+        })
         setCommentTotal((t) => t + 1)
         setCommentCount((c) => c + 1)
         setNewComment('')
@@ -149,8 +196,28 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
           <Link href={`/perfil/${post.author.handle}`} className="text-sm font-semibold text-white hover:text-gate-pink truncate block">
             {authorName(post.author)}
           </Link>
-          <p className="text-xs text-white/40">{formatDate(post.createdAt)}</p>
+          <p className="text-xs text-white/40">
+            {formatDate(post.createdAt)}
+            {post.pinned && (
+              <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-amber-950/60 text-amber-400 border border-amber-800/60 align-middle">
+                <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+                </svg>
+                Fixado
+              </span>
+            )}
+          </p>
         </div>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={togglePostPin}
+            disabled={pinningPost}
+            className="text-xs text-white/30 hover:text-amber-400 transition disabled:opacity-50 shrink-0"
+          >
+            {pinningPost ? '…' : post.pinned ? 'Desafixar' : 'Fixar'}
+          </button>
+        )}
         {canDelete && (
           <button
             type="button"
@@ -209,9 +276,29 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted }: PostCardPr
                 <p className="text-xs">
                   <span className="font-semibold text-white">{authorName(c.author)}</span>{' '}
                   <span className="text-white/30">{formatDate(c.createdAt)}</span>
+                  {c.pinned && (
+                    <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-amber-950/60 text-amber-400 border border-amber-800/60">
+                      <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path d="M5.5 1.5l5.5 5.5-1 1-1.2-.2L6 10.5 3 13.5l3-3-2.3-2.8-.2-1.2 1-1z" />
+                      </svg>
+                      Fixado
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm text-white/80 break-words">{c.content}</p>
-                <ReportButton targetType="COMMENT" targetId={c.id} />
+                <div className="flex items-center gap-3">
+                  <ReportButton targetType="COMMENT" targetId={c.id} />
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => toggleCommentPin(c)}
+                      disabled={pinningId === c.id}
+                      className="text-xs text-white/30 hover:text-amber-400 transition disabled:opacity-50"
+                    >
+                      {pinningId === c.id ? '…' : c.pinned ? 'Desafixar' : 'Fixar'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
