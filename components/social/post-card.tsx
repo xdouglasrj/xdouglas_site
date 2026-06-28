@@ -31,7 +31,7 @@ interface CommentView {
 }
 
 function authorName(a: { name: string | null; artisticName: string | null }) {
-  return a.name || a.artisticName || 'Membro'
+  return a.artisticName || a.name || 'Membro'
 }
 
 function formatDate(iso: string) {
