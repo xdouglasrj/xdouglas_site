@@ -57,6 +57,16 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    label: 'Loja de pontos',
+    href: '/admin/loja',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 5.5h12l-1 8.5H3l-1-8.5z" />
+        <path d="M5 5.5V4a3 3 0 0 1 6 0v1.5" />
+      </svg>
+    ),
+  },
 ] as const
 
 const PEOPLE_ITEMS = [

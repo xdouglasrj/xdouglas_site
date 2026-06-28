@@ -12,6 +12,7 @@ import { ProfileTracks } from '@/components/profile/profile-tracks'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
 import { getArtistLikeCount } from '@/lib/social/track-likes'
 import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
+import { getLevelName } from '@/lib/points/levels'
 
 const ROLE_LABEL: Record<string, string> = {
   GUEST: 'Ouvinte',
@@ -62,6 +63,8 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       showPhone: true,
       showName: true,
       createdAt: true,
+      totalXp: true,
+      level: true,
       artist: { select: { id: true, name: true, slug: true, bio: true } },
     },
   })
@@ -86,6 +89,9 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const canSeeEmail = isAdmin || profile.showEmail
   const canSeePhone = isAdmin || (profile.showPhone && !!profile.phone)
   const canSeeName = isAdmin || !isProfileArtist || profile.showName
+  // XP nunca é público — só o próprio dono e o admin veem o número. Nível
+  // (o "título" derivado do XP) pode ficar visível pra todo mundo.
+  const canSeeXp = isSelf || isAdmin
   const displayName = canSeeName
     ? profile.name || profile.artisticName || profile.handle
     : profile.artisticName || profile.handle
@@ -132,6 +138,17 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
           <div className="mt-4 flex items-center gap-6 text-sm">
             <FollowListModal userId={profile.id} type="followers" count={counts.followers} label="seguidores" />
             <FollowListModal userId={profile.id} type="following" count={counts.following} label="seguindo" />
+            <span className="flex items-center gap-1.5 text-white/80">
+              <svg className="w-3.5 h-3.5 text-gate-blue" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 1l2.2 4.5 4.8.7-3.5 3.4.8 4.8L8 12.1 3.7 14.4l.8-4.8L1 6.2l4.8-.7z" />
+              </svg>
+              {getLevelName(profile.level)}
+            </span>
+            {canSeeXp && (
+              <span className="text-white/40 text-xs" title="Visível só para você">
+                {profile.totalXp.toLocaleString('pt-BR')} XP
+              </span>
+            )}
             {profile.artist && (
               <span className="flex items-center gap-1.5 text-white/80">
                 <svg className="w-3.5 h-3.5 text-gate-pink" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">

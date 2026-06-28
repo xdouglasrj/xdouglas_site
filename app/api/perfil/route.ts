@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/auth/guard'
 import { HANDLE_REGEX } from '@/lib/auth/handle'
+import { addPoints } from '@/lib/points/points-service'
 
 // ============================================================
 // GET /api/perfil — dados do usuário logado
@@ -148,6 +149,20 @@ export const PATCH = withAuth(async (request, auth) => {
         where: { userId: auth.userId },
         data: { name: artisticName },
       })
+    }
+
+    // Gamificação — não bloqueia a atualização do perfil se falhar
+    try {
+      if (photoKey !== undefined) {
+        await addPoints(auth.userId, 'AVATAR_ADDED')
+      }
+
+      // "Perfil completo" = tem foto, @ público e nome (próprio ou artístico)
+      if (updated.photoUrl && updated.handle && (updated.name || artisticName)) {
+        await addPoints(auth.userId, 'PROFILE_COMPLETED')
+      }
+    } catch (err) {
+      console.error('[Perfil] Falha ao registrar pontos', err)
     }
 
     return NextResponse.json({ ok: true, user: updated })

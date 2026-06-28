@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { getContentCutoffDate } from '@/lib/settings/content-expiration'
+import { addPoints } from '@/lib/points/points-service'
 
 // Limite de caracteres por comentário — evita que alguém escreva um texto
 // gigante (ex.: cole um livro) na caixa de comentários de uma música.
@@ -15,10 +16,14 @@ const AUTHOR_SELECT = {
 } as const
 
 export async function addTrackComment(trackId: string, authorId: string, content: string) {
-  return prisma.trackComment.create({
+  const comment = await prisma.trackComment.create({
     data: { trackId, authorId, content },
     include: { author: { select: AUTHOR_SELECT } },
   })
+
+  addPoints(authorId, 'COMMENT_CREATED').catch((err) => console.error('[TrackComment] Falha ao registrar pontos', err))
+
+  return comment
 }
 
 export async function listTrackComments(trackId: string) {

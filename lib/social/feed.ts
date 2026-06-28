@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { getContentCutoffDate } from '@/lib/settings/content-expiration'
+import { addPoints } from '@/lib/points/points-service'
 
 const FEED_PAGE_SIZE = 20
 const COMMENTS_FEED_LIMIT = 10
@@ -109,10 +110,14 @@ export async function addComment(postId: string, authorId: string, content: stri
     }
   }
 
-  return prisma.comment.create({
+  const comment = await prisma.comment.create({
     data: { postId, authorId, content },
     include: { author: { select: AUTHOR_SELECT } },
   })
+
+  addPoints(authorId, 'COMMENT_CREATED').catch((err) => console.error('[Comment] Falha ao registrar pontos', err))
+
+  return comment
 }
 
 export async function getPost(postId: string) {

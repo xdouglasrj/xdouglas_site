@@ -57,7 +57,9 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
     prisma.waitlist.count({ where }),
     prisma.waitlist.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      // Prioritários (comprados na loja) sempre no topo da fila — o aceite
+      // continua manual, isso só reordena pra você decidir quem priorizar
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * ADMIN_PAGE_SIZE,
       take: ADMIN_PAGE_SIZE,
       select: {
@@ -68,9 +70,25 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
         tipoUsuario: true,
         message: true,
         createdAt: true,
+        priority: true,
+        referredByUserId: true,
+        referredByUser: { select: { email: true, name: true, handle: true } },
       },
     }),
   ])
+
+  // Pra cada indicador presente nesta página, conta quantas indicações ele
+  // já fez no total — sinal simples de abuso (muitos pedidos do mesmo
+  // email indicando) sem precisar cruzar manualmente
+  const referrerIds = [...new Set(entries.map((e) => e.referredByUserId).filter((id): id is string => !!id))]
+  const referralCounts = referrerIds.length
+    ? await prisma.waitlist.groupBy({
+        by: ['referredByUserId'],
+        where: { referredByUserId: { in: referrerIds } },
+        _count: { _all: true },
+      })
+    : []
+  const referralCountByUserId = new Map(referralCounts.map((r) => [r.referredByUserId, r._count._all]))
 
   const totalPages = Math.max(1, Math.ceil(count / ADMIN_PAGE_SIZE))
 
@@ -110,6 +128,9 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
                 <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">
                   Mensagem
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden md:table-cell">
+                  Indicado por
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden lg:table-cell">
                   Pedido em
                 </th>
@@ -123,9 +144,16 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
                 <tr key={entry.id} className="hover:bg-neutral-800/40 transition-colors">
                   {/* Contato */}
                   <td className="px-4 py-3">
-                    <p className="font-medium text-neutral-200 truncate">
-                      {entry.name || entry.email}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {entry.priority && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-950/60 text-amber-400 border border-amber-800/60">
+                          Prioritário
+                        </span>
+                      )}
+                      <p className="font-medium text-neutral-200 truncate">
+                        {entry.name || entry.email}
+                      </p>
+                    </div>
                     <p className="text-xs text-neutral-600 truncate">{entry.email}</p>
                     {entry.phone && (
                       <p className="text-xs text-neutral-600 truncate">{entry.phone}</p>
@@ -153,6 +181,24 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
                     )}
                   </td>
 
+                  {/* Indicado por */}
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {entry.referredByUser ? (
+                      <div>
+                        <p className="text-xs text-neutral-400 truncate max-w-[160px]">
+                          {entry.referredByUser.email}
+                        </p>
+                        {(referralCountByUserId.get(entry.referredByUserId) ?? 0) > 1 && (
+                          <p className="text-[10px] text-rose-500">
+                            {referralCountByUserId.get(entry.referredByUserId)} indicações no total — verificar
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-neutral-700">—</span>
+                    )}
+                  </td>
+
                   {/* Data */}
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <p className="text-xs text-neutral-500 tabular-nums">
@@ -166,7 +212,7 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
 
                   {/* Ações */}
                   <td className="px-4 py-3">
-                    <WaitlistActions id={entry.id} email={entry.email} />
+                    <WaitlistActions id={entry.id} email={entry.email} hasReferrer={!!entry.referredByUserId} />
                   </td>
                 </tr>
               ))}

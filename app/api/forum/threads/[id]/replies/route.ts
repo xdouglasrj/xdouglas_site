@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
-import { addReply } from '@/lib/forum/forum'
+import { addReply, ThreadLockedError } from '@/lib/forum/forum'
 
 // ============================================================
 // POST /api/forum/threads/[id]/replies — responde um tópico
@@ -27,6 +27,11 @@ export const POST = withAuth(async (request: NextRequest, auth, params) => {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
   }
 
-  const reply = await addReply(threadId, auth.userId, parsed.data.body)
-  return apiSuccess({ reply }, 201)
+  try {
+    const reply = await addReply(threadId, auth.userId, parsed.data.body)
+    return apiSuccess({ reply }, 201)
+  } catch (err) {
+    if (err instanceof ThreadLockedError) return apiError(err.message, 403, 'THREAD_LOCKED')
+    throw err
+  }
 })

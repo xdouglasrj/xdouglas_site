@@ -1,5 +1,22 @@
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { addPoints } from '@/lib/points/points-service'
+
+// Pontua TRACK_PUBLISHED só quando a faixa vira pública pela primeira vez
+// e foi enviada por um artista (não músicas cadastradas direto pelo admin)
+async function awardPublishPointsIfNeeded(trackId: string, wasPublished: boolean | undefined, isPublished: boolean) {
+  if (wasPublished || !isPublished) return
+
+  const track = await prisma.track.findUnique({
+    where: { id: trackId },
+    select: { submittedById: true },
+  })
+  if (!track?.submittedById) return
+
+  addPoints(track.submittedById, 'TRACK_PUBLISHED').catch((err) =>
+    console.error('[Track] Falha ao registrar pontos de publicação', err)
+  )
+}
 
 // ============================================================
 // Schemas de validação
@@ -176,10 +193,14 @@ export async function updateTrack(
     },
   })
 
+  await awardPublishPointsIfNeeded(id, before?.published, track.published)
+
   return track
 }
 
 export async function togglePublish(id: string, publish: boolean, userId: string) {
+  const before = await prisma.track.findUnique({ where: { id }, select: { published: true } })
+
   const track = await prisma.track.update({
     where: { id },
     data: {
@@ -188,6 +209,8 @@ export async function togglePublish(id: string, publish: boolean, userId: string
     },
     select: { id: true, title: true, published: true },
   })
+
+  await awardPublishPointsIfNeeded(id, before?.published, track.published)
 
   await prisma.auditLog.create({
     data: {

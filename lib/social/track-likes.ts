@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { addPoints } from '@/lib/points/points-service'
 
 export async function isTrackLiked(trackId: string, userId: string): Promise<boolean> {
   const like = await prisma.trackLike.findUnique({
@@ -19,6 +20,11 @@ export async function toggleTrackLike(trackId: string, userId: string): Promise<
   }
 
   await prisma.trackLike.create({ data: { trackId, userId } })
+
+  // Gamificação — teto diário de ocorrências já é aplicado dentro do
+  // PointsService; não bloqueia a curtida se falhar
+  addPoints(userId, 'TRACK_LIKED').catch((err) => console.error('[TrackLike] Falha ao registrar pontos', err))
+
   return true
 }
 

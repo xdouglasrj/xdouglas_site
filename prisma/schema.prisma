@@ -7,8 +7,12 @@
 //   admin_sessions, audit_logs
 //   waitlist, consent_events
 //
+// Gamificação (pontos, níveis, loja, convite por indicação) — ver seção
+// "GAMIFICAÇÃO" mais abaixo: points_history, store_items, store_purchases,
+// store_threshold_events, store_price_adjustments, points_promotions
+//
 // Reservadas para Fase 2+ (não criadas agora):
-//   memberships, plans, feature_permissions, invites
+//   memberships, plans, feature_permissions
 // =============================================================
 
 generator client {
@@ -53,6 +57,62 @@ enum WaitlistTipoUsuario {
   MUSICO
   OUVINTE
   OUTRO
+}
+
+// =============================================================
+// GAMIFICAÇÃO — enums
+// =============================================================
+
+// Toda ação que gera (ou remove) pontos passa por aqui — histórico
+// completo em PointsHistory, nunca alteração direta de saldo.
+enum PointActionType {
+  USER_REGISTERED
+  PROFILE_COMPLETED
+  AVATAR_ADDED
+  FIRST_LOGIN
+  DAILY_LOGIN
+  DAILY_LOGIN_STREAK_BONUS
+  TRACK_LIKED
+  COMMENT_CREATED
+  TRACK_SHARED
+  TRACK_PUBLISHED
+  TRACK_PLAYED
+  PLAYLIST_CREATED
+  FRIEND_INVITE_COMPLETED
+  TRACK_MILESTONE_1000
+  STORE_REDEMPTION
+  INVITE_ABUSE_PENALTY
+  ADMIN_GIFT
+  ADMIN_ADJUSTMENT
+}
+
+// Pra quem o item da loja está disponível — Artista (role ARTIST) ou
+// Ouvinte (demais roles não-admin), ou os dois.
+enum StoreAudience {
+  ARTIST
+  LISTENER
+  BOTH
+}
+
+enum StoreItemKey {
+  PRIORITY_INVITE
+  PIN_TRACK_COMMENT
+  FEATURE_TRACK
+  EXTRA_STORAGE
+  MAPPING_ACCESS
+  APP_PREMIUM
+  PIN_FEED_POST
+}
+
+// Ciclo de vida de uma compra na loja — itens "de uso" (fixar
+// comentário/destaque) passam por AWAITING_USE -> ACTIVE -> USED/EXPIRED;
+// itens "de efeito imediato" (armazenamento, convite) vão direto pra USED.
+enum StorePurchaseStatus {
+  AWAITING_USE
+  ACTIVE
+  USED
+  EXPIRED
+  REFUNDED
 }
 
 enum AuditAction {
@@ -171,6 +231,39 @@ model User {
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
 
+  // ---------------------------------------------------------------
+  // Gamificação — XP é cumulativo e nunca decresce (nível é derivado
+  // dele); saldo gastável na loja é calculado em runtime a partir do
+  // PointsHistory, não fica num campo separado, pra não dessincronizar.
+  // ---------------------------------------------------------------
+  totalXp               Int       @default(0) @map("total_xp")
+  level                 Int       @default(1)
+  loginStreak           Int       @default(0) @map("login_streak")
+  lastDailyLoginAt      DateTime? @map("last_daily_login_at")
+  // Créditos comprados na loja pra priorizar uma indicação na fila do
+  // admin — nunca pula o aceite manual, só reordena (ver Waitlist.priority)
+  priorityInviteCredits Int       @default(0) @map("priority_invite_credits")
+  // Soma ao PLAN_QUOTA_MB do plano — comprado em blocos de 200MB,
+  // máx. 5 compras (teto de +1GB) controlado no StoreItem
+  bonusStorageMb        Int       @default(0) @map("bonus_storage_mb")
+  // Mapeamento (dashboard de stats) comprado por pontos — temporário,
+  // diferente de `mappingEnabled` que é a liberação manual/permanente do
+  // admin. Acesso efetivo = mappingEnabled OU mappingExpiresAt no futuro.
+  mappingExpiresAt      DateTime? @map("mapping_expires_at")
+  // Conta premium no app de música (ainda não lançado) — disponível pras
+  // duas lojas (artista e ouvinte), benefícios mantidos em aberto de propósito
+  appPremiumExpiresAt   DateTime? @map("app_premium_expires_at")
+  // Penalidade por abuso de indicação de convite — escala editável em
+  // AppSettings (ver inviteAbuseBlockDays); 0 = sem penalidade, 1 =
+  // advertência, 2 = bloqueado de convidar, 3 = conta suspensa (usa o
+  // `blocked` já existente acima)
+  inviteAbuseLevel      Int       @default(0) @map("invite_abuse_level")
+  inviteBlockedUntil    DateTime? @map("invite_blocked_until")
+
+  pointsHistory           PointsHistory[]
+  storePurchases          StorePurchase[]
+  referredWaitlistEntries Waitlist[]      @relation("WaitlistReferrals")
+
   adminSessions   AdminSession[]
   auditLogs       AuditLog[]
   artist          Artist?
@@ -216,15 +309,19 @@ model Follow {
 // =============================================================
 
 model Post {
-  id        String    @id @default(uuid())
-  authorId  String    @map("author_id")
-  author    User      @relation(fields: [authorId], references: [id])
-  content   String
-  createdAt DateTime  @default(now()) @map("created_at")
+  id              String    @id @default(uuid())
+  authorId        String    @map("author_id")
+  author          User      @relation(fields: [authorId], references: [id])
+  content         String
+  createdAt       DateTime  @default(now()) @map("created_at")
   // Fixado pelo admin — enquanto true, aparece sempre no topo do feed,
   // por tempo indeterminado, até o admin desativar o fixo
-  pinned    Boolean   @default(false)
-  pinnedAt  DateTime? @map("pinned_at")
+  pinned          Boolean   @default(false)
+  pinnedAt        DateTime? @map("pinned_at")
+  // Preenchido quando o fixo vem da loja (item PIN_FEED_POST, comprado
+  // pelo próprio ouvinte) — nulo = fixado pelo admin, sem expiração;
+  // valor = expira 24h após o uso, sem reembolso de pontos
+  pinnedExpiresAt DateTime? @map("pinned_expires_at")
 
   likes    Like[]
   comments Comment[]
@@ -277,6 +374,12 @@ model ForumThread {
   author    User     @relation(fields: [authorId], references: [id])
   title     String
   body      String
+  // Threads oficiais (regras de pontos; regras/punições de convite),
+  // postadas pelo admin — ficam fixadas no topo do fórum
+  pinned    Boolean  @default(false)
+  // Bloqueado pelo admin — enquanto true, ninguém consegue postar nova
+  // resposta (o tópico continua visível, só fecha pra novas respostas)
+  locked    Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 
   replies ForumReply[]
@@ -417,6 +520,11 @@ model Track {
   // a janela de expiração (24/36/48h) e aparece sempre no topo
   pinned        Boolean   @default(false)
   pinnedAt      DateTime? @map("pinned_at")
+  // Destaque comprado na loja (item FEATURE_TRACK) — diferente do `pinned`
+  // do admin (permanente, sem expiração). Máx. 3 faixas com featuredUntil
+  // no futuro simultaneamente; entre elas, a com mais tempo restante fica
+  // no topo do feed.
+  featuredUntil DateTime? @map("featured_until")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -434,20 +542,24 @@ model Track {
 }
 
 model TrackComment {
-  id        String    @id @default(uuid())
-  trackId   String    @map("track_id")
-  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
-  authorId  String    @map("author_id")
-  author    User      @relation(fields: [authorId], references: [id])
-  content   String
+  id              String    @id @default(uuid())
+  trackId         String    @map("track_id")
+  track           Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  authorId        String    @map("author_id")
+  author          User      @relation(fields: [authorId], references: [id])
+  content         String
   // Preenchido quando o autor edita o comentário — usado para mostrar
   // "Comentário editado" com a data/hora abaixo do texto
-  editedAt  DateTime? @map("edited_at")
+  editedAt        DateTime? @map("edited_at")
   // Fixado pelo admin — enquanto true, ignora a janela de expiração e
   // aparece sempre no topo dos comentários da música
-  pinned    Boolean   @default(false)
-  pinnedAt  DateTime? @map("pinned_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  pinned          Boolean   @default(false)
+  pinnedAt        DateTime? @map("pinned_at")
+  // Preenchido quando o fixo vem da loja (item PIN_TRACK_COMMENT, comprado
+  // pelo próprio artista) — nulo = fixado pelo admin, sem expiração;
+  // valor = expira 24h após o uso, sem reembolso de pontos
+  pinnedExpiresAt DateTime? @map("pinned_expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
   @@index([trackId])
   @@index([pinned])
@@ -656,22 +768,32 @@ model AuditLog {
 // =============================================================
 
 model Waitlist {
-  id          String              @id @default(uuid())
-  email       String              @unique
-  name        String?
-  phone       String?
-  tipoUsuario WaitlistTipoUsuario @map("tipo_usuario")
-  message     String? // campo livre opcional
-  consentedAt DateTime            @map("consented_at") // LGPD: momento do aceite
-  invitedAt   DateTime?           @map("invited_at") // preenchido quando convite for aceito
+  id               String              @id @default(uuid())
+  email            String              @unique
+  name             String?
+  phone            String?
+  tipoUsuario      WaitlistTipoUsuario @map("tipo_usuario")
+  message          String? // campo livre opcional
+  consentedAt      DateTime            @map("consented_at") // LGPD: momento do aceite
+  invitedAt        DateTime?           @map("invited_at") // preenchido quando convite for aceito
   // Chave aleatória gerada ao aceitar o convite — usada no link de cadastro
-  inviteCode  String?             @unique @map("invite_code")
+  inviteCode       String?             @unique @map("invite_code")
   // Momento em que o convite foi consumido (cadastro concluído) — single-use
-  usedAt      DateTime?           @map("used_at")
-  createdAt   DateTime            @default(now()) @map("created_at")
+  usedAt           DateTime?           @map("used_at")
+  // Preenchido quando essa entrada veio de uma indicação (usuário comprou
+  // "Convite prioritário" na loja e indicou esse email) — mostrado no
+  // /admin/convites junto com o email de quem indicou, pra detectar abuso
+  // (muitos pedidos do mesmo indicador = sinal de fraude)
+  referredByUserId String?             @map("referred_by_user_id")
+  referredByUser   User?               @relation("WaitlistReferrals", fields: [referredByUserId], references: [id])
+  // true = reordena no topo da fila do admin; NUNCA pula o aceite manual
+  priority         Boolean             @default(false)
+  createdAt        DateTime            @default(now()) @map("created_at")
 
   @@index([tipoUsuario])
   @@index([invitedAt])
+  @@index([referredByUserId])
+  @@index([priority])
   @@map("waitlist")
 }
 
@@ -696,6 +818,147 @@ model ConsentEvent {
 // =============================================================
 // APP SETTINGS — configurações globais (linha única "singleton")
 // =============================================================
+
+// =============================================================
+// GAMIFICAÇÃO — pontos, loja, mercado de preço dinâmico, promoções
+// =============================================================
+
+// Ledger completo de toda movimentação de XP — nunca alterar User.totalXp
+// direto, sempre passar por aqui (PointsService). points pode ser negativo
+// (resgate de loja, penalidade de abuso).
+model PointsHistory {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  user        User            @relation(fields: [userId], references: [id])
+  action      PointActionType
+  points      Int
+  description String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  // (userId, createdAt) cobre tanto o total acumulado quanto o ranking
+  // semanal (soma filtrada pela janela, sem precisar zerar nada)
+  @@index([userId, createdAt])
+  @@index([action])
+  @@map("points_history")
+}
+
+// Catálogo da loja — preço é o único campo que o mercado de oferta/demanda
+// reajusta (StorePriceAdjustment guarda o histórico). Os limites de
+// venda/concorrência ficam aqui pra não virar regra hardcoded no código.
+model StoreItem {
+  id       String        @id @default(uuid())
+  key      StoreItemKey  @unique
+  label    String
+  audience StoreAudience
+  price    Int
+
+  // Máximo de unidades desse item simultaneamente "ativas" na plataforma
+  // (ex: 3 faixas em destaque ao mesmo tempo) — null = sem limite de slot
+  maxConcurrent       Int? @map("max_concurrent")
+  // Janela e teto de vendas pra throttle de slot (ex: 3 vendas por 36h)
+  saleWindowHours     Int? @map("sale_window_hours")
+  saleWindowLimit     Int? @map("sale_window_limit")
+  // Duração do efeito após o uso, em horas (ex: 24h de destaque/fixação;
+  // null = não aplicável, ex. convite e armazenamento são efeito imediato)
+  durationHours       Int? @map("duration_hours")
+  // Teto de quantas vezes UM usuário pode comprar este item (ex: 5x no
+  // armazenamento = +1GB no total); null = sem teto por usuário
+  maxPurchasesPerUser Int? @map("max_purchases_per_user")
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchases        StorePurchase[]
+  thresholdEvents  StoreThresholdEvent[]
+  priceAdjustments StorePriceAdjustment[]
+
+  @@map("store_items")
+}
+
+// Uma compra concreta — targetType/targetId aponta pro que foi
+// destacado/fixado (faixa, comentário de música, post do feed) quando o
+// item exige escolher um alvo; fica nulo pros itens de efeito imediato
+// (convite, armazenamento, mapeamento, premium).
+model StorePurchase {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  user        User                @relation(fields: [userId], references: [id])
+  storeItemId String              @map("store_item_id")
+  storeItem   StoreItem           @relation(fields: [storeItemId], references: [id])
+  pricePaid   Int                 @map("price_paid")
+  status      StorePurchaseStatus @default(AWAITING_USE)
+
+  targetType String? @map("target_type") // "TRACK" | "TRACK_COMMENT" | "POST"
+  targetId   String? @map("target_id")
+
+  // Presente do admin — pula a cobrança de pontos (pricePaid = 0)
+  isGift          Boolean @default(false) @map("is_gift")
+  giftedByAdminId String? @map("gifted_by_admin_id")
+
+  purchasedAt DateTime  @default(now()) @map("purchased_at")
+  // Prazo pra efetivamente usar o item (ex: 24h) — passou e não usou,
+  // perde sem reembolso (status vira EXPIRED)
+  usableUntil DateTime? @map("usable_until")
+  usedAt      DateTime? @map("used_at")
+  // Quando o efeito (destaque/fixação) deixa de valer — calculado a partir
+  // de usedAt + durationHours do StoreItem
+  expiresAt   DateTime? @map("expires_at")
+
+  @@index([userId])
+  @@index([storeItemId, purchasedAt])
+  @@index([status])
+  @@map("store_purchases")
+}
+
+// Marco histórico: usuário cruzou o preço do item mais caro de uma loje
+// pela primeira vez NESSE valor de preço. É permanente — gastar os pontos
+// depois não desfaz o marco. Alimenta o contador que dispara reajuste.
+model StoreThresholdEvent {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  storeItemId  String    @map("store_item_id")
+  storeItem    StoreItem @relation(fields: [storeItemId], references: [id])
+  priceAtReach Int       @map("price_at_reach")
+  reachedAt    DateTime  @default(now()) @map("reached_at")
+
+  @@unique([userId, storeItemId, priceAtReach])
+  @@index([storeItemId, reachedAt])
+  @@map("store_threshold_events")
+}
+
+// Auditoria de cada reajuste de preço — pra acompanhar a "inflação" da
+// loja ao longo do tempo no painel admin.
+model StorePriceAdjustment {
+  id               String    @id @default(uuid())
+  storeItemId      String    @map("store_item_id")
+  storeItem        StoreItem @relation(fields: [storeItemId], references: [id])
+  oldPrice         Int       @map("old_price")
+  newPrice         Int       @map("new_price")
+  triggeredByCount Int       @map("triggered_by_count")
+  windowStart      DateTime  @map("window_start")
+  windowEnd        DateTime  @map("window_end")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([storeItemId, createdAt])
+  @@map("store_price_adjustments")
+}
+
+// Multiplicador de XP configurável pelo admin — data específica ou dia da
+// semana recorrente (ex: toda terça, dia de menor acesso)
+model PointsPromotion {
+  id         String    @id @default(uuid())
+  label      String
+  multiplier Float     @default(2.0)
+  startAt    DateTime? @map("start_at")
+  endAt      DateTime? @map("end_at")
+  // 0=domingo .. 6=sábado — recorrente, ignora startAt/endAt quando setado
+  weekday    Int?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("points_promotions")
+}
 
 model AppSettings {
   id                  String  @id @default("singleton")
@@ -723,6 +986,20 @@ model AppSettings {
   // download — separada da vinheta do player porque, depois de baixado,
   // não existe mais player controlando nada. Nulo = download sai sem vinheta.
   vinhetaDownloadKey String? @map("vinheta_download_key")
+
+  // Punição por abuso de indicação de convite (nível 2 da escala) — dias
+  // de bloqueio da função de convidar. Editável pelo admin, sem valor fixo
+  // no código, porque o critério pode mudar com a experiência real.
+  // Nível 1 (cancela só os pontos da indicação) e nível 3 (suspende a
+  // conta, via User.blocked) não precisam de duração configurável.
+  inviteAbuseBlockDays Int @default(30) @map("invite_abuse_block_days")
+
+  // Mercado de preço dinâmico da loja — quantas pessoas precisam cruzar o
+  // preço do item mais caro de uma loja, dentro da janela, pra disparar
+  // reajuste em todos os itens dessa loja (ver StoreThresholdEvent)
+  storeDynamicPriceThresholdCount  Int @default(3) @map("store_dynamic_price_threshold_count")
+  storeDynamicPriceWindowHours     Int @default(720) @map("store_dynamic_price_window_hours") // 30 dias
+  storeDynamicPriceIncreasePercent Int @default(20) @map("store_dynamic_price_increase_percent")
 
   updatedAt DateTime @updatedAt @map("updated_at")
 

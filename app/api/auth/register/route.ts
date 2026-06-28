@@ -6,6 +6,7 @@ import { waitlistRateLimit } from '@/lib/security/rate-limit'
 import { extractIp } from '@/lib/analytics/geo'
 import { inviteTargetForCategory, normalizeInviteCode } from '@/lib/invites/code'
 import { generateUniqueHandle } from '@/lib/auth/handle'
+import { addPoints } from '@/lib/points/points-service'
 
 // ============================================================
 // Validação
@@ -154,6 +155,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       where: { id: invite.id },
       data: { usedAt: new Date() },
     })
+
+    // Gamificação — não bloqueia o cadastro se falhar
+    try {
+      await addPoints(user.id, 'USER_REGISTERED')
+
+      // Indicação confirmada: quem indicou esse convite ganha os pontos
+      // só agora, quando o cadastro de fato é concluído (não no aceite do
+      // admin, que só libera o convite)
+      if (invite.referredByUserId) {
+        await addPoints(invite.referredByUserId, 'FRIEND_INVITE_COMPLETED', {
+          description: `Indicação confirmada: ${invite.email}`,
+        })
+      }
+    } catch (err) {
+      console.error('[Register] Falha ao registrar pontos', err)
+    }
 
     return NextResponse.json(
       {

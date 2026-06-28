@@ -8,6 +8,7 @@ import { loginRateLimit } from '@/lib/security/rate-limit'
 import { extractIp } from '@/lib/analytics/geo'
 import { getActiveHashKey, hashIp } from '@/lib/analytics/hash'
 import { isSuspiciousUserAgent } from '@/lib/security/detect-bot'
+import { addPoints, registerDailyLogin } from '@/lib/points/points-service'
 
 // ============================================================
 // Validação de input
@@ -127,6 +128,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     where: { id: user.id },
     data: { lastLoginAt: now },
   })
+
+  // Gamificação — FIRST_LOGIN só pontua 1x na vida (once), DAILY_LOGIN é
+  // idempotente no dia e cuida da sequência sozinho. Não bloqueia o login
+  // se falhar.
+  try {
+    await addPoints(user.id, 'FIRST_LOGIN')
+    await registerDailyLogin(user.id)
+  } catch (err) {
+    console.error('[Login] Falha ao registrar pontos', err)
+  }
 
   // 9. Audit log
   await prisma.auditLog.create({

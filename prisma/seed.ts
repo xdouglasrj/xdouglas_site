@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { seedFictionalLaunchContent } from '../lib/dev/seed-fictional-launch-content'
+import { STORE_CATALOG } from '../lib/store/catalog'
 
 const prisma = new PrismaClient()
 
@@ -32,6 +33,95 @@ async function main() {
   })
 
   console.log(`✅ Admin criado: ${admin.email}`)
+
+  // ============================================================
+  // Catálogo da loja de pontos — roda sempre (não só dev), preço inicial
+  // só é aplicado na criação; se o item já existir, não sobrescreve o
+  // preço (pode já ter sido reajustado pelo mercado de oferta/demanda)
+  // ============================================================
+
+  for (const item of STORE_CATALOG) {
+    await prisma.storeItem.upsert({
+      where: { key: item.key },
+      update: {},
+      create: {
+        key: item.key,
+        label: item.label,
+        audience: item.audience,
+        price: item.price,
+        maxConcurrent: item.maxConcurrent,
+        saleWindowHours: item.saleWindowHours,
+        saleWindowLimit: item.saleWindowLimit,
+        durationHours: item.durationHours,
+        maxPurchasesPerUser: item.maxPurchasesPerUser,
+      },
+    })
+  }
+  console.log(`✅ Catálogo da loja: ${STORE_CATALOG.length} itens`)
+
+  // ============================================================
+  // Threads oficiais do fórum — regras de pontos e regras/punições de
+  // convite. Fixadas no topo, postadas como admin. Editáveis depois
+  // direto no fórum (são posts normais, só marcados pinned).
+  // ============================================================
+
+  // Conteúdo oficial sincronizado pelo código a cada seed (update se já
+  // existir) — garante que números mudados em lib/points/levels.ts ou no
+  // catálogo da loja não fiquem desatualizados na thread. Se o admin
+  // editar manualmente pelo fórum, o próximo seed sobrescreve.
+  const pointsRulesTitle = 'Como funciona o sistema de pontos'
+  const pointsRulesBody = [
+    'Toda interação na comunidade gera XP, que vira nível e dá acesso a itens exclusivos na loja.',
+    '',
+    'Como ganhar pontos:',
+    '- Criar conta: +50 | Completar perfil: +100 | Adicionar foto: +20 | Primeiro login: +10',
+    '- Login diário: +5 (a cada 7 dias seguidos, +100 de bônus)',
+    '- Curtir música: +2 (até 20/dia) | Comentar: +5 (até 10/dia) | Compartilhar: +10 (até 10/dia)',
+    '- Ouvir música até o fim (app): +3 (até 30/dia) | Criar playlist: +20 (até 3/dia)',
+    '- Publicar música (artista): +100 (até 2/dia)',
+    '- Indicar alguém que confirma o cadastro: +300',
+    '- Faixa atingir 1.000 plays: +500',
+    '',
+    'Níveis: Descobridor (0+) → Explorador (15.001+) → Influenciador (50.001+) → Lenda Musical (500.001+).',
+    '',
+    'Loja: pontos trocam por convite prioritário, destaque de faixa, fixar comentário, armazenamento extra, mapeamento de estatísticas e conta premium no futuro app — cada item tem limite de uso e o preço sobe conforme mais gente alcança o item mais caro.',
+  ].join('\n')
+
+  const existingPointsThread = await prisma.forumThread.findFirst({ where: { title: pointsRulesTitle } })
+  if (existingPointsThread) {
+    await prisma.forumThread.update({ where: { id: existingPointsThread.id }, data: { body: pointsRulesBody, pinned: true } })
+    console.log('✅ Thread oficial atualizada: regras de pontos')
+  } else {
+    await prisma.forumThread.create({
+      data: { authorId: admin.id, title: pointsRulesTitle, pinned: true, body: pointsRulesBody },
+    })
+    console.log('✅ Thread oficial criada: regras de pontos')
+  }
+
+  const inviteRulesTitle = 'Regras de convite e punições'
+  const existingInviteThread = await prisma.forumThread.findFirst({ where: { title: inviteRulesTitle } })
+  if (!existingInviteThread) {
+    await prisma.forumThread.create({
+      data: {
+        authorId: admin.id,
+        title: inviteRulesTitle,
+        pinned: true,
+        body: [
+          'A entrada na comunidade é por convite. Os primeiros 1.000 convites são gratuitos; depois disso, convites continuam saindo só por aceite manual do time — pontos compram apenas prioridade na fila, nunca pulam essa aprovação.',
+          '',
+          'Indicar alguém: troque pontos por "Convite prioritário" na loja e informe o email da pessoa. Quando o cadastro dela for confirmado, você ganha +300 pontos.',
+          '',
+          'Punições por abuso (ex.: indicar contas falsas ou em massa):',
+          '1ª ocorrência: os 300 pontos daquela indicação são cancelados.',
+          '2ª ocorrência: a função de convidar fica bloqueada por um período.',
+          '3ª ocorrência / abuso grave: a conta é suspensa.',
+          '',
+          'Esses critérios podem ser ajustados pelo time conforme a comunidade cresce.',
+        ].join('\n'),
+      },
+    })
+    console.log('✅ Thread oficial criada: regras de convite')
+  }
 
   // ============================================================
   // Chave de hash inicial para analytics

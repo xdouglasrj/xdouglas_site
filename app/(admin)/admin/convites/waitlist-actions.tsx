@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 interface WaitlistActionsProps {
   id: string
   email: string
+  hasReferrer?: boolean
 }
 
 interface AcceptResult {
@@ -16,7 +17,7 @@ interface AcceptResult {
   emailSent: boolean
 }
 
-export function WaitlistActions({ id, email }: WaitlistActionsProps) {
+export function WaitlistActions({ id, email, hasReferrer }: WaitlistActionsProps) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<AcceptResult | null>(null)
@@ -43,6 +44,23 @@ export function WaitlistActions({ id, email }: WaitlistActionsProps) {
     try {
       await fetch(`/api/admin/waitlist/${id}`, { method: 'DELETE' })
       router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleFlagAbuse() {
+    if (!confirm(`Marcar a indicação de "${email}" como abusiva? Isso aplica o próximo nível de punição em quem indicou.`)) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/waitlist/${id}/flag-abuse`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        alert(`Punição aplicada — nível ${data.newLevel}${data.accountSuspended ? ' (conta suspensa)' : ''}`)
+        router.refresh()
+      } else {
+        alert(data.error ?? 'Erro ao marcar abuso.')
+      }
     } finally {
       setBusy(false)
     }
@@ -81,6 +99,16 @@ export function WaitlistActions({ id, email }: WaitlistActionsProps) {
         >
           Rejeitar
         </button>
+        {hasReferrer && (
+          <button
+            onClick={handleFlagAbuse}
+            disabled={busy}
+            title="Marcar a indicação como abusiva e punir quem indicou"
+            className="px-2.5 py-1 rounded-md text-xs font-medium border border-orange-900/60 bg-orange-950/30 text-orange-400 hover:bg-orange-900/40 transition-colors disabled:opacity-40"
+          >
+            Marcar abuso
+          </button>
+        )}
       </div>
 
       {/* Modal com o link de convite gerado */}
