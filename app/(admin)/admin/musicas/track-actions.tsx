@@ -47,7 +47,12 @@ export function TrackActions({ trackId, slug, published, pinned }: TrackActionsP
     if (!confirm(`Remover "${slug}" permanentemente? Esta ação não pode ser desfeita.`)) return
     setBusy(true)
     try {
-      await fetch(`/api/admin/musicas/${trackId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/musicas/${trackId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        alert(body?.error ?? 'Erro ao remover música.')
+        return
+      }
       router.refresh()
     } finally {
       setBusy(false)

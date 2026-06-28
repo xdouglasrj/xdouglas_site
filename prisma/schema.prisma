@@ -436,7 +436,7 @@ model Track {
 model TrackComment {
   id        String    @id @default(uuid())
   trackId   String    @map("track_id")
-  track     Track     @relation(fields: [trackId], references: [id])
+  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
   authorId  String    @map("author_id")
   author    User      @relation(fields: [authorId], references: [id])
   content   String
@@ -457,7 +457,7 @@ model TrackComment {
 model TrackLike {
   id        String   @id @default(uuid())
   trackId   String   @map("track_id")
-  track     Track    @relation(fields: [trackId], references: [id])
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now()) @map("created_at")
@@ -475,7 +475,7 @@ model TrackLike {
 model Download {
   id      String @id @default(uuid())
   trackId String @map("track_id")
-  track   Track  @relation(fields: [trackId], references: [id])
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   // Geolocalização processada (sem IP)
   country   String?
