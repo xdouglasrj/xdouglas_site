@@ -9,7 +9,7 @@ const PERIODS = [
   { label: '30 dias', value: '30' },
 ] as const
 
-export function PeriodSelector() {
+export function PeriodSelector({ basePath = '/admin/dashboard' }: { basePath?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const current = searchParams.get('days') ?? '30'
@@ -17,7 +17,7 @@ export function PeriodSelector() {
   function handleChange(days: string) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('days', days)
-    router.push(`/admin/dashboard?${params.toString()}`)
+    router.push(`${basePath}?${params.toString()}`)
   }
 
   return (

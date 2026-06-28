@@ -73,6 +73,19 @@ export interface TrackOverview {
   topCountry: string | null
 }
 
+export interface TrackPlayStats {
+  trackId: string
+  slug: string
+  title: string
+  artistName: string
+  coverUrl: string | null
+  published: boolean
+  playStarts: number
+  play30s: number
+  playComplete: number
+  completionPct: number
+}
+
 export interface DashboardSummary {
   totalVisitors: number        // page_view únicos por sessionId nos últimos 30 dias
   totalDownloads: number       // downloads não suspeitos, todos os tempos
@@ -461,6 +474,64 @@ export async function getGeoPoints(trackId: string, days = 30): Promise<GeoPoint
     longitude: Number(r.longitude),
     count: Number(r.count),
   }))
+}
+
+/** Estatísticas de reprodução por faixa (todas as músicas), com busca por título/artista */
+export async function getAllTracksPlayStats(days = 30, search?: string): Promise<TrackPlayStats[]> {
+  const since = daysAgo(days)
+  const term = search?.trim()
+  const searchFilter = term
+    ? Prisma.sql`AND (t.title ILIKE ${'%' + term + '%'} OR a.name ILIKE ${'%' + term + '%'})`
+    : Prisma.empty
+
+  const rows = await prisma.$queryRaw<{
+    track_id: string
+    slug: string
+    title: string
+    artist_name: string
+    cover_url: string | null
+    published: boolean
+    play_starts: bigint
+    play_30s: bigint
+    play_complete: bigint
+  }[]>`
+    SELECT
+      t.id AS track_id,
+      t.slug,
+      t.title,
+      a.name AS artist_name,
+      t.cover_url,
+      t.published,
+      COALESCE(SUM(CASE WHEN e.event_type = 'PLAY_START' THEN 1 ELSE 0 END), 0)::bigint AS play_starts,
+      COALESCE(SUM(CASE WHEN e.event_type = 'PLAY_30S' THEN 1 ELSE 0 END), 0)::bigint AS play_30s,
+      COALESCE(SUM(CASE WHEN e.event_type = 'PLAY_COMPLETE' THEN 1 ELSE 0 END), 0)::bigint AS play_complete
+    FROM tracks t
+    JOIN artists a ON a.id = t.artist_id
+    LEFT JOIN analytics_events e
+      ON e.track_id = t.id
+      AND e.event_type IN ('PLAY_START', 'PLAY_30S', 'PLAY_COMPLETE')
+      AND e.created_at >= ${since}
+    WHERE 1=1 ${searchFilter}
+    GROUP BY t.id, t.slug, t.title, a.name, t.cover_url, t.published
+    ORDER BY play_starts DESC, t.title ASC
+  `
+
+  return rows.map((r) => {
+    const playStarts = Number(r.play_starts)
+    const playComplete = Number(r.play_complete)
+    return {
+      trackId: r.track_id,
+      slug: r.slug,
+      title: r.title,
+      artistName: r.artist_name,
+      coverUrl: r.cover_url,
+      published: r.published,
+      playStarts,
+      play30s: Number(r.play_30s),
+      playComplete,
+      completionPct: playStarts > 0 ? Math.round((playComplete / playStarts) * 100) : 0,
+    }
+  })
 }
 
 /** Resumo de uma faixa específica para o dashboard do artista */

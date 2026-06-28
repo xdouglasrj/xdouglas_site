@@ -2,12 +2,19 @@
 export function AdminSearchBar({
   defaultValue,
   placeholder = 'Buscar por nome, email ou telefone...',
+  extraParams,
 }: {
   defaultValue?: string
   placeholder?: string
+  /** Outros parâmetros da URL a preservar no submit (ex: período selecionado) */
+  extraParams?: Record<string, string>
 }) {
   return (
     <form method="GET" className="mb-4">
+      {extraParams &&
+        Object.entries(extraParams).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
       <div className="relative">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-600"

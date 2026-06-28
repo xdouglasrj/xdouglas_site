@@ -36,6 +36,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Plays',
+    href: '/admin/plays',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="6.5" />
+        <path d="M6.3 5.5l4.4 2.5-4.4 2.5v-5z" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
     label: 'Denúncias',
     href: '/admin/denuncias',
     icon: (
