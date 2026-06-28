@@ -22,9 +22,10 @@ export function StorageSubscriptionCard() {
       const res = await fetch('/api/store/storage/checkout', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Falha ao iniciar pagamento')
-      window.location.href = data.url
+      window.open(data.url, '_blank', 'noopener,noreferrer')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao iniciar pagamento')
+    } finally {
       setLoading(false)
     }
   }
