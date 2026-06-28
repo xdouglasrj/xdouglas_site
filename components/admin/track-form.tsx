@@ -75,6 +75,11 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
     setValues((v) => ({ ...v, [field]: value }))
   }
 
+  // Preenche o BPM detectado automaticamente, sem sobrescrever um valor já digitado
+  function handleBpmDetected(bpm: number) {
+    setValues((v) => (v.bpm ? v : { ...v, bpm: String(bpm) }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -184,7 +189,7 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
               ))}
             </select>
           </div>
-          <Input label="BPM" type="number" min="40" max="300" value={values.bpm} onChange={(e) => set('bpm', e.target.value)} placeholder="138" />
+          <Input label="BPM" type="number" min="40" max="300" value={values.bpm} onChange={(e) => set('bpm', e.target.value)} placeholder="Detectado automaticamente" />
           <Input label="Tom" value={values.key} onChange={(e) => set('key', e.target.value)} placeholder="Am, C#…" />
         </div>
       </section>
@@ -209,6 +214,7 @@ export function TrackForm({ mode, trackId, initialValues }: TrackFormProps) {
               set('audioSizeBytes', String(sizeBytes))
             }}
             onError={setError}
+            onBpmDetected={handleBpmDetected}
           />
         )}
 

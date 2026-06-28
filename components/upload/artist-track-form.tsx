@@ -43,6 +43,11 @@ export function ArtistTrackForm({ maxAudioSizeMb }: ArtistTrackFormProps) {
     setValues((v) => ({ ...v, [field]: value }))
   }
 
+  // Preenche o BPM detectado automaticamente, sem sobrescrever um valor já digitado
+  function handleBpmDetected(bpm: number) {
+    setValues((v) => (v.bpm ? v : { ...v, bpm: String(bpm) }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -149,7 +154,7 @@ export function ArtistTrackForm({ maxAudioSizeMb }: ArtistTrackFormProps) {
           </div>
           <div>
             <label className={labelClass}>BPM</label>
-            <input type="number" min="40" max="300" value={values.bpm} onChange={(e) => set('bpm', e.target.value)} className={inputClass} placeholder="138" />
+            <input type="number" min="40" max="300" value={values.bpm} onChange={(e) => set('bpm', e.target.value)} className={inputClass} placeholder="Detectado automaticamente" />
           </div>
           <div>
             <label className={labelClass}>Tom</label>
@@ -175,6 +180,7 @@ export function ArtistTrackForm({ maxAudioSizeMb }: ArtistTrackFormProps) {
             set('audioSizeBytes', String(sizeBytes))
           }}
           onError={setError}
+          onBpmDetected={handleBpmDetected}
         />
 
         <FileUpload

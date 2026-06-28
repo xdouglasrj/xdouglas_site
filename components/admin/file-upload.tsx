@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { clsx } from 'clsx'
+import { detectBpm } from '@/lib/audio/detect-bpm'
 
 // ============================================================
 // Tipos
@@ -22,6 +23,7 @@ interface FileUploadProps {
   currentUrl?: string
   onUpload: (result: UploadResult) => void
   onError?: (message: string) => void
+  onBpmDetected?: (bpm: number) => void
   disabled?: boolean
   uploadUrlEndpoint?: string
 }
@@ -39,6 +41,7 @@ export function FileUpload({
   currentUrl,
   onUpload,
   onError,
+  onBpmDetected,
   disabled,
   uploadUrlEndpoint = '/api/admin/musicas/upload-url',
 }: FileUploadProps) {
@@ -46,6 +49,7 @@ export function FileUpload({
   const [state, setState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
   const [filename, setFilename] = useState<string | null>(null)
+  const [detectingBpm, setDetectingBpm] = useState(false)
 
   // Já tem arquivo — mostra o atual
   const hasExisting = !!currentKey && state === 'idle'
@@ -56,6 +60,13 @@ export function FileUpload({
     setFilename(file.name)
     setState('uploading')
     setProgress(0)
+
+    if (kind === 'audio' && onBpmDetected) {
+      setDetectingBpm(true)
+      detectBpm(file)
+        .then((bpm) => { if (bpm) onBpmDetected(bpm) })
+        .finally(() => setDetectingBpm(false))
+    }
 
     try {
       // 1. Solicita presigned URL ao backend
@@ -141,6 +152,9 @@ export function FileUpload({
             <p className="text-xs text-neutral-400">
               Enviando {filename}… {Math.round(progress)}%
             </p>
+            {detectingBpm && (
+              <p className="text-xs text-neutral-600">Detectando BPM…</p>
+            )}
           </>
         ) : state === 'done' ? (
           <>
