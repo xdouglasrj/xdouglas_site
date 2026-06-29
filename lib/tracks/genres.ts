@@ -4,6 +4,7 @@
 export const TRACK_GENRES = [
   'Eletrônico',
   'Funk',
+  'Gospel',
   'Pagode',
   'Rap/Trap',
   'Remix',
