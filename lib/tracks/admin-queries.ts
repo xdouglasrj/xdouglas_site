@@ -248,6 +248,26 @@ export async function togglePin(id: string, pinned: boolean, userId: string) {
   return track
 }
 
+export async function cancelSchedule(id: string, userId: string) {
+  const track = await prisma.track.update({
+    where: { id },
+    data: { scheduledAt: null },
+    select: { id: true, title: true, scheduledAt: true },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: 'TRACK_UPDATE',
+      entityId: id,
+      entityType: 'track',
+      metadata: { action: 'cancelSchedule' },
+    },
+  })
+
+  return track
+}
+
 export async function deleteTrack(id: string, userId: string) {
   const track = await prisma.track.findUnique({
     where: { id },

@@ -36,6 +36,27 @@ const NAV_ITEMS = [
     ),
   },
   {
+    label: 'Pedidos do dia',
+    href: '/admin/musicas/hoje',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 7.5h3l1.5 2h3l1.5-2h3" />
+        <path d="M3 3h10l1 4.5v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6L3 3z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Agendamentos',
+    href: '/admin/agendamentos',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="2.5" width="12" height="11.5" rx="1.5" />
+        <path d="M2 6h12M5 1v3M11 1v3" />
+        <circle cx="8" cy="9.5" r="1.1" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
     label: 'Plays',
     href: '/admin/plays',
     icon: (

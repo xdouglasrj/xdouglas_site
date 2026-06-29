@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { listMySubmissions } from '@/lib/tracks/artist-queries'
+import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
 
 export const metadata: Metadata = {
   title: 'Minhas músicas',
@@ -15,6 +16,10 @@ export default async function MinhasMusicasPage() {
   const canAccess = user?.mappingEnabled || user?.role === 'ADMIN'
 
   if (!user || !canAccess) redirect('/inicio')
+
+  await publishDueScheduledTracks().catch((err) =>
+    console.error('[MinhasMusicasPage] Falha ao publicar agendamentos vencidos', err)
+  )
 
   const submissions = await listMySubmissions(user.id)
 

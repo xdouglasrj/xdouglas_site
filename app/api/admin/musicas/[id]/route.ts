@@ -6,6 +6,7 @@ import {
   updateTrackSchema,
   togglePublish,
   togglePin,
+  cancelSchedule,
   deleteTrack,
 } from '@/lib/tracks/admin-queries'
 import { getStorage } from '@/lib/storage'
@@ -39,6 +40,7 @@ const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('update'), data: updateTrackSchema }),
   z.object({ action: z.literal('publish'), published: z.boolean() }),
   z.object({ action: z.literal('pin'), pinned: z.boolean() }),
+  z.object({ action: z.literal('cancelSchedule') }),
 ])
 
 export const PATCH = withRole('ADMIN', async (request: NextRequest, auth, params) => {
@@ -65,6 +67,11 @@ export const PATCH = withRole('ADMIN', async (request: NextRequest, auth, params
 
     if (parsed.data.action === 'pin') {
       const track = await togglePin(id, parsed.data.pinned, auth.userId)
+      return apiSuccess({ track })
+    }
+
+    if (parsed.data.action === 'cancelSchedule') {
+      const track = await cancelSchedule(id, auth.userId)
       return apiSuccess({ track })
     }
 

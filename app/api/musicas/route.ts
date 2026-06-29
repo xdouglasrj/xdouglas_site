@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listTracks, listGenres, type TrackSortBy } from '@/lib/tracks/queries'
+import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
 
 // ============================================================
 // GET /api/musicas
@@ -19,6 +20,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const includeExpired = searchParams.get('includeExpired') === '1'
   const sortParam = searchParams.get('sort')
   const sortBy = VALID_SORTS.includes(sortParam as TrackSortBy) ? (sortParam as TrackSortBy) : 'recent'
+
+  // Publica automaticamente músicas com agendamento vencido antes de listar
+  await publishDueScheduledTracks().catch((err) =>
+    console.error('[API /musicas] Falha ao publicar agendamentos vencidos', err)
+  )
 
   // Genres e tracks em paralelo
   const [result, genres] = await Promise.all([

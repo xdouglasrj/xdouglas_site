@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { generateUniqueSlug } from './admin-queries'
+import {
+  isWithinScheduleWindow,
+  countActiveSchedules,
+  MAX_SCHEDULE_DAYS_AHEAD,
+  MAX_SCHEDULED_TRACKS_PER_USER,
+} from './scheduling'
 
 // ============================================================
 // Schema de validação — envio de música pelo próprio artista
@@ -18,6 +24,10 @@ export const submitTrackSchema = z.object({
   audioSizeBytes: z.number().positive().optional(),
   coverKey: z.string().optional(),
   coverUrl: z.string().url().optional(),
+  // Lançamento agendado pelo próprio artista — opcional; quando presente,
+  // é validado contra a janela de 15 dias e o limite de 30 agendamentos
+  // simultâneos por usuário (ver lib/tracks/scheduling.ts)
+  scheduledAt: z.string().datetime().optional(),
 })
 
 export type SubmitTrackInput = z.infer<typeof submitTrackSchema>
@@ -84,6 +94,18 @@ export async function getOrCreateArtistProfile(userId: string) {
 // ============================================================
 
 export async function submitTrack(input: SubmitTrackInput, userId: string) {
+  let scheduledAt: Date | undefined
+  if (input.scheduledAt) {
+    scheduledAt = new Date(input.scheduledAt)
+    if (!isWithinScheduleWindow(scheduledAt)) {
+      throw new Error(`Data de agendamento deve estar entre agora e ${MAX_SCHEDULE_DAYS_AHEAD} dias no futuro`)
+    }
+    const activeSchedules = await countActiveSchedules(userId)
+    if (activeSchedules >= MAX_SCHEDULED_TRACKS_PER_USER) {
+      throw new Error(`Limite de ${MAX_SCHEDULED_TRACKS_PER_USER} músicas agendadas atingido`)
+    }
+  }
+
   const artist = await getOrCreateArtistProfile(userId)
   const slug = await generateUniqueSlug(input.title)
 
@@ -104,8 +126,9 @@ export async function submitTrack(input: SubmitTrackInput, userId: string) {
       coverUrl: input.coverUrl,
       submittedById: userId,
       published: false,
+      scheduledAt,
     },
-    select: { id: true, slug: true, title: true, published: true, createdAt: true },
+    select: { id: true, slug: true, title: true, published: true, scheduledAt: true, createdAt: true },
   })
 }
 
@@ -154,6 +177,7 @@ export async function listMySubmissions(userId: string) {
       publishedAt: true,
       downloadCount: true,
       createdAt: true,
+      scheduledAt: true,
     },
   })
 }

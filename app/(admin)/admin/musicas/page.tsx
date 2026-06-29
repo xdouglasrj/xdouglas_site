@@ -2,12 +2,17 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
+import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
 import { TrackActions } from './track-actions'
 
 export const metadata: Metadata = { title: 'Músicas' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminMusicasPage() {
+  await publishDueScheduledTracks().catch((err) =>
+    console.error('[AdminMusicasPage] Falha ao publicar agendamentos vencidos', err)
+  )
+
   const tracks = await prisma.track.findMany({
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
     select: {

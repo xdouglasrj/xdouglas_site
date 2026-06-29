@@ -14,6 +14,7 @@ export const GET = withRole('ARTIST', async (_req: NextRequest, auth) => {
       ...t,
       createdAt: t.createdAt.toISOString(),
       publishedAt: t.publishedAt?.toISOString() ?? null,
+      scheduledAt: t.scheduledAt?.toISOString() ?? null,
     })),
   })
 })
@@ -39,8 +40,12 @@ export const POST = withRole('ARTIST', async (request: NextRequest, auth) => {
 
   try {
     const track = await submitTrack(parsed.data, auth.userId)
-    return apiSuccess({ track }, 201)
+    return apiSuccess({ track: { ...track, scheduledAt: track.scheduledAt?.toISOString() ?? null } }, 201)
   } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    if (message.startsWith('Data de agendamento') || message.startsWith('Limite de')) {
+      return apiError(message, 400, 'SCHEDULE_ERROR')
+    }
     console.error('[API /musicas/upload POST]', err)
     return apiError('Erro ao enviar música', 500, 'CREATE_ERROR')
   }

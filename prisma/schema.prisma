@@ -474,6 +474,11 @@ model Artist {
   userId String? @unique @map("user_id")
   user   User?   @relation(fields: [userId], references: [id])
 
+  // Token fixo do link particular de agendamentos (gerado sob demanda no
+  // primeiro acesso, ver lib/tracks/scheduling.ts) — quem tem o link vê as
+  // músicas agendadas desse artista, sem precisar logar
+  schedulingToken String? @unique @map("scheduling_token")
+
   tracks Track[]
 
   @@index([slug])
@@ -535,6 +540,12 @@ model Track {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Lançamento agendado pelo próprio artista no envio — enquanto
+  // published:false e scheduledAt no passado, a checagem oportunista (ou o
+  // cron diário de garantia) publica automaticamente, sem aceite manual do
+  // admin (ver lib/tracks/scheduling.ts)
+  scheduledAt DateTime? @map("scheduled_at")
+
   downloads Download[]
   likes     TrackLike[]
   comments  TrackComment[]
@@ -545,6 +556,7 @@ model Track {
   @@index([genre])
   @@index([submittedById])
   @@index([pinned])
+  @@index([scheduledAt])
   @@map("tracks")
 }
 
