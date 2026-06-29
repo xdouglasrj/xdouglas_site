@@ -13,6 +13,11 @@ import { getFollowCounts, isFollowing } from '@/lib/social/follow'
 import { getArtistLikeCount } from '@/lib/social/track-likes'
 import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
 import { getLevelName } from '@/lib/points/levels'
+import { getPlanQuotaBytes } from '@/lib/settings/plan-quotas'
+
+function formatMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')
+}
 
 const ROLE_LABEL: Record<string, string> = {
   GUEST: 'Ouvinte',
@@ -65,6 +70,8 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       createdAt: true,
       totalXp: true,
       level: true,
+      plan: true,
+      bonusStorageMb: true,
       artist: { select: { id: true, name: true, slug: true, bio: true } },
     },
   })
@@ -74,13 +81,21 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const isAdmin = viewer.role === 'ADMIN'
   const isViewerArtist = viewer.role === 'ARTIST' || viewer.role === 'ARTIST_SUPPORTER'
   const isProfileArtist = profile.role === 'ARTIST' || profile.role === 'ARTIST_SUPPORTER'
+  // Espaço de upload nunca é público — só o próprio dono e o admin veem.
+  const canSeeStorage = isSelf || isAdmin
 
-  const [counts, followingAlready, tracks, likeCount] = await Promise.all([
+  const [counts, followingAlready, tracks, likeCount, storageUsed] = await Promise.all([
     getFollowCounts(profile.id),
     isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
     profile.artist ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
     profile.artist ? getArtistLikeCount(profile.artist.id) : Promise.resolve(0),
+    canSeeStorage
+      ? prisma.track.aggregate({ where: { submittedById: profile.id }, _sum: { audioSizeBytes: true } })
+      : Promise.resolve(null),
   ])
+
+  const storageUsedBytes = Number(storageUsed?._sum.audioSizeBytes ?? 0)
+  const storageQuotaBytes = getPlanQuotaBytes(profile.plan, profile.bonusStorageMb)
 
   // O perfil mostra só o que foi configurado em "Editar perfil" — vale
   // até para o próprio dono vendo a própria página. O admin é a única
@@ -183,6 +198,27 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
               )}
             </dl>
           </section>
+
+          {canSeeStorage && (
+            <section className="mt-6 rounded-lg border border-gate-azure bg-white/5 p-5">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gate-blue" title="Visível só para você e o admin">
+                Espaço de upload
+              </h2>
+              <div className="mt-3">
+                <div className="h-1.5 w-full rounded-full bg-white/10">
+                  <div
+                    className="h-1.5 rounded-full bg-gate-pink"
+                    style={{
+                      width: `${storageQuotaBytes > 0 ? Math.min(100, (storageUsedBytes / storageQuotaBytes) * 100) : 0}%`,
+                    }}
+                  />
+                </div>
+                <p className="mt-2 text-sm text-white/70">
+                  {formatMb(storageUsedBytes)}MB de {formatMb(storageQuotaBytes)}MB usados
+                </p>
+              </div>
+            </section>
+          )}
 
           <ProfileTracks tracks={tracks} artistName={profile.artist?.name ?? ''} />
         </div>
