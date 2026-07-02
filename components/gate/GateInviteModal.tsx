@@ -3,15 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
-const TYPES = [
-  { value: 'DJ', label: 'DJ', icon: '🎧' },
-  { value: 'PRODUTOR', label: 'Produtor', icon: '🎛️' },
-  { value: 'ARTISTA', label: 'Artista', icon: '🎤' },
-  { value: 'MUSICO', label: 'Músico', icon: '🎸' },
-  { value: 'OUVINTE', label: 'Ouvinte', icon: '🎶' },
-] as const
-type TipoUsuario = typeof TYPES[number]['value']
-
 const inputClass =
   'w-full rounded-lg border border-gate-azure bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40'
 const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-wider text-gate-blue'
@@ -23,22 +14,14 @@ interface GateInviteModalProps {
 }
 
 export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteModalProps) {
-  const [tipo, setTipo] = useState<TipoUsuario | null>(null)
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [message, setMessage] = useState('')
   const [consent, setConsent] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function reset() {
-    setTipo(null)
-    setName('')
     setEmail('')
-    setPhone('')
-    setMessage('')
     setConsent(false)
     setSubmitted(false)
     setError(null)
@@ -53,21 +36,13 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!tipo) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          name: name || undefined,
-          phone,
-          tipoUsuario: tipo,
-          message: message || undefined,
-          consent,
-        }),
+        body: JSON.stringify({ email, consent }),
       })
       const data = await res.json()
       if (res.ok) {
@@ -111,7 +86,7 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
             </div>
             <h2 className="mb-2 text-2xl font-bold text-white">Solicitação enviada</h2>
             <p className="text-sm text-gate-blue">
-              Você entrou na lista. Assim que seu convite ficar disponível, você receberá um aviso por WhatsApp ou email.
+              Fique de olho no seu email: assim que seu convite for liberado, o link de cadastro chega lá.
             </p>
             <button
               onClick={handleClose}
@@ -129,52 +104,11 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className={labelClass}>Qual é a sua área de atuação na música? *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {TYPES.map((t) => (
-                    <button
-                      key={t.value}
-                      type="button"
-                      onClick={() => setTipo(t.value)}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
-                        tipo === t.value
-                          ? 'border-gate-pink bg-gate-pink/15 text-gate-pink'
-                          : 'border-gate-azure bg-white/5 text-gate-blue hover:border-gate-pink/60 hover:text-white'
-                      }`}
-                    >
-                      <span aria-hidden>{t.icon}</span>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>Nome</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} required type="text" placeholder="Seu nome" className={inputClass} />
-              </div>
-
-              <div>
                 <label className={labelClass}>Email</label>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} required type="email" placeholder="seu@email.com" className={inputClass} />
-              </div>
-
-              <div>
-                <label className={labelClass}>WhatsApp</label>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} required type="tel" placeholder="(00) 00000-0000" className={inputClass} />
-              </div>
-
-              <div>
-                <label className={labelClass}>Mensagem (opcional)</label>
-                <textarea
-                  rows={3}
-                  maxLength={500}
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Conte um pouco sobre você ou por que quer entrar..."
-                  className={`${inputClass} resize-none`}
-                />
-                <p className="mt-1 text-right text-xs text-gate-blue">{message.length}/500</p>
+                <p className="mt-1.5 text-xs text-gate-blue/70">
+                  Você recebe um link por email para criar sua conta — leva menos de 1 minuto.
+                </p>
               </div>
 
               <label className="flex cursor-pointer items-start gap-3">
@@ -198,7 +132,7 @@ export function GateInviteModal({ isOpen, onClose, onLoginClick }: GateInviteMod
 
               <button
                 type="submit"
-                disabled={loading || !tipo || !consent}
+                disabled={loading || !consent}
                 className="mt-2 w-full rounded-lg bg-gate-pink py-3.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? 'Enviando...' : 'Entrar na lista'}

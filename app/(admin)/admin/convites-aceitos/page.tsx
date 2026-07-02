@@ -7,10 +7,7 @@ import {
   inviteExpiryCutoff,
   INVITE_EXPIRY_DAYS,
 } from '@/lib/invites/cleanup'
-import {
-  inviteTargetForCategory,
-  buildRegistrationUrl,
-} from '@/lib/invites/code'
+import { buildRegistrationUrl } from '@/lib/invites/code'
 import { getWaitlistStats } from '@/lib/admin/waitlist-stats'
 import { WaitlistStatsBar } from '@/components/admin/waitlist-stats-bar'
 import { AdminSearchBar } from '@/components/admin/admin-search-bar'
@@ -94,7 +91,7 @@ export default async function AdminConvitesAceitosPage({ searchParams }: PagePro
 
       <WaitlistStatsBar {...stats} />
 
-      <AdminSearchBar defaultValue={query} placeholder="Buscar por nome, email ou telefone..." />
+      <AdminSearchBar defaultValue={query} placeholder="Buscar por email..." />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">
@@ -117,9 +114,8 @@ export default async function AdminConvitesAceitosPage({ searchParams }: PagePro
             <tbody className="divide-y divide-neutral-800">
               {entries.map((entry) => {
                 const left = entry.invitedAt ? daysLeft(entry.invitedAt, now) : 0
-                const target = inviteTargetForCategory(entry.tipoUsuario)
                 const url = entry.inviteCode
-                  ? buildRegistrationUrl(baseUrl, target, entry.inviteCode)
+                  ? buildRegistrationUrl(baseUrl, entry.inviteCode)
                   : ''
                 return (
                   <tr key={entry.id} className="hover:bg-neutral-800/40 transition-colors">

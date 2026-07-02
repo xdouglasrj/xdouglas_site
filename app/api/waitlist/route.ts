@@ -15,10 +15,6 @@ import type { WaitlistTipoUsuario } from '@prisma/client'
 
 const waitlistSchema = z.object({
   email: z.string().email('Email inválido'),
-  name: z.string().min(2, 'Nome muito curto').max(100).optional(),
-  phone: z.string().min(8, 'WhatsApp inválido').max(20),
-  tipoUsuario: z.enum(['DJ', 'PRODUTOR', 'ARTISTA', 'MUSICO', 'OUVINTE', 'OUTRO']),
-  message: z.string().max(500).optional(),
   consent: z.literal(true, {
     errorMap: () => ({ message: 'Você deve aceitar a política de privacidade' }),
   }),
@@ -60,17 +56,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { email, name, phone, tipoUsuario, message } = parsed.data
+  const { email } = parsed.data
 
   let autoAccepted = false
   try {
     const created = await prisma.waitlist.create({
       data: {
         email: email.toLowerCase().trim(),
-        name: name?.trim(),
-        phone: phone.trim(),
-        tipoUsuario: tipoUsuario as WaitlistTipoUsuario,
-        message: message?.trim(),
+        tipoUsuario: 'OUTRO' as WaitlistTipoUsuario,
         consentedAt: new Date(),
       },
     })
@@ -103,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Registra evento de analytics (fire-and-forget)
   buildEventContext(request).then((ctx) =>
-    trackEvent('WAITLIST_JOIN', { ...ctx, metadata: { tipoUsuario } })
+    trackEvent('WAITLIST_JOIN', { ...ctx, metadata: { tipoUsuario: 'OUTRO' } })
   ).catch(() => {})
 
   return NextResponse.json({ ok: true, autoAccepted }, { status: 201 })

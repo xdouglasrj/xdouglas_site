@@ -12,7 +12,6 @@ interface WaitlistActionsProps {
 interface AcceptResult {
   inviteCode: string
   registrationUrl: string
-  accountType: 'artist' | 'visitor'
   email: string
   emailSent: boolean
 }
@@ -128,9 +127,7 @@ export function WaitlistActions({ id, email, hasReferrer }: WaitlistActionsProps
               </div>
               <div>
                 <h2 className="text-base font-semibold text-white">Convite aceito</h2>
-                <p className="text-xs text-neutral-500">
-                  Conta de {result.accountType === 'artist' ? 'músico/produtor' : 'ouvinte'} · {result.email}
-                </p>
+                <p className="text-xs text-neutral-500">{result.email}</p>
               </div>
             </div>
 

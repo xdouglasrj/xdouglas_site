@@ -16,6 +16,10 @@ export function WaitlistStatsBar({ total, pending, countByTipo }: WaitlistStats)
         {total} cadastro{total !== 1 ? 's' : ''} · {pending} aguardando convite
       </p>
 
+      <p className="text-xs text-neutral-500 uppercase tracking-wide mt-4">
+        Cadastros concluídos por categoria
+      </p>
+
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-3">
         {WAITLIST_BREAKDOWN_TIPOS.map((tipo) => (
           <div

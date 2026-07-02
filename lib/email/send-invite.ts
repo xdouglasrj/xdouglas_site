@@ -1,5 +1,4 @@
 import { Resend } from 'resend'
-import type { RegisterType } from '@/lib/invites/code'
 
 // ============================================================
 // Cliente Resend — só inicializa se a chave estiver configurada.
@@ -17,7 +16,6 @@ interface SendInviteParams {
   to: string
   inviteCode: string
   registrationUrl: string
-  accountType: RegisterType
 }
 
 /** Envia o email com o link de convite. Retorna true se enviado. */
@@ -25,7 +23,6 @@ export async function sendInviteEmail({
   to,
   inviteCode,
   registrationUrl,
-  accountType,
 }: SendInviteParams): Promise<boolean> {
   const resend = getResend()
   if (!resend) return false
@@ -37,7 +34,7 @@ export async function sendInviteEmail({
       from: `xDouglas <${from}>`,
       to,
       subject: 'Seu convite para a comunidade xDouglas',
-      html: inviteEmailHtml({ inviteCode, registrationUrl, accountType }),
+      html: inviteEmailHtml({ inviteCode, registrationUrl }),
     })
     return !error
   } catch {
@@ -52,14 +49,10 @@ export async function sendInviteEmail({
 function inviteEmailHtml({
   inviteCode,
   registrationUrl,
-  accountType,
 }: {
   inviteCode: string
   registrationUrl: string
-  accountType: RegisterType
 }): string {
-  const tipoLabel = accountType === 'artist' ? 'músico/produtor' : 'ouvinte'
-
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -85,8 +78,8 @@ function inviteEmailHtml({
           <tr>
             <td style="padding:8px 32px 0 32px;">
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#728094;">
-                Seu pedido foi aceito! Você foi convidado para criar sua conta de
-                <strong style="color:#ffffff;">${tipoLabel}</strong> na comunidade xDouglas.
+                Seu pedido foi aceito! Você foi convidado para criar sua conta na
+                comunidade <strong style="color:#ffffff;">xDouglas</strong>.
                 Clique no botão abaixo para concluir o cadastro.
               </p>
             </td>

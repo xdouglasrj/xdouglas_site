@@ -1,16 +1,12 @@
-import type { Metadata } from 'next'
-import { SignupForm } from '@/components/signup/SignupForm'
-
-export const metadata: Metadata = {
-  title: 'Cadastro de ouvinte',
-  robots: { index: false, follow: false },
-}
+import { redirect } from 'next/navigation'
 
 interface PageProps {
   searchParams: Promise<{ convite?: string }>
 }
 
+// Rota antiga — mantida porque há emails já enviados apontando para cá.
+// Redireciona para a página única de cadastro preservando o convite.
 export default async function CadastroOuvintePage({ searchParams }: PageProps) {
   const { convite } = await searchParams
-  return <SignupForm type="visitor" initialInviteCode={convite ?? ''} />
+  redirect(convite ? `/cadastro?convite=${encodeURIComponent(convite)}` : '/cadastro')
 }

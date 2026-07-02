@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { inviteTargetForCategory, normalizeInviteCode } from '@/lib/invites/code'
+import { normalizeInviteCode } from '@/lib/invites/code'
 
 // ============================================================
 // GET /api/invites/[code]
 // Consulta pública de um convite aceito — usada pela página de
-// cadastro para carregar automaticamente nome/email/whatsapp.
+// cadastro para exibir o email do convite.
 // ============================================================
 
 export async function GET(
@@ -19,9 +19,6 @@ export async function GET(
     where: { inviteCode: normalized },
     select: {
       email: true,
-      name: true,
-      phone: true,
-      tipoUsuario: true,
       invitedAt: true,
       usedAt: true,
     },
@@ -40,13 +37,7 @@ export async function GET(
     )
   }
 
-  const target = inviteTargetForCategory(invite.tipoUsuario)
-
   return NextResponse.json({
-    name: invite.name,
     email: invite.email,
-    phone: invite.phone,
-    tipoUsuario: invite.tipoUsuario,
-    accountType: target.type,
   })
 }

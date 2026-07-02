@@ -12,12 +12,15 @@ import { addPoints } from '@/lib/points/points-service'
 // Validação
 // ============================================================
 
-// Login: identificador de acesso, igual para os dois tipos de cadastro
+// Login: identificador de acesso
 const username = z
   .string()
   .min(3, 'Mínimo 3 caracteres')
   .max(30)
   .regex(/^[a-z0-9_.]+$/i, 'Use apenas letras, números, "_" e "."')
+
+// Nome do usuário (base do @ público)
+const name = z.string().min(2, 'Mínimo 2 caracteres').max(100)
 
 // Nome artístico: mais permissivo, aceita espaços e acentos
 const artisticName = z.string().min(2, 'Mínimo 2 caracteres').max(50)
@@ -29,23 +32,32 @@ const password = z
   .refine((pw) => (pw.match(/[^A-Za-z0-9]/g) ?? []).length >= 2, 'Use pelo menos 2 caracteres especiais')
 const inviteCode = z.string().min(4, 'Código de convite inválido')
 
-const registerSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('artist'),
-    username,
-    password,
-    artisticName,
-    inviteCode,
-    newsletterOptIn: z.boolean(),
-  }),
-  z.object({
-    type: z.literal('visitor'),
+// Categoria escolhida no próprio formulário de cadastro (não vem mais do convite)
+const categoria = z.enum(['DJ', 'PRODUTOR', 'ARTISTA', 'MUSICO', 'OUVINTE'])
+
+const registerSchema = z
+  .object({
+    categoria,
+    name,
+    artisticName: artisticName.optional(),
     username,
     password,
     inviteCode,
     newsletterOptIn: z.boolean(),
-  }),
-])
+  })
+  .superRefine((data, ctx) => {
+    // Nome artístico é obrigatório apenas para categorias artísticas — validado
+    // no servidor para não confiar no front.
+    if (inviteTargetForCategory(data.categoria).type === 'artist') {
+      if (!data.artisticName || data.artisticName.trim().length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['artisticName'],
+          message: 'Informe seu nome artístico.',
+        })
+      }
+    }
+  })
 
 // ============================================================
 // POST /api/auth/register
@@ -82,10 +94,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const username = data.username.toLowerCase().trim()
   const hashedPassword = await bcrypt.hash(data.password, 12)
 
-  // Valida o convite: precisa ser uma chave gerada pelo admin (aceita),
-  // ainda não utilizada e da categoria correspondente a este cadastro.
-  // Nome, email e WhatsApp vêm do pedido de convite original — não são
-  // mais informados novamente neste formulário.
+  // Valida o convite: precisa ser uma chave gerada pelo admin (aceita) e
+  // ainda não utilizada. O email vem do pedido de convite original (garante
+  // que a conta nasce com o email verificado pelo link). A categoria, o nome
+  // e o nome artístico vêm agora deste formulário.
   const code = normalizeInviteCode(data.inviteCode)
   const invite = await prisma.waitlist.findUnique({ where: { inviteCode: code } })
 
@@ -101,19 +113,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 409 }
     )
   }
-  if (inviteTargetForCategory(invite.tipoUsuario).type !== data.type) {
-    return NextResponse.json(
-      { error: 'Este convite não corresponde a este tipo de cadastro.', code: 'INVITE_CATEGORY_MISMATCH' },
-      { status: 403 }
-    )
-  }
+
+  // O papel da conta deriva da categoria escolhida no formulário.
+  const accountType = inviteTargetForCategory(data.categoria).type
 
   // Bloqueio manual pelo admin — impede novo cadastro com o mesmo
-  // email, usuário ou WhatsApp de uma conta já bloqueada
+  // email ou usuário de uma conta já bloqueada
   const blockedMatch = await prisma.user.findFirst({
     where: {
       blocked: true,
-      OR: [{ email: invite.email }, { username }, { phone: invite.phone ?? undefined }],
+      OR: [{ email: invite.email }, { username }],
     },
     select: { id: true },
   })
@@ -125,12 +134,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Convite válido — a aprovação do admin já é a liberação, então a conta
-  // nasce ativa. O papel vem da categoria escolhida no convite.
-  const role = data.type === 'artist' ? 'ARTIST' : 'GUEST'
+  // nasce ativa. O papel vem da categoria escolhida no formulário.
+  const role = accountType === 'artist' ? 'ARTIST' : 'GUEST'
+  const name = data.name.trim()
 
   // @ público gerado a partir do nome — não do username de login (ver
   // lib/auth/handle.ts). O usuário pode trocar depois em "Editar perfil".
-  const handle = await generateUniqueHandle(invite.name?.trim() || 'membro')
+  const handle = await generateUniqueHandle(name || 'membro')
 
   try {
     const user = await prisma.user.create({
@@ -139,21 +149,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         handle,
         email: invite.email,
         password: hashedPassword,
-        name: invite.name,
-        artisticName: data.type === 'artist' ? data.artisticName.trim() : null,
+        name,
+        artisticName: accountType === 'artist' ? data.artisticName!.trim() : null,
         role,
         active: true,
         inviteCode: code,
-        phone: invite.phone,
+        phone: null,
         newsletterOptIn: data.newsletterOptIn,
       },
       select: { id: true },
     })
 
-    // Marca o convite como consumido (single-use)
+    // Marca o convite como consumido (single-use) e registra a categoria
+    // escolhida no formulário — é o que alimenta o breakdown por categoria
+    // (só cadastros concluídos). Sobrescreve categoria antiga do convite.
     await prisma.waitlist.update({
       where: { id: invite.id },
-      data: { usedAt: new Date() },
+      data: { usedAt: new Date(), tipoUsuario: data.categoria },
     })
 
     // Gamificação — não bloqueia o cadastro se falhar

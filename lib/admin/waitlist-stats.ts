@@ -15,6 +15,7 @@ export async function getWaitlistStats(): Promise<WaitlistStats> {
     prisma.waitlist.count({ where: { invitedAt: null } }),
     prisma.waitlist.groupBy({
       by: ['tipoUsuario'],
+      where: { usedAt: { not: null } },
       _count: { _all: true },
     }),
   ])

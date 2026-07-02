@@ -106,7 +106,7 @@ export default async function AdminConvitesPage({ searchParams }: PageProps) {
         initialRemaining={autoAccept.remaining}
       />
 
-      <AdminSearchBar defaultValue={query} placeholder="Buscar por nome, email ou telefone..." />
+      <AdminSearchBar defaultValue={query} placeholder="Buscar por email..." />
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-12 text-center">

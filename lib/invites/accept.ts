@@ -1,16 +1,10 @@
 import { prisma } from '@/lib/prisma'
-import {
-  generateInviteCode,
-  inviteTargetForCategory,
-  buildRegistrationUrl,
-  type RegisterType,
-} from './code'
+import { generateInviteCode, buildRegistrationUrl } from './code'
 import { sendInviteEmail } from '@/lib/email/send-invite'
 
 export interface AcceptableEntry {
   id: string
   email: string
-  tipoUsuario: string
   invitedAt: Date | null
   inviteCode: string | null
 }
@@ -18,8 +12,6 @@ export interface AcceptableEntry {
 export interface AcceptResult {
   inviteCode: string
   registrationUrl: string
-  accountType: RegisterType
-  category: string
   email: string
   emailSent: boolean
 }
@@ -34,8 +26,6 @@ export async function acceptWaitlistEntry(
   entry: AcceptableEntry,
   baseUrl: string
 ): Promise<AcceptResult> {
-  const target = inviteTargetForCategory(entry.tipoUsuario)
-
   let inviteCode = entry.inviteCode
   if (!entry.invitedAt || !inviteCode) {
     inviteCode = generateInviteCode()
@@ -45,20 +35,17 @@ export async function acceptWaitlistEntry(
     })
   }
 
-  const registrationUrl = buildRegistrationUrl(baseUrl, target, inviteCode)
+  const registrationUrl = buildRegistrationUrl(baseUrl, inviteCode)
 
   const emailSent = await sendInviteEmail({
     to: entry.email,
     inviteCode,
     registrationUrl,
-    accountType: target.type,
   })
 
   return {
     inviteCode,
     registrationUrl,
-    accountType: target.type,
-    category: entry.tipoUsuario,
     email: entry.email,
     emailSent,
   }
