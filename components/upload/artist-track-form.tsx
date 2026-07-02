@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileUpload } from '@/components/admin/file-upload'
-import { TRACK_GENRES } from '@/lib/tracks/genres'
+import { GenreSelector } from '@/components/music/genre-selector'
 
 const MAX_TRACKS_PER_BATCH = 5
 const MAX_SCHEDULE_DAYS_AHEAD = 15
@@ -13,7 +13,7 @@ interface TrackFormValues {
   title: string
   producerName: string
   description: string
-  genre: string
+  genreId: string
   bpm: string
   key: string
   audioKey: string
@@ -31,7 +31,7 @@ type BlockStatus = 'idle' | 'sending' | 'done' | 'error'
 function emptyTrack(): TrackFormValues {
   return {
     uid: Math.random().toString(36).slice(2),
-    title: '', producerName: '', description: '', genre: '', bpm: '', key: '',
+    title: '', producerName: '', description: '', genreId: '', bpm: '', key: '',
     audioKey: '', audioFormat: 'mp3', audioSizeBytes: '', coverKey: '', coverUrl: '',
     scheduleEnabled: false, scheduledDate: '', scheduledTime: '',
   }
@@ -119,7 +119,7 @@ export function ArtistTrackForm({ maxAudioSizeMb }: ArtistTrackFormProps) {
             title: t.title.trim(),
             producerName: t.producerName || undefined,
             description: t.description || undefined,
-            genre: t.genre || undefined,
+            genreId: t.genreId || undefined,
             bpm: t.bpm ? Number(t.bpm) : undefined,
             key: t.key || undefined,
             audioKey: t.audioKey,
@@ -296,16 +296,12 @@ function TrackBlock({
       {/* Metadados técnicos */}
       <section className="flex flex-col gap-4 rounded-xl border border-gate-azure bg-white/5 p-5">
         <h3 className="text-sm font-medium text-white">Metadados técnicos</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div>
-            <label className={labelClass}>Gênero</label>
-            <select value={track.genre} onChange={(e) => onChange('genre', e.target.value)} className={inputClass}>
-              <option value="" className="text-black">Selecione…</option>
-              {TRACK_GENRES.map((g) => (
-                <option key={g} value={g} className="text-black">{g}</option>
-              ))}
-            </select>
-          </div>
+        <GenreSelector
+          value={track.genreId}
+          onChange={(genreId) => onChange('genreId', genreId)}
+          labelClassName={labelClass}
+        />
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>BPM</label>
             <input

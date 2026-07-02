@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
-import { getThread } from '@/lib/forum/forum'
+import { getSectorBySlug, getThread } from '@/lib/forum/forum'
 import { Avatar } from '@/components/ui/avatar'
 import { ReplyForm } from './reply-form'
 import { LockThreadButton } from './lock-thread-button'
@@ -11,7 +11,7 @@ import { LockThreadButton } from './lock-thread-button'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: Promise<{ topico: string }>
+  params: Promise<{ setor: string; topico: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -21,26 +21,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function TopicoPage({ params }: PageProps) {
-  const { topico } = await params
+  const { setor, topico } = await params
 
   const user = await getCurrentUserBasics()
   if (!user) redirect('/')
 
+  const sector = await getSectorBySlug(setor)
+  if (!sector) notFound()
+
   const thread = await getThread(topico)
-  if (!thread) notFound()
+  if (!thread || thread.sectorId !== sector.id) notFound()
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={user.role === 'ADMIN'} isArtist={user.role === 'ARTIST' || user.role === 'ARTIST_SUPPORTER'} mappingEnabled={user.mappingEnabled} photoUrl={user.photoUrl} handle={user.handle} />
+      <IconSidebar isAdmin={user.role === 'ADMIN'} hasUploads={user.hasUploads} photoUrl={user.photoUrl} handle={user.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-2xl mx-auto">
-          <Link href="/forum" className="inline-flex items-center gap-1.5 text-sm text-gate-blue hover:text-gate-pink transition mb-4">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
-            </svg>
-            Voltar ao fórum
-          </Link>
+          <nav className="mb-4 text-sm text-gate-blue">
+            <Link href="/forum" className="hover:text-white transition">Fórum</Link>
+            <span className="mx-2">/</span>
+            <Link href={`/forum/${sector.slug}`} className="hover:text-white transition">{sector.name}</Link>
+          </nav>
 
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">

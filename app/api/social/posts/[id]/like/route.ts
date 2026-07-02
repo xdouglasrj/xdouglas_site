@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { toggleLike } from '@/lib/social/feed'
 
 // ============================================================
@@ -9,6 +10,10 @@ import { toggleLike } from '@/lib/social/feed'
 export const POST = withAuth(async (_request: NextRequest, auth, params) => {
   const postId = params?.id
   if (!postId) return apiError('ID obrigatório', 400, 'MISSING_ID')
+
+  if (!(await isFeatureEnabled('curtir'))) {
+    return apiError('Curtidas estão desativadas no momento', 403, 'FEATURE_DISABLED')
+  }
 
   try {
     const liked = await toggleLike(postId, auth.userId)

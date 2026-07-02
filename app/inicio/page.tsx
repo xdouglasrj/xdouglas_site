@@ -27,12 +27,11 @@ export default async function InicioPage({ searchParams }: InicioPageProps) {
     listLatestTracks(LATEST_TRACKS_LIMIT),
   ])
   const isAdmin = user?.role === 'ADMIN'
-  const isArtist = user?.role === 'ARTIST' || user?.role === 'ARTIST_SUPPORTER'
   const canDownload = role !== 'GUEST'
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} mappingEnabled={user?.mappingEnabled} photoUrl={user?.photoUrl} handle={user?.handle} />
+      <IconSidebar isAdmin={isAdmin} hasUploads={user?.hasUploads ?? false} photoUrl={user?.photoUrl} handle={user?.handle} />
 
       {welcomeName && (
         <WelcomeToast name={welcomeName} firstToday={firstToday === '1'} />

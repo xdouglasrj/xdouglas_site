@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { isTrackLiked, toggleTrackLike } from '@/lib/social/track-likes'
 
 // ============================================================
@@ -18,6 +19,10 @@ export const GET = withAuth(async (_request: NextRequest, auth, params) => {
 export const POST = withAuth(async (_request: NextRequest, auth, params) => {
   const trackId = params?.id
   if (!trackId) return apiError('ID obrigatório', 400, 'MISSING_ID')
+
+  if (!(await isFeatureEnabled('curtir'))) {
+    return apiError('Curtidas estão desativadas no momento', 403, 'FEATURE_DISABLED')
+  }
 
   try {
     const liked = await toggleTrackLike(trackId, auth.userId)

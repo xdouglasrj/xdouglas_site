@@ -11,15 +11,26 @@ export interface ProfileFormFieldsProps {
   phone: string | null
   initialName: string
   initialPhotoUrl: string | null
-  initialShowEmail: boolean
-  initialShowPhone: boolean
+  initialShowContatosNoPerfil: boolean
   initialShowName: boolean
+  initialShowMusicasNoPerfil: boolean
+  initialShowEspacoUploadNoPerfil: boolean
+  initialAllowComentariosNaMusica: boolean
+  initialShowComentariosVisiveis: boolean
   isArtist: boolean
   onHandleChange?: (newHandle: string) => void
 }
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+type PrivacyField =
+  | 'showContatosNoPerfil'
+  | 'showName'
+  | 'showMusicasNoPerfil'
+  | 'showEspacoUploadNoPerfil'
+  | 'allowComentariosNaMusica'
+  | 'showComentariosVisiveis'
 
 interface PrivacyToggleRowProps {
   label: string
@@ -29,7 +40,7 @@ interface PrivacyToggleRowProps {
 }
 
 // Switch + cadeado: o cadeado fechado/vermelho deixa explícito que o dado
-// está privado (visível só para você e o admin) quando o switch está OFF.
+// está privado (visível só para você e o admin/moderador) quando o switch está OFF.
 function PrivacyToggleRow({ label, checked, disabled, onToggle }: PrivacyToggleRowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -78,9 +89,12 @@ export function ProfileFormFields({
   phone,
   initialName,
   initialPhotoUrl,
-  initialShowEmail,
-  initialShowPhone,
+  initialShowContatosNoPerfil,
   initialShowName,
+  initialShowMusicasNoPerfil,
+  initialShowEspacoUploadNoPerfil,
+  initialAllowComentariosNaMusica,
+  initialShowComentariosVisiveis,
   isArtist,
   onHandleChange,
 }: ProfileFormFieldsProps) {
@@ -109,19 +123,31 @@ export function ProfileFormFields({
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
 
-  const [showEmail, setShowEmail] = useState(initialShowEmail)
-  const [showPhone, setShowPhone] = useState(initialShowPhone)
+  const [showContatosNoPerfil, setShowContatosNoPerfil] = useState(initialShowContatosNoPerfil)
   const [showName, setShowName] = useState(initialShowName)
+  const [showMusicasNoPerfil, setShowMusicasNoPerfil] = useState(initialShowMusicasNoPerfil)
+  const [showEspacoUploadNoPerfil, setShowEspacoUploadNoPerfil] = useState(initialShowEspacoUploadNoPerfil)
+  const [allowComentariosNaMusica, setAllowComentariosNaMusica] = useState(initialAllowComentariosNaMusica)
+  const [showComentariosVisiveis, setShowComentariosVisiveis] = useState(initialShowComentariosVisiveis)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [privacyError, setPrivacyError] = useState<string | null>(null)
 
-  async function handlePrivacyToggle(field: 'showEmail' | 'showPhone' | 'showName', value: boolean) {
+  const PRIVACY_SETTERS: Record<PrivacyField, (v: boolean) => void> = {
+    showContatosNoPerfil: setShowContatosNoPerfil,
+    showName: setShowName,
+    showMusicasNoPerfil: setShowMusicasNoPerfil,
+    showEspacoUploadNoPerfil: setShowEspacoUploadNoPerfil,
+    allowComentariosNaMusica: setAllowComentariosNaMusica,
+    showComentariosVisiveis: setShowComentariosVisiveis,
+  }
+
+  async function handlePrivacyToggle(field: PrivacyField, value: boolean) {
     if (savingPrivacy) return
     setSavingPrivacy(true)
     setPrivacyError(null)
 
-    const revert = field === 'showEmail' ? setShowEmail : field === 'showPhone' ? setShowPhone : setShowName
-    revert(value)
+    const setField = PRIVACY_SETTERS[field]
+    setField(value)
 
     try {
       const res = await fetch('/api/perfil', {
@@ -130,11 +156,13 @@ export function ProfileFormFields({
         body: JSON.stringify({ [field]: value }),
       })
       if (!res.ok) {
-        revert(!value)
+        setField(!value)
         setPrivacyError('Não foi possível salvar.')
+      } else {
+        router.refresh()
       }
     } catch {
-      revert(!value)
+      setField(!value)
       setPrivacyError('Erro de conexão.')
     } finally {
       setSavingPrivacy(false)
@@ -381,11 +409,10 @@ export function ProfileFormFields({
             </div>
           )}
         </dl>
-        {username && (
-          <p className="mt-2 text-[11px] text-white/30">
-            O usuário de login é privado — use o @ abaixo para a comunidade te encontrar.
-          </p>
-        )}
+        <p className="mt-2 text-[11px] text-white/30">
+          E-mail e WhatsApp só aparecem para outros membros se você ligar &quot;Mostrar meus contatos&quot; abaixo.
+          {username && ' O usuário de login é privado — use o @ abaixo para a comunidade te encontrar.'}
+        </p>
       </section>
 
       {/* @ público da comunidade */}
@@ -419,25 +446,44 @@ export function ProfileFormFields({
       <section className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
         <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Privacidade</h2>
         <p className="mt-1 text-[11px] text-white/40">
-          O cadeado fechado indica que o servidor não envia esse dado para outros membros — o admin sempre vê tudo.
+          O cadeado fechado indica que o servidor não envia esse dado para outros membros — admin e moderadores sempre veem tudo.
         </p>
 
         <div className="mt-2.5 flex flex-col gap-2">
           <PrivacyToggleRow
-            label="Mostrar meu e-mail para outros membros"
-            checked={showEmail}
+            label="Mostrar minhas músicas no perfil"
+            checked={showMusicasNoPerfil}
             disabled={savingPrivacy}
-            onToggle={() => handlePrivacyToggle('showEmail', !showEmail)}
+            onToggle={() => handlePrivacyToggle('showMusicasNoPerfil', !showMusicasNoPerfil)}
           />
 
-          {phone && (
-            <PrivacyToggleRow
-              label="Mostrar meu WhatsApp para outros membros"
-              checked={showPhone}
-              disabled={savingPrivacy}
-              onToggle={() => handlePrivacyToggle('showPhone', !showPhone)}
-            />
-          )}
+          <PrivacyToggleRow
+            label="Mostrar espaço de armazenamento usado"
+            checked={showEspacoUploadNoPerfil}
+            disabled={savingPrivacy}
+            onToggle={() => handlePrivacyToggle('showEspacoUploadNoPerfil', !showEspacoUploadNoPerfil)}
+          />
+
+          <PrivacyToggleRow
+            label="Mostrar meus contatos (e-mail/telefone) para outros membros"
+            checked={showContatosNoPerfil}
+            disabled={savingPrivacy}
+            onToggle={() => handlePrivacyToggle('showContatosNoPerfil', !showContatosNoPerfil)}
+          />
+
+          <PrivacyToggleRow
+            label="Aceitar novos comentários nas minhas músicas"
+            checked={allowComentariosNaMusica}
+            disabled={savingPrivacy}
+            onToggle={() => handlePrivacyToggle('allowComentariosNaMusica', !allowComentariosNaMusica)}
+          />
+
+          <PrivacyToggleRow
+            label="Comentários recebidos ficam visíveis para outros"
+            checked={showComentariosVisiveis}
+            disabled={savingPrivacy}
+            onToggle={() => handlePrivacyToggle('showComentariosVisiveis', !showComentariosVisiveis)}
+          />
 
           {isArtist && (
             <PrivacyToggleRow
@@ -448,6 +494,11 @@ export function ProfileFormFields({
             />
           )}
         </div>
+
+        <p className="mt-2 text-[11px] text-white/30">
+          Se você desligar &quot;Aceitar novos comentários&quot;, o formulário de comentar some das suas músicas para os outros (você continua vendo).
+          Se desligar &quot;Comentários recebidos visíveis&quot;, só o autor de cada comentário, você e admin/moderador continuam vendo — o comentário não é apagado.
+        </p>
 
         {isArtist && (
           <p className="mt-2 text-[11px] text-white/30">
@@ -541,37 +592,6 @@ export function ProfileFormFields({
           {passwordSuccess && <span className="text-[11px] text-emerald-400">Senha atualizada.</span>}
         </div>
       </form>
-    </div>
-  )
-}
-
-interface ProfileFormProps extends ProfileFormFieldsProps {
-  onClose: () => void
-}
-
-export function ProfileForm({ onClose, ...fields }: ProfileFormProps) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-
-      <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border border-gate-azure bg-gate-bg p-5 shadow-2xl shadow-black/80">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gate-blue transition-colors hover:text-white"
-          aria-label="Fechar"
-        >
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        <h2 className="mb-3 text-lg font-bold text-white">Editar perfil</h2>
-
-        <ProfileFormFields {...fields} />
-      </div>
     </div>
   )
 }

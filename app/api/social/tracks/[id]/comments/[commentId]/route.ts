@@ -53,7 +53,7 @@ export const DELETE = withAuth(async (_request: NextRequest, auth, params) => {
   const commentId = params?.commentId
   if (!commentId) return apiError('ID obrigatório', 400, 'MISSING_ID')
 
-  const ok = await deleteTrackComment(commentId, auth.userId, auth.role === 'ADMIN')
+  const ok = await deleteTrackComment(commentId, auth.userId, auth.role === 'ADMIN' || auth.role === 'MODERATOR')
   if (!ok) return apiError('Você só pode excluir seus próprios comentários', 403, 'FORBIDDEN')
 
   return apiSuccess({ ok: true })

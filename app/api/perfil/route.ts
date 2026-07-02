@@ -25,6 +25,11 @@ export const GET = withAuth(async (_request, auth) => {
       showEmail: true,
       showPhone: true,
       showName: true,
+      showMusicasNoPerfil: true,
+      showEspacoUploadNoPerfil: true,
+      showContatosNoPerfil: true,
+      allowComentariosNaMusica: true,
+      showComentariosVisiveis: true,
       createdAt: true,
       artist: { select: { name: true, slug: true, bio: true, photoUrl: true } },
     },
@@ -52,6 +57,11 @@ const updateSchema = z.object({
   showEmail: z.boolean().optional(),
   showPhone: z.boolean().optional(),
   showName: z.boolean().optional(),
+  showMusicasNoPerfil: z.boolean().optional(),
+  showEspacoUploadNoPerfil: z.boolean().optional(),
+  showContatosNoPerfil: z.boolean().optional(),
+  allowComentariosNaMusica: z.boolean().optional(),
+  showComentariosVisiveis: z.boolean().optional(),
 }).refine(
   (data) => !data.newPassword || !!data.currentPassword,
   { message: 'Senha atual obrigatória para trocar a senha', path: ['currentPassword'] }
@@ -73,7 +83,12 @@ export const PATCH = withAuth(async (request, auth) => {
     )
   }
 
-  const { name, artisticName, handle, currentPassword, newPassword, photoKey, photoUrl, showEmail, showPhone, showName } = parsed.data
+  const {
+    name, artisticName, handle, currentPassword, newPassword, photoKey, photoUrl,
+    showEmail, showPhone, showName,
+    showMusicasNoPerfil, showEspacoUploadNoPerfil, showContatosNoPerfil,
+    allowComentariosNaMusica, showComentariosVisiveis,
+  } = parsed.data
   const data: {
     name?: string
     artisticName?: string
@@ -84,6 +99,11 @@ export const PATCH = withAuth(async (request, auth) => {
     showEmail?: boolean
     showPhone?: boolean
     showName?: boolean
+    showMusicasNoPerfil?: boolean
+    showEspacoUploadNoPerfil?: boolean
+    showContatosNoPerfil?: boolean
+    allowComentariosNaMusica?: boolean
+    showComentariosVisiveis?: boolean
   } = {}
 
   if (name !== undefined) {
@@ -111,6 +131,11 @@ export const PATCH = withAuth(async (request, auth) => {
   if (showEmail !== undefined) data.showEmail = showEmail
   if (showPhone !== undefined) data.showPhone = showPhone
   if (showName !== undefined) data.showName = showName
+  if (showMusicasNoPerfil !== undefined) data.showMusicasNoPerfil = showMusicasNoPerfil
+  if (showEspacoUploadNoPerfil !== undefined) data.showEspacoUploadNoPerfil = showEspacoUploadNoPerfil
+  if (showContatosNoPerfil !== undefined) data.showContatosNoPerfil = showContatosNoPerfil
+  if (allowComentariosNaMusica !== undefined) data.allowComentariosNaMusica = allowComentariosNaMusica
+  if (showComentariosVisiveis !== undefined) data.showComentariosVisiveis = showComentariosVisiveis
 
   if (newPassword) {
     const user = await prisma.user.findUnique({

@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { AdminSearchBar } from '@/components/admin/admin-search-bar'
-import { PermissionsPreviewPanel, type PermissionsPreviewUser } from './permissions-preview-panel'
+import { PermissionsPanel, type PermissionsPanelUser } from './permissions-preview-panel'
 
-export const metadata: Metadata = { title: 'Permissões (teste)' }
+export const metadata: Metadata = { title: 'Permissões de moderador' }
 export const dynamic = 'force-dynamic'
 
 const SEARCH_RESULTS_LIMIT = 20
@@ -13,14 +13,15 @@ interface PageProps {
   searchParams: Promise<{ q?: string }>
 }
 
-export default async function AdminPermissoesPreviewPage({ searchParams }: PageProps) {
+export default async function AdminPermissoesPage({ searchParams }: PageProps) {
   const { q } = await searchParams
   const query = q?.trim() ?? ''
 
-  const users: PermissionsPreviewUser[] = query
+  const users: PermissionsPanelUser[] = query
     ? (
         await prisma.user.findMany({
           where: {
+            role: { not: 'ADMIN' },
             OR: [
               { username: { contains: query, mode: 'insensitive' } },
               { artisticName: { contains: query, mode: 'insensitive' } },
@@ -36,6 +37,7 @@ export default async function AdminPermissoesPreviewPage({ searchParams }: PageP
             name: true,
             artisticName: true,
             role: true,
+            permissions: true,
           },
         })
       ).map((u) => ({
@@ -45,6 +47,7 @@ export default async function AdminPermissoesPreviewPage({ searchParams }: PageP
         artisticName: u.artisticName,
         email: u.email,
         role: u.role,
+        permissions: u.permissions,
       }))
     : []
 
@@ -54,11 +57,10 @@ export default async function AdminPermissoesPreviewPage({ searchParams }: PageP
         <Link href="/admin/configuracoes" className="text-xs text-neutral-500 hover:text-neutral-300">
           ← Configurações
         </Link>
-        <h1 className="text-xl font-semibold text-white mt-2">Permissões de moderador (teste)</h1>
+        <h1 className="text-xl font-semibold text-white mt-2">Permissões de moderador</h1>
         <p className="text-sm text-neutral-500 mt-1 max-w-xl">
-          Página de revisão — busque um usuário e veja a lista de permissões que poderão ser
-          atribuídas a moderadores no futuro. Nada aqui é salvo no banco ainda; é só para
-          conferir se a lista está completa antes de implementar de verdade.
+          Busque um usuário, marque as permissões e salve. A primeira permissão atribuída
+          promove o usuário a MODERATOR; remover todas rebaixa de volta a MEMBER.
         </p>
       </div>
 
@@ -76,7 +78,7 @@ export default async function AdminPermissoesPreviewPage({ searchParams }: PageP
         </div>
       )}
 
-      {query && users.length > 0 && <PermissionsPreviewPanel users={users} />}
+      {query && users.length > 0 && <PermissionsPanel users={users} />}
     </div>
   )
 }

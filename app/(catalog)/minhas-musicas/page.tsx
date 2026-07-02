@@ -13,15 +13,19 @@ export const dynamic = 'force-dynamic'
 
 export default async function MinhasMusicasPage() {
   const user = await getCurrentUserBasics()
-  const canAccess = user?.mappingEnabled || user?.role === 'ADMIN'
-
-  if (!user || !canAccess) redirect('/inicio')
+  if (!user) redirect('/inicio')
 
   await publishDueScheduledTracks().catch((err) =>
     console.error('[MinhasMusicasPage] Falha ao publicar agendamentos vencidos', err)
   )
 
   const submissions = await listMySubmissions(user.id)
+
+  // Acessível pra quem já enviou ao menos uma música (ou admin) — o
+  // mappingEnabled passa a controlar só o sub-painel de analytics
+  // detalhado em /minhas-musicas/[trackId], não a lista básica
+  const canAccess = submissions.length > 0 || user.role === 'ADMIN'
+  if (!canAccess) redirect('/upload')
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">

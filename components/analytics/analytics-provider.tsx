@@ -26,6 +26,9 @@ interface AnalyticsContextValue {
   hasConsent: boolean
   giveConsent: () => void
   revokeConsent: () => void
+  hasAdConsent: boolean
+  giveAdConsent: () => void
+  revokeAdConsent: () => void
   track: (
     type: AnalyticsEventType,
     trackId?: string,
@@ -39,8 +42,9 @@ const AnalyticsContext = createContext<AnalyticsContextValue | null>(null)
 // Constantes
 // ============================================================
 
-const SESSION_KEY = 'xd_sid'      // sessionStorage: ID da sessão anônima
-const CONSENT_KEY = 'xd_consent'  // localStorage: consentimento persistente
+const SESSION_KEY = 'xd_sid'           // sessionStorage: ID da sessão anônima
+const CONSENT_KEY = 'xd_consent'       // localStorage: consentimento de analytics
+const AD_CONSENT_KEY = 'xd_consent_ads' // localStorage: consentimento de publicidade (categoria separada — LGPD)
 
 // ============================================================
 // Provider
@@ -50,6 +54,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [hasConsent, setHasConsent] = useState(false)
+  const [hasAdConsent, setHasAdConsent] = useState(false)
   const lastTrackedPath = useRef<string | null>(null)
 
   // Inicializa sessionId e lê consentimento ao montar
@@ -66,6 +71,11 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     const consent = localStorage.getItem(CONSENT_KEY)
     if (consent === 'true') {
       setHasConsent(true)
+    }
+
+    const adConsent = localStorage.getItem(AD_CONSENT_KEY)
+    if (adConsent === 'true') {
+      setHasAdConsent(true)
     }
   }, [])
 
@@ -115,6 +125,42 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // ── Funções de consentimento de publicidade ──────────────
+
+  function giveAdConsent() {
+    localStorage.setItem(AD_CONSENT_KEY, 'true')
+    setHasAdConsent(true)
+
+    if (sessionId) {
+      fetch('/api/analytics/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          action: 'CONSENT_GIVEN',
+          consentType: 'ads',
+        }),
+      }).catch(() => {})
+    }
+  }
+
+  function revokeAdConsent() {
+    localStorage.removeItem(AD_CONSENT_KEY)
+    setHasAdConsent(false)
+
+    if (sessionId) {
+      fetch('/api/analytics/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          action: 'CONSENT_REVOKED',
+          consentType: 'ads',
+        }),
+      }).catch(() => {})
+    }
+  }
+
   // ── Função de track ──────────────────────────────────────
 
   function track(
@@ -128,7 +174,16 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   return (
     <AnalyticsContext.Provider
-      value={{ sessionId, hasConsent, giveConsent, revokeConsent, track }}
+      value={{
+        sessionId,
+        hasConsent,
+        giveConsent,
+        revokeConsent,
+        hasAdConsent,
+        giveAdConsent,
+        revokeAdConsent,
+        track,
+      }}
     >
       {children}
     </AnalyticsContext.Provider>

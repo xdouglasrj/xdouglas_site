@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { createPost, listFeed } from '@/lib/social/feed'
 
 // ============================================================
@@ -32,6 +33,10 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
+  }
+
+  if (!(await isFeatureEnabled('postar_feed'))) {
+    return apiError('Publicar no feed está desativado no momento', 403, 'FEATURE_DISABLED')
   }
 
   const post = await createPost(auth.userId, parsed.data.content)

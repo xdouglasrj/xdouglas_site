@@ -13,7 +13,7 @@ import { getActiveHashKey, hashIp } from '@/lib/analytics/hash'
 const consentSchema = z.object({
   sessionId: z.string().uuid(),
   action: z.enum(['CONSENT_GIVEN', 'CONSENT_REVOKED']),
-  consentType: z.enum(['analytics', 'all']),
+  consentType: z.enum(['analytics', 'ads', 'all']),
 })
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

@@ -1,8 +1,7 @@
 /**
- * Catálogo de permissões candidatas para moderadores — fase de revisão.
- * Nada aqui é persistido ainda; é só a lista que o admin está validando
- * antes de virar campo real no banco (User.role ganhar MODERATOR e uma
- * tabela de permissões, ou equivalente).
+ * Catálogo de permissões de moderador — fonte única de verdade dos ids
+ * válidos, usada tanto no front (grade de checkboxes) quanto no backend
+ * (validação ao salvar e checagem de acesso em cada rota admin).
  */
 export const PERMISSION_GROUPS = [
   {
@@ -50,3 +49,25 @@ export const PERMISSION_GROUPS = [
 ] as const
 
 export type PermissionId = (typeof PERMISSION_GROUPS)[number]['items'][number]['id']
+
+export const ALL_PERMISSION_IDS: PermissionId[] = PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => i.id))
+
+export const LOCKED_PERMISSION_IDS: PermissionId[] = PERMISSION_GROUPS
+  .filter((g) => 'locked' in g && g.locked)
+  .flatMap((g) => g.items.map((i) => i.id))
+
+export function isValidPermissionId(id: string): id is PermissionId {
+  return (ALL_PERMISSION_IDS as string[]).includes(id)
+}
+
+// Pura (sem dependência de servidor/Prisma) — pode ser importada por
+// componentes client, além do backend. ADMIN sempre true; MODERATOR
+// checa o array; outros roles sempre false.
+export function hasPermission(
+  user: { role: string; permissions: string[] },
+  permissionId: PermissionId
+): boolean {
+  if (user.role === 'ADMIN') return true
+  if (user.role === 'MODERATOR') return user.permissions.includes(permissionId)
+  return false
+}

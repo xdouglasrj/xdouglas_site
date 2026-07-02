@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { resolveReport, deleteReportedContent } from '@/lib/reports/reports'
 import { prisma } from '@/lib/prisma'
 
@@ -15,7 +16,7 @@ const bodySchema = z.object({
   action: z.enum(['resolve_keep', 'resolve_delete', 'dismiss']),
 })
 
-export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) => {
+export const PATCH = withPermission('denuncias.gerenciar', async (req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

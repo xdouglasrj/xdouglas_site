@@ -30,8 +30,9 @@ async function CatalogoContent({ genre, q, sort }: CatalogoContentProps) {
     getCurrentRole(),
   ])
 
-  // Ouvintes (role GUEST) podem ouvir, mas não baixar
-  const canDownload = role !== 'GUEST'
+  // Visitante anônimo (sem login) e ouvintes (role GUEST) podem ouvir, mas
+  // não baixar
+  const canDownload = role !== null && role !== 'GUEST'
 
   return (
     <TrackGrid

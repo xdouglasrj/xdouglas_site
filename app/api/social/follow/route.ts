@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { toggleFollow } from '@/lib/social/follow'
 
 // ============================================================
@@ -26,6 +27,10 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
 
   if (parsed.data.userId === auth.userId) {
     return apiError('Não é possível seguir a si mesmo', 400, 'CANNOT_FOLLOW_SELF')
+  }
+
+  if (!(await isFeatureEnabled('seguir'))) {
+    return apiError('Seguir está desativado no momento', 403, 'FEATURE_DISABLED')
   }
 
   try {

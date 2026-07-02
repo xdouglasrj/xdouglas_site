@@ -6,15 +6,44 @@ import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { hasPermission, type PermissionId } from '@/lib/permissions/catalog'
 
 // ============================================================
-// Itens de navegação
+// Itens de navegação agrupados por tema (§3.5 do plano)
+// `permission: null` = exclusivo de ADMIN (grupo/trancado)
 // ============================================================
 
-const NAV_ITEMS = [
+interface NavItem {
+  label: string
+  href: string
+  permission: PermissionId | null
+}
+
+export interface NavGroup {
+  key: string
+  title: string
+  emoji: string
+  icon: React.ReactNode
+  items: NavItem[]
+}
+
+export function getVisibleGroups(role: string, permissions: string[]): NavGroup[] {
+  const user = { role, permissions }
+  return GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.permission === null
+        ? role === 'ADMIN'
+        : hasPermission(user, item.permission)),
+    }))
+    .filter((group) => group.items.length > 0)
+}
+
+export const GROUPS: NavGroup[] = [
   {
-    label: 'Dashboard',
-    href: '/admin/dashboard',
+    key: 'overview',
+    title: 'Visão geral',
+    emoji: '📊',
     icon: (
       <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="1" y="1" width="6" height="6" rx="1" />
@@ -23,10 +52,15 @@ const NAV_ITEMS = [
         <rect x="9" y="9" width="6" height="6" rx="1" />
       </svg>
     ),
+    items: [
+      { label: 'Dashboard', href: '/admin/dashboard', permission: null },
+      { label: 'Plays (detalhado)', href: '/admin/plays', permission: null },
+    ],
   },
   {
-    label: 'Músicas',
-    href: '/admin/musicas',
+    key: 'musica',
+    title: 'Conteúdo musical',
+    emoji: '🎵',
     icon: (
       <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M6 13V4l8-2v9" />
@@ -34,41 +68,35 @@ const NAV_ITEMS = [
         <circle cx="12" cy="11" r="2" />
       </svg>
     ),
+    items: [
+      { label: 'Músicas', href: '/admin/musicas', permission: 'musicas.moderar' },
+      { label: 'Nova música', href: '/admin/musicas/nova', permission: 'musicas.editar' },
+      { label: 'Pedidos do dia', href: '/admin/musicas/hoje', permission: 'musicas.moderar' },
+      { label: 'Agendamentos', href: '/admin/agendamentos', permission: 'musicas.editar' },
+      { label: 'Gêneros', href: '/admin/generos', permission: null },
+    ],
   },
   {
-    label: 'Pedidos do dia',
-    href: '/admin/musicas/hoje',
+    key: 'pessoas',
+    title: 'Pessoas',
+    emoji: '👥',
     icon: (
       <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M2 7.5h3l1.5 2h3l1.5-2h3" />
-        <path d="M3 3h10l1 4.5v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6L3 3z" />
+        <circle cx="8" cy="5" r="3" />
+        <path d="M2 14c0-3 2.5-5 6-5s6 2 6 5" />
       </svg>
     ),
+    items: [
+      { label: 'Cadastros ativos', href: '/admin/cadastros', permission: 'usuarios.visualizar' },
+      { label: 'Usuários', href: '/admin/usuarios', permission: 'usuarios.visualizar' },
+      { label: 'Convites recebidos', href: '/admin/convites', permission: 'convites.gerenciar' },
+      { label: 'Convites aprovados', href: '/admin/convites-aceitos', permission: 'convites.gerenciar' },
+    ],
   },
   {
-    label: 'Agendamentos',
-    href: '/admin/agendamentos',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect x="2" y="2.5" width="12" height="11.5" rx="1.5" />
-        <path d="M2 6h12M5 1v3M11 1v3" />
-        <circle cx="8" cy="9.5" r="1.1" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Plays',
-    href: '/admin/plays',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="8" cy="8" r="6.5" />
-        <path d="M6.3 5.5l4.4 2.5-4.4 2.5v-5z" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Denúncias',
-    href: '/admin/denuncias',
+    key: 'moderacao',
+    title: 'Comunidade & moderação',
+    emoji: '🛡️',
     icon: (
       <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M8 1.5 1.5 14h13L8 1.5z" />
@@ -76,50 +104,69 @@ const NAV_ITEMS = [
         <circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
       </svg>
     ),
+    items: [
+      { label: 'Denúncias', href: '/admin/denuncias', permission: 'denuncias.gerenciar' },
+      { label: 'Suporte', href: '/admin/suporte', permission: 'suporte.responder' },
+      { label: 'Moderadores', href: '/admin/moderadores', permission: null },
+      { label: 'Setores do fórum', href: '/admin/forum/setores', permission: 'forum.moderar' },
+    ],
   },
   {
-    label: 'Suporte',
-    href: '/admin/suporte',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="8" cy="8" r="6.5" />
-        <path d="M6.2 6.2a1.8 1.8 0 1 1 2.4 1.6c-.5.2-.7.6-.7 1v.4" />
-        <circle cx="8" cy="11.2" r="0.5" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Loja de pontos',
-    href: '/admin/loja',
+    key: 'gamificacao',
+    title: 'Gamificação',
+    emoji: '🪙',
     icon: (
       <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M2 5.5h12l-1 8.5H3l-1-8.5z" />
         <path d="M5 5.5V4a3 3 0 0 1 6 0v1.5" />
       </svg>
     ),
+    items: [
+      { label: 'Loja de pontos', href: '/admin/loja', permission: null },
+      { label: 'Promoções de XP', href: '/admin/loja/promocoes', permission: null },
+    ],
   },
-] as const
-
-const PEOPLE_ITEMS = [
-  { label: 'Pedidos recebidos', href: '/admin/convites' },
-  { label: 'Convites pendentes', href: '/admin/convites-aceitos' },
-  { label: 'Cadastro ativo', href: '/admin/cadastros' },
-  { label: 'Usuários', href: '/admin/usuarios' },
-] as const
+  {
+    key: 'config',
+    title: 'Configurações do site',
+    emoji: '⚙️',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="8" cy="8" r="2.2" />
+        <path d="M8 1.5v1.4M8 13.1v1.4M2.6 4.3l1.2.7M12.2 11l1.2.7M2.6 11.7l1.2-.7M12.2 5l1.2-.7M1.5 8h1.4M13.1 8h1.4" />
+      </svg>
+    ),
+    items: [
+      { label: 'Funcionalidades', href: '/admin/configuracoes/funcionalidades', permission: null },
+      { label: 'Upload & conteúdo', href: '/admin/configuracoes/upload', permission: null },
+      { label: 'Convites automáticos', href: '/admin/configuracoes/convites', permission: null },
+      { label: 'Anúncios', href: '/admin/configuracoes/ads', permission: null },
+      { label: 'Permissões de moderador', href: '/admin/configuracoes/permissoes', permission: null },
+    ],
+  },
+]
 
 // ============================================================
-// Sidebar — mesmo padrão de trilho de ícones usado em /inicio
+// Sidebar — trilho de ícones com painel expansível por grupo
 // ============================================================
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  role = 'ADMIN',
+  permissions = [],
+}: {
+  role?: string
+  permissions?: string[]
+}) {
   const pathname = usePathname()
-  const [peopleOpen, setPeopleOpen] = useState(false)
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const visibleGroups = getVisibleGroups(role, permissions)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setPeopleOpen(false)
+        setOpenGroup(null)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -135,10 +182,7 @@ export function AdminSidebar() {
     window.location.href = '/'
   }
 
-  const peopleActive =
-    pathname.startsWith('/admin/convites') ||
-    pathname.startsWith('/admin/cadastros') ||
-    pathname.startsWith('/admin/usuarios')
+  const activeGroup = visibleGroups.find((group) => openGroup === group.key)
 
   return (
     <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
@@ -154,61 +198,28 @@ export function AdminSidebar() {
           x<span className="text-gate-pink">D</span>
         </Link>
 
-        {NAV_ITEMS.map((item) => {
-          const active = pathname.startsWith(item.href)
+        {visibleGroups.map((group) => {
+          const active = group.items.some((item) => pathname.startsWith(item.href))
           return (
-            <Link
-              key={item.href}
-              href={item.href}
+            <button
+              key={group.key}
+              onClick={() => setOpenGroup((v) => (v === group.key ? null : group.key))}
               className={clsx(
                 'flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15',
-                active ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
+                active || openGroup === group.key ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
               )}
-              aria-label={item.label}
-              aria-current={active ? 'page' : undefined}
-              title={item.label}
+              aria-label={group.title}
+              aria-expanded={openGroup === group.key}
+              title={group.title}
             >
-              {item.icon}
-            </Link>
+              {group.icon}
+            </button>
           )
         })}
 
-        {/* Convites pendentes e cadastros */}
-        <button
-          onClick={() => setPeopleOpen((v) => !v)}
-          className={clsx(
-            'flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15',
-            peopleActive || peopleOpen ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
-          )}
-          aria-label="Convites e cadastros"
-          aria-expanded={peopleOpen}
-          title="Convites e cadastros"
-        >
-          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="8" cy="5" r="3" />
-            <path d="M2 14c0-3 2.5-5 6-5s6 2 6 5" />
-          </svg>
-        </button>
-
-        <Link
-          href="/admin/configuracoes"
-          className={clsx(
-            'flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15',
-            pathname.startsWith('/admin/configuracoes') ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
-          )}
-          aria-label="Configurações"
-          aria-current={pathname.startsWith('/admin/configuracoes') ? 'page' : undefined}
-          title="Configurações"
-        >
-          <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="8" cy="8" r="2.2" />
-            <path d="M8 1.5v1.4M8 13.1v1.4M2.6 4.3l1.2.7M12.2 11l1.2.7M2.6 11.7l1.2-.7M12.2 5l1.2-.7M1.5 8h1.4M13.1 8h1.4" />
-          </svg>
-        </Link>
-
         <Link
           href="/inicio"
-          className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+          className="mt-2 flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
           aria-label="Ver site"
           title="Ver site"
         >
@@ -234,20 +245,20 @@ export function AdminSidebar() {
         </div>
       </nav>
 
-      {/* Painel — convites e cadastros */}
-      {peopleOpen && (
+      {/* Painel — sub-itens do grupo aberto */}
+      {activeGroup && (
         <div className="h-screen w-60 border-r border-gate-azure bg-gate-bg px-4 py-6 shadow-2xl">
           <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-gate-blue">
-            Pessoas
+            {activeGroup.emoji} {activeGroup.title}
           </h2>
           <ul className="space-y-1">
-            {PEOPLE_ITEMS.map((item) => {
+            {activeGroup.items.map((item) => {
               const active = pathname === item.href
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    onClick={() => setPeopleOpen(false)}
+                    onClick={() => setOpenGroup(null)}
                     className={clsx(
                       'block rounded-md px-3 py-2 text-sm font-medium transition',
                       active

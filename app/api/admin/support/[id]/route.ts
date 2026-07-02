@@ -1,4 +1,5 @@
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { resolveTicket } from '@/lib/support/support'
 import { prisma } from '@/lib/prisma'
 
@@ -6,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 // PATCH /api/admin/support/[id] — marca o chamado como resolvido
 // ============================================================
 
-export const PATCH = withRole('ADMIN', async (_req, _auth, params) => {
+export const PATCH = withPermission('suporte.resolver', async (_req, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

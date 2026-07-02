@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getCurrentRole } from '@/lib/auth/role'
 import { listMySubmissions } from '@/lib/tracks/artist-queries'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
@@ -16,14 +15,8 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function UploadPage() {
-  const role = await getCurrentRole()
-  const isArtist = role === 'ARTIST' || role === 'ARTIST_SUPPORTER' || role === 'ADMIN'
-
-  // Exclusivo para músicos/produtores (e admin) — visitantes/membros comuns
-  // não têm essa função
-  if (!isArtist) redirect('/inicio')
-
   const token = await getAccessToken()
+  if (!token) redirect('/inicio')
   const payload = token ? await verifyAccessToken(token) : null
 
   await publishDueScheduledTracks().catch((err) =>

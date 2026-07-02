@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import {
   adminGetTrack,
   updateTrack,
@@ -16,7 +17,7 @@ import { z } from 'zod'
 // GET /api/admin/musicas/[id]
 // ============================================================
 
-export const GET = withRole('ADMIN', async (_req: NextRequest, _auth, params) => {
+export const GET = withPermission('musicas.moderar', async (_req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 
@@ -43,7 +44,7 @@ const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('cancelSchedule') }),
 ])
 
-export const PATCH = withRole('ADMIN', async (request: NextRequest, auth, params) => {
+export const PATCH = withPermission('musicas.editar', async (request: NextRequest, auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 
@@ -88,7 +89,7 @@ export const PATCH = withRole('ADMIN', async (request: NextRequest, auth, params
 // Remove do banco E do R2 storage
 // ============================================================
 
-export const DELETE = withRole('ADMIN', async (_req: NextRequest, auth, params) => {
+export const DELETE = withPermission('musicas.moderar', async (_req: NextRequest, auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

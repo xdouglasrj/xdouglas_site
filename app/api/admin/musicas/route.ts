@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { adminListTracks, createTrack, createTrackSchema } from '@/lib/tracks/admin-queries'
 
 // ============================================================
 // GET /api/admin/musicas — listagem completa para o admin
 // ============================================================
 
-export const GET = withRole('ADMIN', async () => {
+export const GET = withPermission('musicas.moderar', async () => {
   const tracks = await adminListTracks()
 
   // Serializa BigInt e Date
@@ -23,7 +24,7 @@ export const GET = withRole('ADMIN', async () => {
 // POST /api/admin/musicas — cria nova música
 // ============================================================
 
-export const POST = withRole('ADMIN', async (request: NextRequest, auth) => {
+export const POST = withPermission('musicas.editar', async (request: NextRequest, auth) => {
   let body: unknown
   try {
     body = await request.json()

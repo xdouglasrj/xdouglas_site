@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getTrackBySlug } from '@/lib/tracks/queries'
+import { getTrackOwner } from '@/lib/social/track-comments'
 import { TrackDownloadButton } from './track-download-button'
 import { WaveformPlayer } from '@/components/music/waveform-player'
 import { TrackLikeButton } from '@/components/music/track-like-button'
+import { ShareButton } from '@/components/music/share-button'
+import { AddToPlaylistButton } from '@/components/music/add-to-playlist-button'
 import { TrackComments } from '@/components/music/track-comments'
 import { getCurrentRole } from '@/lib/auth/role'
 
@@ -26,6 +29,7 @@ export async function generateMetadata({
   return {
     title: `${track.title} — ${track.artist.name}`,
     description: track.description ?? `${track.title} por ${track.artist.name}`,
+    robots: { index: true, follow: true },
     openGraph: track.coverUrl
       ? { images: [{ url: track.coverUrl, width: 600, height: 600 }] }
       : undefined,
@@ -44,15 +48,38 @@ export default async function TrackDetailPage({
 
   if (!track) notFound()
 
-  // Ouvintes (role GUEST) podem ouvir, mas não baixar
-  const canDownload = role !== 'GUEST'
+  const trackOwner = await getTrackOwner(track.id)
+
+  // Visitante anônimo (role null, sem login) e ouvintes (role GUEST) podem
+  // ouvir, mas não baixar — baixar continua exigindo conta (≥ MEMBER).
+  const canDownload = role !== null && role !== 'GUEST'
 
   const fileSize = track.audioSizeBytes
     ? formatBytes(Number(track.audioSizeBytes))
     : null
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'MusicRecording',
+    name: track.title,
+    description: track.description ?? `${track.title} por ${track.artist.name}`,
+    image: track.coverUrl ?? undefined,
+    genre: track.genre ?? undefined,
+    datePublished: track.publishedAt ?? undefined,
+    byArtist: {
+      '@type': 'MusicGroup',
+      name: track.artist.name,
+    },
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gate-blue" aria-label="Navegação">
         <Link href="/musicas-recentes" className="hover:text-white transition-colors">
@@ -90,11 +117,7 @@ export default async function TrackDetailPage({
             </h1>
             <p className="mt-1.5 text-gate-blue">
               <Link
-                href={
-                  track.artist.userHandle
-                    ? `/perfil/${track.artist.userHandle}`
-                    : `/musicas-recentes?artistSlug=${track.artist.slug}`
-                }
+                href={`/artista/${track.artist.slug}`}
                 className="hover:text-white transition-colors"
               >
                 {track.artist.name}
@@ -152,6 +175,8 @@ export default async function TrackDetailPage({
             <div className="flex flex-wrap items-center gap-3">
               {canDownload && <TrackDownloadButton track={track} />}
               <TrackLikeButton trackId={track.id} initialCount={track.likeCount} />
+              <ShareButton trackId={track.id} slug={track.slug} title={track.title} artistName={track.artist.name} />
+              {role !== null && <AddToPlaylistButton trackId={track.id} />}
             </div>
           </div>
         </div>
@@ -184,7 +209,7 @@ export default async function TrackDetailPage({
         </section>
       )}
 
-      <TrackComments trackId={track.id} />
+      <TrackComments trackId={track.id} trackOwnerId={trackOwner?.ownerId ?? null} />
     </div>
   )
 }

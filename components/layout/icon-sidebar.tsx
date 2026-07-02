@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { TRACK_GENRES } from '@/lib/tracks/genres'
+import { Topbar } from '@/components/layout/topbar'
 
 const GENRES = TRACK_GENRES
 
@@ -14,13 +15,16 @@ type Panel = 'music' | 'search' | null
 
 interface IconSidebarProps {
   isAdmin?: boolean
-  isArtist?: boolean
-  mappingEnabled?: boolean
+  /** já enviou ao menos uma música — controla o link "Suas músicas" */
+  hasUploads?: boolean
   photoUrl?: string | null
   handle?: string | null
 }
 
-export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled = false, photoUrl = null, handle = null }: IconSidebarProps) {
+// Trilho de ícones + topbar (§3.2 do MAPA-E-PLANO-XDOUGLAS.md). Sempre
+// renderizado para usuário logado — visitante anônimo (páginas públicas de
+// música/gênero/artista) não usa este componente.
+export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = null, handle = null }: IconSidebarProps) {
   const profileHref = handle ? `/perfil/${handle}` : '/perfil'
   const [panel, setPanel] = useState<Panel>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -86,15 +90,29 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
               </svg>
             )}
           </button>
-          <Image
-            src="/brand/xdouglas-logo.png"
-            alt="xDouglas"
-            width={1200}
-            height={675}
-            priority
-            className="h-8 w-auto justify-self-center object-contain"
-          />
-          <ThemeToggle />
+          <Link href="/inicio" className="justify-self-center" aria-label="xDouglas — início">
+            <Image
+              src="/brand/xdouglas-logo.png"
+              alt="xDouglas"
+              width={1200}
+              height={675}
+              priority
+              className="h-8 w-auto object-contain"
+            />
+          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/notificacoes"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-gate-blue hover:text-gate-pink"
+              aria-label="Notificações"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
 
         {mobileOpen && (
@@ -115,31 +133,48 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
               </div>
             </form>
 
-            {/* Navegação principal */}
-            <nav className="flex flex-col gap-1">
+            {photoUrl && (
+              <Link href={profileHref} onClick={() => setMobileOpen(false)} className="mb-5 flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photoUrl} alt="Perfil" className="h-10 w-10 rounded-full object-cover" />
+                <span className="text-sm font-medium text-white">Meu perfil</span>
+              </Link>
+            )}
+
+            <MobileSection label="Você">
               <MobileLink href="/inicio" onClick={() => setMobileOpen(false)} label="Início" />
-              <MobileLink href="/musicas-recentes" onClick={() => setMobileOpen(false)} label="Músicas recentes" />
-              <MobileLink href="/comentarios" onClick={() => setMobileOpen(false)} label="Comentários" />
-              <MobileLink href="/forum" onClick={() => setMobileOpen(false)} label="Fórum" />
-              <MobileLink href="/loja" onClick={() => setMobileOpen(false)} label="Loja" />
-              <MobileLink href="/suporte" onClick={() => setMobileOpen(false)} label="Suporte" />
-
-              {(isArtist || isAdmin) && (
-                <MobileLink href="/upload" onClick={() => setMobileOpen(false)} label="Upload de música" />
-              )}
-
-              {mappingEnabled && (
-                <MobileLink href="/minhas-musicas" onClick={() => setMobileOpen(false)} label="Minhas músicas" />
-              )}
-
               <MobileLink href={profileHref} onClick={() => setMobileOpen(false)} label="Meu perfil" />
-
-              {isAdmin && (
-                <MobileLink href="/admin/dashboard" onClick={() => setMobileOpen(false)} label="Painel admin" />
+              <MobileLink href="/upload" onClick={() => setMobileOpen(false)} label="Upload de música" />
+              {(hasUploads || isAdmin) && (
+                <MobileLink href="/minhas-musicas" onClick={() => setMobileOpen(false)} label="Suas músicas" />
               )}
-            </nav>
+              <MobileLink href="/biblioteca/playlists" onClick={() => setMobileOpen(false)} label="Sua biblioteca" />
+              <MobileLink href="/biblioteca/curtidas" onClick={() => setMobileOpen(false)} label="Curtidas" />
+            </MobileSection>
 
-            {/* Gêneros */}
+            <MobileSection label="Explorar">
+              <MobileLink href="/generos" onClick={() => setMobileOpen(false)} label="Gêneros" />
+              <MobileLink href="/musicas-recentes" onClick={() => setMobileOpen(false)} label="Mais recentes" />
+              <MobileLink href="/busca" onClick={() => setMobileOpen(false)} label="Busca" />
+            </MobileSection>
+
+            <MobileSection label="Comunidade">
+              <MobileLink href="/forum" onClick={() => setMobileOpen(false)} label="Fórum" />
+              <MobileLink href="/comentarios" onClick={() => setMobileOpen(false)} label="Comentários" />
+            </MobileSection>
+
+            <MobileSection label="Conta">
+              <MobileLink href="/loja" onClick={() => setMobileOpen(false)} label="Loja de pontos" />
+              <MobileLink href="/suporte" onClick={() => setMobileOpen(false)} label="Suporte" />
+            </MobileSection>
+
+            {isAdmin && (
+              <MobileSection label="Admin">
+                <MobileLink href="/admin/dashboard" onClick={() => setMobileOpen(false)} label="Painel admin" />
+              </MobileSection>
+            )}
+
+            {/* Gêneros — atalho rápido */}
             <p className="mt-6 mb-2 px-1 text-xs font-bold uppercase tracking-widest text-gate-blue">Gêneros</p>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -178,44 +213,59 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
       </div>
 
       {/* ============================================================ */}
-      {/* DESKTOP — faixa fixa com a logo, só na área de conteúdo      */}
-      {/* (o trilho de ícones tem prioridade e fica no topo, sem vão)  */}
+      {/* DESKTOP — topbar (logo + busca + notificação + perfil)       */}
       {/* ============================================================ */}
-      <header className="fixed left-16 right-0 top-0 z-30 hidden h-20 items-center justify-center bg-gradient-to-b from-gate-bg via-gate-bg to-transparent md:flex">
-        <Image
-          src="/brand/xdouglas-logo.png"
-          alt="xDouglas"
-          width={1200}
-          height={675}
-          priority
-          className="h-12 w-auto object-contain"
-        />
-      </header>
+      <Topbar isLoggedIn photoUrl={photoUrl} handle={handle} />
 
       {/* ============================================================ */}
       {/* DESKTOP — trilho de ícones fixo, do topo ao fim da tela      */}
       {/* ============================================================ */}
       <div ref={wrapperRef} className="fixed left-0 top-0 z-40 hidden h-screen md:flex">
-        <nav className="flex w-16 flex-col items-center gap-2 border-r border-gate-azure bg-gate-bg py-4">
-          <Link
-            href="/inicio"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Início"
-            title="Início"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 11.5 12 4l9 7.5" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
-            </svg>
-          </Link>
+        <nav className="flex w-16 flex-col items-center gap-1 overflow-y-auto border-r border-gate-azure bg-gate-bg py-4">
+          {photoUrl && (
+            <Link
+              href={profileHref}
+              className="mb-2 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full ring-2 ring-gate-pink/40"
+              aria-label="Meu perfil"
+              title="Meu perfil"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoUrl} alt="Perfil" className="h-full w-full object-cover" />
+            </Link>
+          )}
 
+          <RailSectionLabel>Você</RailSectionLabel>
+          <RailIcon href="/inicio" label="Início">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 11.5 12 4l9 7.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
+          </RailIcon>
+          {!photoUrl && (
+            <RailIcon href={profileHref} label="Perfil">
+              <circle cx="12" cy="8" r="4" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />
+            </RailIcon>
+          )}
+          <RailIcon href="/upload" label="Upload de música">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 4v12M8 8l4-4 4 4" />
+          </RailIcon>
+          {(hasUploads || isAdmin) && (
+            <RailIcon href="/minhas-musicas" label="Suas músicas">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7 16l4-6 4 3 4-7" />
+            </RailIcon>
+          )}
+          <RailIcon href="/biblioteca/playlists" label="Sua biblioteca">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h13M3 12h9M3 18h13" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 10l4 2-4 2v-4z" />
+          </RailIcon>
+
+          <RailSectionLabel>Explorar</RailSectionLabel>
           <button
             onClick={() => togglePanel('music')}
             className={`flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15 ${
               panel === 'music' ? 'bg-gate-pink/15 text-gate-pink' : 'text-gate-blue hover:text-gate-pink'
             }`}
-            aria-label="Gêneros de música"
-            title="Gêneros de música"
+            aria-label="Gêneros"
+            title="Gêneros"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 18V5l11-2v13" />
@@ -223,7 +273,10 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
               <circle cx="17" cy="16" r="3" />
             </svg>
           </button>
-
+          <RailIcon href="/musicas-recentes" label="Mais recentes">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+            <circle cx="12" cy="12" r="9" />
+          </RailIcon>
           <button
             onClick={() => togglePanel('search')}
             className={`flex h-11 w-11 items-center justify-center rounded-full transition hover:bg-gate-pink/15 ${
@@ -238,114 +291,39 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
             </svg>
           </button>
 
-          {(isArtist || isAdmin) && (
-            <Link
-              href="/upload"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-              aria-label="Upload de música"
-              title="Upload de música"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M12 4v12M8 8l4-4 4 4" />
-              </svg>
-            </Link>
-          )}
+          <RailSectionLabel>Comunidade</RailSectionLabel>
+          <RailIcon href="/forum" label="Fórum">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </RailIcon>
+          <RailIcon href="/comentarios" label="Comentários">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" />
+            <path strokeLinecap="round" d="M7.5 9h9M7.5 12.5h6" />
+          </RailIcon>
 
-          {mappingEnabled && (
-            <Link
-              href="/minhas-musicas"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-              aria-label="Minhas músicas"
-              title="Minhas músicas"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7 16l4-6 4 3 4-7" />
-              </svg>
-            </Link>
-          )}
-
-          <Link
-            href="/comentarios"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Comentários"
-            title="Comentários"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" />
-              <path strokeLinecap="round" d="M7.5 9h9M7.5 12.5h6" />
-            </svg>
-          </Link>
-
-          <Link
-            href="/forum"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Fórum"
-            title="Fórum"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-            </svg>
-          </Link>
-
-          <Link
-            href="/loja"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Loja"
-            title="Loja"
-          >
-            <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M2 5.5h12l-1 8.5H3l-1-8.5z" />
-              <path d="M5 5.5V4a3 3 0 0 1 6 0v1.5" />
-            </svg>
-          </Link>
-
-          <Link
-            href="/suporte"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-            aria-label="Suporte"
-            title="Suporte"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="9" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.6" />
-              <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
-            </svg>
-          </Link>
-
-          <Link
-            href={profileHref}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink overflow-hidden"
-            aria-label="Perfil"
-            title="Perfil"
-          >
-            {photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="Perfil" className="w-9 h-9 rounded-full object-cover" />
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="8" r="4" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" />
-              </svg>
-            )}
-          </Link>
+          <RailSectionLabel>Conta</RailSectionLabel>
+          <RailIcon href="/loja" label="Loja de pontos" viewBox="0 0 16 16" strokeWidth="1.5">
+            <path d="M2 5.5h12l-1 8.5H3l-1-8.5z" />
+            <path d="M5 5.5V4a3 3 0 0 1 6 0v1.5" />
+          </RailIcon>
+          <RailIcon href="/suporte" label="Suporte">
+            <circle cx="12" cy="12" r="9" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.6" />
+            <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+          </RailIcon>
 
           {isAdmin && (
-            <Link
-              href="/admin/dashboard"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
-              aria-label="Painel admin"
-              title="Painel admin"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <>
+              <RailSectionLabel>Admin</RailSectionLabel>
+              <RailIcon href="/admin/dashboard" label="Painel admin">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
                 <rect x="14" y="3" width="7" height="7" rx="1" />
                 <rect x="3" y="14" width="7" height="7" rx="1" />
                 <rect x="14" y="14" width="7" height="7" rx="1" />
-              </svg>
-            </Link>
+              </RailIcon>
+            </>
           )}
 
-          <div className="mt-auto flex flex-col items-center gap-2">
+          <div className="mt-auto flex flex-col items-center gap-2 pt-2">
             <ThemeToggle />
             <button
               onClick={handleLogout}
@@ -428,6 +406,53 @@ export function IconSidebar({ isAdmin = false, isArtist = false, mappingEnabled 
         )}
       </div>
     </>
+  )
+}
+
+function RailSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="mt-2 mb-0.5 w-full px-1 text-center text-[8px] font-bold uppercase tracking-wider text-gate-blue/60 first:mt-0"
+      aria-hidden="true"
+    >
+      {children}
+    </span>
+  )
+}
+
+function RailIcon({
+  href,
+  label,
+  viewBox = '0 0 24 24',
+  strokeWidth = '2',
+  children,
+}: {
+  href: string
+  label: string
+  viewBox?: string
+  strokeWidth?: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex h-11 w-11 items-center justify-center rounded-full text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+      aria-label={label}
+      title={label}
+    >
+      <svg width="22" height="22" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </svg>
+    </Link>
+  )
+}
+
+function MobileSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <nav className="mb-5">
+      <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-gate-blue">{label}</p>
+      <div className="flex flex-col gap-1">{children}</div>
+    </nav>
   )
 }
 

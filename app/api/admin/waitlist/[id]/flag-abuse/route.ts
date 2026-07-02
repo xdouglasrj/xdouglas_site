@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { flagInviteAbuse } from '@/lib/invites/abuse'
 
 // ============================================================
@@ -10,7 +11,7 @@ import { flagInviteAbuse } from '@/lib/invites/abuse'
 // conta) — critérios editáveis em /admin/loja (AppSettings).
 // ============================================================
 
-export const POST = withRole('ADMIN', async (_req: NextRequest, _auth, params) => {
+export const POST = withPermission('convites.gerenciar', async (_req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

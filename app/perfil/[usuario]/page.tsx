@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
@@ -67,6 +68,9 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       showEmail: true,
       showPhone: true,
       showName: true,
+      showMusicasNoPerfil: true,
+      showEspacoUploadNoPerfil: true,
+      showContatosNoPerfil: true,
       createdAt: true,
       totalXp: true,
       level: true,
@@ -79,41 +83,48 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   if (!profile) notFound()
 
   const isAdmin = viewer.role === 'ADMIN'
-  const isViewerArtist = viewer.role === 'ARTIST' || viewer.role === 'ARTIST_SUPPORTER'
+  const isModerator = viewer.role === 'MODERATOR'
+  // Regra dura: admin/moderador sempre veem tudo, ignorando os toggles de
+  // privacidade do dono do perfil.
+  const isPrivileged = isAdmin || isModerator
   const isProfileArtist = profile.role === 'ARTIST' || profile.role === 'ARTIST_SUPPORTER'
-  // Espaço de upload nunca é público — só o próprio dono e o admin veem.
-  const canSeeStorage = isSelf || isAdmin
+  // Espaço de upload nunca é público — só o próprio dono, admin/moderador
+  // veem, e só se o dono não tiver escondido (showEspacoUploadNoPerfil).
+  const canSeeStorage = isSelf || isPrivileged || profile.showEspacoUploadNoPerfil
+  const canSeeTracks = isSelf || isPrivileged || profile.showMusicasNoPerfil
 
-  const [counts, followingAlready, tracks, likeCount, storageUsed] = await Promise.all([
+  const [counts, followingAlready, tracks, likeCount, storageUsed, viewerUploadCount] = await Promise.all([
     getFollowCounts(profile.id),
     isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
-    profile.artist ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
+    profile.artist && canSeeTracks ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
     profile.artist ? getArtistLikeCount(profile.artist.id) : Promise.resolve(0),
     canSeeStorage
       ? prisma.track.aggregate({ where: { submittedById: profile.id }, _sum: { audioSizeBytes: true } })
       : Promise.resolve(null),
+    prisma.track.count({ where: { submittedById: viewer.id } }),
   ])
 
   const storageUsedBytes = Number(storageUsed?._sum.audioSizeBytes ?? 0)
   const storageQuotaBytes = getPlanQuotaBytes(profile.plan, profile.bonusStorageMb)
 
   // O perfil mostra só o que foi configurado em "Editar perfil" — vale
-  // até para o próprio dono vendo a própria página. O admin é a única
-  // exceção e sempre vê tudo. Ouvintes sempre exibem o nome; artistas
-  // decidem se mostram o nome real (showName).
-  const canSeeEmail = isAdmin || profile.showEmail
-  const canSeePhone = isAdmin || (profile.showPhone && !!profile.phone)
-  const canSeeName = isAdmin || !isProfileArtist || profile.showName
-  // XP nunca é público — só o próprio dono e o admin veem o número. Nível
-  // (o "título" derivado do XP) pode ficar visível pra todo mundo.
-  const canSeeXp = isSelf || isAdmin
+  // até para o próprio dono vendo a própria página. Admin/moderador são a
+  // única exceção e sempre veem tudo. Ouvintes sempre exibem o nome;
+  // artistas decidem se mostram o nome real (showName). showContatosNoPerfil
+  // é o interruptor único que agrupa e-mail + telefone.
+  const canSeeEmail = isPrivileged || profile.showContatosNoPerfil
+  const canSeePhone = isPrivileged || (profile.showContatosNoPerfil && !!profile.phone)
+  const canSeeName = isPrivileged || !isProfileArtist || profile.showName
+  // XP nunca é público — só o próprio dono e admin/moderador veem o número.
+  // Nível (o "título" derivado do XP) pode ficar visível pra todo mundo.
+  const canSeeXp = isSelf || isPrivileged
   const displayName = canSeeName
     ? profile.name || profile.artisticName || profile.handle
     : profile.artisticName || profile.handle
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isViewerArtist} mappingEnabled={viewer.mappingEnabled} photoUrl={viewer.photoUrl} handle={viewer.handle} />
+      <IconSidebar isAdmin={isAdmin} hasUploads={viewerUploadCount > 0} photoUrl={viewer.photoUrl} handle={viewer.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-lg mx-auto">
@@ -127,19 +138,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
             </div>
 
             {isSelf ? (
-              <EditProfileButton
-                email={profile.email}
-                username={profile.username}
-                handle={profile.handle}
-                artisticName={profile.artisticName}
-                phone={profile.phone}
-                initialName={profile.name ?? ''}
-                initialPhotoUrl={profile.photoUrl}
-                initialShowEmail={profile.showEmail}
-                initialShowPhone={profile.showPhone}
-                initialShowName={profile.showName}
-                isArtist={isProfileArtist}
-              />
+              <EditProfileButton />
             ) : (
               <FollowButton userId={profile.id} initialFollowing={followingAlready} />
             )}
@@ -151,8 +150,21 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
           </p>
 
           <div className="mt-4 flex items-center gap-6 text-sm">
-            <FollowListModal userId={profile.id} type="followers" count={counts.followers} label="seguidores" />
-            <FollowListModal userId={profile.id} type="following" count={counts.following} label="seguindo" />
+            {isSelf ? (
+              <>
+                <Link href="/perfil/seguidores" className="text-white/80 transition hover:text-gate-pink">
+                  <strong className="text-white">{counts.followers}</strong> seguidores
+                </Link>
+                <Link href="/perfil/seguindo" className="text-white/80 transition hover:text-gate-pink">
+                  <strong className="text-white">{counts.following}</strong> seguindo
+                </Link>
+              </>
+            ) : (
+              <>
+                <FollowListModal userId={profile.id} type="followers" count={counts.followers} label="seguidores" />
+                <FollowListModal userId={profile.id} type="following" count={counts.following} label="seguindo" />
+              </>
+            )}
             <span className="flex items-center gap-1.5 text-white/80">
               <svg className="w-3.5 h-3.5 text-gate-blue" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                 <path d="M8 1l2.2 4.5 4.8.7-3.5 3.4.8 4.8L8 12.1 3.7 14.4l.8-4.8L1 6.2l4.8-.7z" />
@@ -201,7 +213,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
 
           {canSeeStorage && (
             <section className="mt-6 rounded-lg border border-gate-azure bg-white/5 p-5">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gate-blue" title="Visível só para você e o admin">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gate-blue" title="Visível conforme sua configuração de privacidade">
                 Espaço de upload
               </h2>
               <div className="mt-3">
@@ -220,7 +232,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
             </section>
           )}
 
-          <ProfileTracks tracks={tracks} artistName={profile.artist?.name ?? ''} />
+          {canSeeTracks && <ProfileTracks tracks={tracks} artistName={profile.artist?.name ?? ''} />}
         </div>
       </main>
     </div>

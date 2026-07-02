@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Allison, Manrope, Space_Grotesk } from 'next/font/google'
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
+import { AdProvider } from '@/components/ads/ad-provider'
 import { ConsentBanner } from '@/components/consent/consent-banner'
+import { getAdsSettings } from '@/lib/settings/ads'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -45,9 +47,14 @@ export const metadata: Metadata = {
     template: '%s | xDouglas',
   },
   description: DESCRICAO_PADRAO,
+  // Padrão global agora é indexável — conteúdo de música/catálogo é a porta
+  // de entrada pública (ver §3.1 do MAPA-E-PLANO-XDOUGLAS.md). Páginas
+  // fechadas (fórum, loja, perfil de ouvinte, admin, comentários, busca,
+  // suporte, notificações, biblioteca) definem `robots: { index: false }`
+  // individualmente via generateMetadata/metadata na própria página.
   robots: {
-    index: false,
-    follow: false,
+    index: true,
+    follow: true,
   },
   openGraph: {
     title: TITULO_PADRAO,
@@ -73,11 +80,16 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Kill switch de infraestrutura — se desligado, nem consulta o banco.
+  const adsEnvEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
+  const adsSettings = adsEnvEnabled ? await getAdsSettings() : { enabled: false, slots: {} }
+  const adsEnabled = adsEnvEnabled && adsSettings.enabled
+
   return (
     <html
       lang="pt-BR"
@@ -90,14 +102,16 @@ export default function RootLayout({
       </head>
       <body className="bg-neutral-950 text-white antialiased" suppressHydrationWarning>
         <AnalyticsProvider>
-          {children}
-          {/*
-            ConsentBanner vive dentro do AnalyticsProvider para ter
-            acesso a giveConsent() e revokeConsent() via contexto.
-            O banner suprime a si mesmo em /admin e quando o usuário
-            já decidiu (localStorage xd_consent existe).
-          */}
-          <ConsentBanner />
+          <AdProvider enabled={adsEnabled} slots={adsSettings.slots}>
+            {children}
+            {/*
+              ConsentBanner vive dentro do AnalyticsProvider para ter
+              acesso a giveConsent() e revokeConsent() via contexto.
+              O banner suprime a si mesmo em /admin e quando o usuário
+              já decidiu (localStorage xd_consent existe).
+            */}
+            <ConsentBanner />
+          </AdProvider>
         </AnalyticsProvider>
       </body>
     </html>

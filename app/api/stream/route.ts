@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { processStream } from '@/lib/downloads/service'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 
 // ============================================================
 // POST /api/stream
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { error: 'trackId inválido', code: 'VALIDATION_ERROR' },
       { status: 400 }
     )
+  }
+
+  if (!(await isFeatureEnabled('ouvir'))) {
+    return NextResponse.json({ error: 'O player está em manutenção no momento', code: 'FEATURE_DISABLED' }, { status: 403 })
   }
 
   const result = await processStream(parsed.data.trackId, request)

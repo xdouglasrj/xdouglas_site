@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { addPoints } from '@/lib/points/points-service'
 
 // ============================================================
@@ -21,6 +22,10 @@ export const POST = withAuth(
     const track = await prisma.track.findUnique({ where: { id: trackId }, select: { id: true } })
     if (!track) {
       return NextResponse.json({ error: 'Faixa não encontrada', code: 'NOT_FOUND' }, { status: 404 })
+    }
+
+    if (!(await isFeatureEnabled('compartilhar'))) {
+      return NextResponse.json({ error: 'Compartilhar está desativado no momento', code: 'FEATURE_DISABLED' }, { status: 403 })
     }
 
     const result = await addPoints(auth.userId, 'TRACK_SHARED')

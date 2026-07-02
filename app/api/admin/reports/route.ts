@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
-import { withRole, apiSuccess } from '@/lib/auth/guard'
+import { apiSuccess } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { listReports } from '@/lib/reports/reports'
 
 // ============================================================
 // GET /api/admin/reports?status=PENDING&page=1
 // ============================================================
 
-export const GET = withRole('ADMIN', async (request: NextRequest) => {
+export const GET = withPermission('denuncias.gerenciar', async (request: NextRequest) => {
   const statusParam = request.nextUrl.searchParams.get('status')
   const status = (['PENDING', 'RESOLVED', 'DISMISSED', 'ALL'].includes(statusParam ?? '')
     ? statusParam

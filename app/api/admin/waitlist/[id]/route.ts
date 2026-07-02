@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
 import { acceptWaitlistEntry } from '@/lib/invites/accept'
 
@@ -22,7 +23,7 @@ function resolveBaseUrl(req: NextRequest): string {
 // Idempotente: se já foi aceito, devolve a mesma chave/link.
 // ============================================================
 
-export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) => {
+export const PATCH = withPermission('convites.gerenciar', async (req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 
@@ -38,7 +39,7 @@ export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) =
 // DELETE /api/admin/waitlist/[id] — rejeitar / remover pedido
 // ============================================================
 
-export const DELETE = withRole('ADMIN', async (_req: NextRequest, _auth, params) => {
+export const DELETE = withPermission('convites.gerenciar', async (_req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

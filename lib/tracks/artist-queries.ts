@@ -16,7 +16,7 @@ export const submitTrackSchema = z.object({
   title: z.string().min(1, 'Título obrigatório').max(200),
   producerName: z.string().max(200).optional(),
   description: z.string().max(2000).optional(),
-  genre: z.string().max(100).optional(),
+  genreId: z.string().uuid().optional(),
   bpm: z.number().int().min(40).max(300).optional(),
   key: z.string().max(10).optional(),
   audioKey: z.string().min(1, 'Arquivo de áudio obrigatório'),
@@ -109,6 +109,10 @@ export async function submitTrack(input: SubmitTrackInput, userId: string) {
   const artist = await getOrCreateArtistProfile(userId)
   const slug = await generateUniqueSlug(input.title)
 
+  const genre = input.genreId
+    ? await prisma.genre.findUnique({ where: { id: input.genreId }, select: { name: true } })
+    : null
+
   return prisma.track.create({
     data: {
       slug,
@@ -116,7 +120,8 @@ export async function submitTrack(input: SubmitTrackInput, userId: string) {
       artistId: artist.id,
       producerName: input.producerName,
       description: input.description,
-      genre: input.genre,
+      genre: genre?.name,
+      genreId: input.genreId,
       bpm: input.bpm,
       key: input.key,
       audioKey: input.audioKey,

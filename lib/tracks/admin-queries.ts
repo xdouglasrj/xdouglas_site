@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { addPoints } from '@/lib/points/points-service'
+import { createNotification } from '@/lib/notifications/notifications'
 
 // Pontua TRACK_PUBLISHED só quando a faixa vira pública pela primeira vez
 // e foi enviada por um artista (não músicas cadastradas direto pelo admin)
@@ -9,13 +10,19 @@ async function awardPublishPointsIfNeeded(trackId: string, wasPublished: boolean
 
   const track = await prisma.track.findUnique({
     where: { id: trackId },
-    select: { submittedById: true },
+    select: { submittedById: true, title: true, slug: true },
   })
   if (!track?.submittedById) return
 
   addPoints(track.submittedById, 'TRACK_PUBLISHED').catch((err) =>
     console.error('[Track] Falha ao registrar pontos de publicação', err)
   )
+
+  createNotification({
+    userId: track.submittedById,
+    type: 'musica_publicada',
+    payload: { trackTitle: track.title, trackSlug: track.slug },
+  }).catch((err) => console.error('[Track] Falha ao criar notificação de publicação', err))
 }
 
 // ============================================================

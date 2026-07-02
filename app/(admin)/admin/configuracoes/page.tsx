@@ -36,6 +36,17 @@ export default async function AdminConfiguracoesPage() {
       <VinhetaCard initialVinhetaKey={vinhetaKey} initialVinhetaDownloadKey={vinhetaDownloadKey} />
 
       <Link
+        href="/admin/configuracoes/ads"
+        className="mt-6 block rounded-xl border border-neutral-800 bg-neutral-900 p-5 transition hover:bg-neutral-800/50"
+      >
+        <h2 className="text-sm font-semibold text-white">Publicidade (ads)</h2>
+        <p className="mt-1 text-xs text-neutral-400 max-w-md">
+          Liga/desliga os anúncios e configura os IDs de slot sem precisar de deploy.
+        </p>
+        <span className="mt-3 inline-block text-xs font-medium text-neutral-300">Abrir →</span>
+      </Link>
+
+      <Link
         href="/admin/configuracoes/permissoes"
         className="mt-6 block rounded-xl border border-amber-800/60 bg-amber-950/20 p-5 transition hover:bg-amber-950/30"
       >

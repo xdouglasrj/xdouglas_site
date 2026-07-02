@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
 
 // ============================================================
@@ -14,7 +15,7 @@ const bodySchema = z.object({
   enabled: z.boolean(),
 })
 
-export const PATCH = withRole('ADMIN', async (request: NextRequest, _auth, params) => {
+export const PATCH = withPermission('usuarios.editar', async (request: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

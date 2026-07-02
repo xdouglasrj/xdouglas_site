@@ -3,7 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export function NewThreadForm() {
+interface NewThreadFormProps {
+  sectorId: string
+  sectorSlug: string
+}
+
+export function NewThreadForm({ sectorId, sectorSlug }: NewThreadFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -23,12 +28,12 @@ export function NewThreadForm() {
       const res = await fetch('/api/forum/threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), body: body.trim() }),
+        body: JSON.stringify({ title: title.trim(), body: body.trim(), sectorId }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Erro ao criar tópico'); return }
 
-      router.push(`/forum/${data.thread.id}`)
+      router.push(`/forum/${sectorSlug}/${data.thread.id}`)
     } catch {
       setError('Erro de conexão.')
     } finally {

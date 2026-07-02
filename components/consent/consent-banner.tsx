@@ -25,7 +25,7 @@ const CONSENT_KEY = 'xd_consent'
 
 export function ConsentBanner() {
   const pathname = usePathname()
-  const { giveConsent, revokeConsent } = useAnalyticsContext()
+  const { giveConsent, revokeConsent, giveAdConsent, revokeAdConsent } = useAnalyticsContext()
 
   // 'pending' = ainda não leu o localStorage (SSR / hidratação)
   // 'show'    = precisa mostrar o banner
@@ -43,9 +43,14 @@ export function ConsentBanner() {
     setVisibility(existing !== null ? 'hidden' : 'show')
   }, [pathname])
 
+  // "Aceitar" dá consentimento para as duas categorias — analytics e
+  // publicidade são granulares no storage (chaves separadas), mas o atalho
+  // do banner aceita as duas de uma vez. Quem quiser recusar só uma
+  // categoria pode fazer isso depois em /privacidade (consentimento granular).
   function handleAccept() {
     setVisibility('hidden')
     giveConsent()
+    giveAdConsent()
   }
 
   function handleDecline() {
@@ -53,6 +58,7 @@ export function ConsentBanner() {
     // Persiste a recusa para não mostrar novamente
     localStorage.setItem(CONSENT_KEY, 'false')
     revokeConsent()
+    revokeAdConsent()
   }
 
   // Não renderiza nada até a hidratação completar — evita flash
@@ -92,8 +98,8 @@ export function ConsentBanner() {
               Cookies e privacidade
             </p>
             <p className="mt-1 text-xs text-neutral-400 leading-relaxed">
-              Usamos cookies para entender como você usa a plataforma e melhorar sua experiência.
-              Nenhum dado pessoal identificável é armazenado.{' '}
+              Usamos cookies para entender como você usa a plataforma, melhorar sua experiência
+              e, quando ativado, exibir publicidade. Nenhum dado pessoal identificável é armazenado.{' '}
               <Link
                 href="/privacidade"
                 className="text-neutral-300 underline hover:text-white transition-colors"

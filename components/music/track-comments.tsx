@@ -33,11 +33,13 @@ function formatDate(iso: string) {
   })
 }
 
-export function TrackComments({ trackId }: { trackId: string }) {
+export function TrackComments({ trackId, trackOwnerId }: { trackId: string; trackOwnerId: string | null }) {
   const [comments, setComments] = useState<TrackCommentView[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isModerator, setIsModerator] = useState(false)
+  const [allowComments, setAllowComments] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +55,10 @@ export function TrackComments({ trackId }: { trackId: string }) {
     fetch(`/api/social/tracks/${trackId}/comments`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (active) setComments(data?.comments ?? [])
+        if (active) {
+          setComments(data?.comments ?? [])
+          setAllowComments(data?.allowComments ?? true)
+        }
       })
       .catch(() => {
         if (active) setComments([])
@@ -68,6 +73,7 @@ export function TrackComments({ trackId }: { trackId: string }) {
         if (active) {
           setCurrentUserId(data?.user?.id ?? null)
           setIsAdmin(data?.user?.role === 'ADMIN')
+          setIsModerator(data?.user?.role === 'MODERATOR')
         }
       })
       .catch(() => {})
@@ -177,7 +183,8 @@ export function TrackComments({ trackId }: { trackId: string }) {
 
         {comments?.map((c) => {
           const isOwner = currentUserId !== null && currentUserId === c.author.id
-          const canDelete = isOwner || isAdmin
+          const isTrackOwner = currentUserId !== null && currentUserId === trackOwnerId
+          const canDelete = isOwner || isAdmin || isModerator || isTrackOwner
           const isEditing = editingId === c.id
 
           return (
@@ -293,26 +300,30 @@ export function TrackComments({ trackId }: { trackId: string }) {
           <p className="text-xs text-white/30">Nenhum comentário ainda. Seja o primeiro!</p>
         )}
 
-        <form onSubmit={submitComment} className="mt-2 flex flex-col gap-1.5">
-          <div className="flex gap-2">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              maxLength={MAX_LENGTH}
-              rows={2}
-              placeholder="Escreva um comentário…"
-              className="flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-gate-pink resize-none"
-            />
-            <button
-              type="submit"
-              disabled={sending || !newComment.trim()}
-              className="self-end rounded-md bg-gate-pink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-            >
-              Enviar
-            </button>
-          </div>
-          <span className="text-[11px] text-white/30 self-end">{newComment.length}/{MAX_LENGTH}</span>
-        </form>
+        {allowComments ? (
+          <form onSubmit={submitComment} className="mt-2 flex flex-col gap-1.5">
+            <div className="flex gap-2">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                maxLength={MAX_LENGTH}
+                rows={2}
+                placeholder="Escreva um comentário…"
+                className="flex-1 rounded-md border border-gate-azure bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-gate-pink resize-none"
+              />
+              <button
+                type="submit"
+                disabled={sending || !newComment.trim()}
+                className="self-end rounded-md bg-gate-pink px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+              >
+                Enviar
+              </button>
+            </div>
+            <span className="text-[11px] text-white/30 self-end">{newComment.length}/{MAX_LENGTH}</span>
+          </form>
+        ) : (
+          <p className="mt-2 text-xs text-white/30">O artista desativou novos comentários nesta música.</p>
+        )}
         {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
     </section>

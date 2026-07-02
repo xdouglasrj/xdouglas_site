@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { withPermission } from '@/lib/auth/permissions'
 import { prisma } from '@/lib/prisma'
 
 const patchSchema = z.object({
@@ -15,7 +16,7 @@ const patchSchema = z.object({
 // action: 'unblock'  — desfaz o bloqueio (ex: clique acidental)
 // ============================================================
 
-export const PATCH = withRole('ADMIN', async (req: NextRequest, _auth, params) => {
+export const PATCH = withPermission('usuarios.bloquear', async (req: NextRequest, _auth, params) => {
   const id = params?.id
   if (!id) return apiError('ID obrigatório', 400, 'MISSING_ID')
 

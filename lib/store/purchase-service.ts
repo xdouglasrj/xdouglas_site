@@ -14,14 +14,15 @@ function hoursFromNow(hours: number): Date {
   return new Date(Date.now() + hours * 60 * 60 * 1000)
 }
 
-/** Catálogo visível pro usuário (filtrado por audiência) + saldo gastável. */
+/**
+ * Catálogo visível pro usuário + saldo gastável. Pontos unificados: não há
+ * mais distinção artista/ouvinte (ver MAPA-E-PLANO §3.14) — todo item ativo
+ * é tratado como se fosse BOTH, independente do `audience` gravado no banco
+ * (mantido só por compatibilidade de dados existentes).
+ */
 export async function getCatalogForUser(userId: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } })
-  const isArtist = user.role === 'ARTIST'
-  const audiences: ('ARTIST' | 'LISTENER' | 'BOTH')[] = isArtist ? ['ARTIST', 'BOTH'] : ['LISTENER', 'BOTH']
-
   const [items, balance] = await Promise.all([
-    prisma.storeItem.findMany({ where: { active: true, audience: { in: audiences } }, orderBy: { price: 'asc' } }),
+    prisma.storeItem.findMany({ where: { active: true }, orderBy: { price: 'asc' } }),
     prisma.pointsHistory.aggregate({ where: { userId }, _sum: { points: true } }),
   ])
 
@@ -45,13 +46,8 @@ export async function purchaseItem(
 
     if (!item || !item.active) throw new StoreError('ITEM_NOT_FOUND', 'Item não encontrado')
 
-    const isArtist = user.role === 'ARTIST'
-    if (item.audience === 'ARTIST' && !isArtist) {
-      throw new StoreError('WRONG_AUDIENCE', 'Item exclusivo de artista')
-    }
-    if (item.audience === 'LISTENER' && isArtist) {
-      throw new StoreError('WRONG_AUDIENCE', 'Item exclusivo de ouvinte')
-    }
+    // Pontos unificados — `audience` é ignorado na compra, mantido no banco
+    // só por compatibilidade de dados existentes (ver MAPA-E-PLANO §3.14).
 
     if (item.key === 'PRIORITY_INVITE' && user.inviteBlockedUntil && user.inviteBlockedUntil > new Date()) {
       throw new StoreError('INVITE_BLOCKED', 'Função de convidar bloqueada por abuso até ' + user.inviteBlockedUntil.toLocaleDateString('pt-BR'))

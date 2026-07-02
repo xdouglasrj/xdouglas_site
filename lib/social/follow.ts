@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { toPublicUser, PUBLIC_USER_SELECT, type PublicUser } from './public-user'
+import { createNotification } from '@/lib/notifications/notifications'
 
 export async function isFollowing(followerId: string, followingId: string): Promise<boolean> {
   if (followerId === followingId) return false
@@ -33,12 +34,28 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
   }
 
   await prisma.follow.create({ data: { followerId, followingId } })
+
+  const follower = await prisma.user.findUnique({
+    where: { id: followerId },
+    select: { handle: true, name: true, artisticName: true },
+  })
+  createNotification({
+    userId: followingId,
+    actorId: followerId,
+    type: 'novo_seguidor',
+    payload: {
+      actorName: follower?.artisticName || follower?.name || (follower?.handle ? `@${follower.handle}` : 'Alguém'),
+      actorHandle: follower?.handle ?? null,
+    },
+  }).catch((err) => console.error('[Follow] Falha ao criar notificação', err))
+
   return true
 }
 
 interface ListFollowOptions {
   q?: string
   limit?: number
+  skip?: number
 }
 
 // Filtro de busca por @handle/nome aplicado sobre o User do outro lado do Follow
@@ -56,7 +73,7 @@ function userNameFilter(q: string | undefined) {
 
 /** Quem segue `userId` — usado no popup de seguidores. */
 export async function listFollowers(userId: string, opts: ListFollowOptions = {}): Promise<PublicUser[]> {
-  const { q, limit = 50 } = opts
+  const { q, limit = 50, skip = 0 } = opts
   const rows = await prisma.follow.findMany({
     where: {
       followingId: userId,
@@ -64,6 +81,7 @@ export async function listFollowers(userId: string, opts: ListFollowOptions = {}
     },
     select: { follower: { select: PUBLIC_USER_SELECT } },
     orderBy: { createdAt: 'desc' },
+    skip,
     take: limit,
   })
   return rows.map((r) => toPublicUser(r.follower))
@@ -71,7 +89,7 @@ export async function listFollowers(userId: string, opts: ListFollowOptions = {}
 
 /** Quem `userId` segue — usado no popup de seguindo. */
 export async function listFollowing(userId: string, opts: ListFollowOptions = {}): Promise<PublicUser[]> {
-  const { q, limit = 50 } = opts
+  const { q, limit = 50, skip = 0 } = opts
   const rows = await prisma.follow.findMany({
     where: {
       followerId: userId,
@@ -79,7 +97,18 @@ export async function listFollowing(userId: string, opts: ListFollowOptions = {}
     },
     select: { following: { select: PUBLIC_USER_SELECT } },
     orderBy: { createdAt: 'desc' },
+    skip,
     take: limit,
   })
   return rows.map((r) => toPublicUser(r.following))
+}
+
+/** Conjunto de IDs que `viewerId` segue, dentre `targetIds` — usado para marcar o botão "Seguindo" em listas. */
+export async function getFollowingSet(viewerId: string, targetIds: string[]): Promise<Set<string>> {
+  if (targetIds.length === 0) return new Set()
+  const rows = await prisma.follow.findMany({
+    where: { followerId: viewerId, followingId: { in: targetIds } },
+    select: { followingId: true },
+  })
+  return new Set(rows.map((r) => r.followingId))
 }

@@ -12,7 +12,7 @@ import { StorageSubscriptionCard } from './storage-subscription-card'
 import { PaymentReturnBanner } from './payment-return-banner'
 import { Ranking } from './ranking'
 
-export const metadata: Metadata = { title: 'Loja de pontos' }
+export const metadata: Metadata = { title: 'Loja de pontos', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 
 export default async function LojaPage() {
@@ -30,7 +30,7 @@ export default async function LojaPage() {
   const isArtist = viewer.role === 'ARTIST' || viewer.role === 'ARTIST_SUPPORTER'
   const isAdmin = viewer.role === 'ADMIN'
 
-  const [{ items, spendableBalance }, myPurchases, topUsers, myRankAbove] = await Promise.all([
+  const [{ items, spendableBalance }, myPurchases, topUsers, myRankAbove, uploadCount] = await Promise.all([
     getCatalogForUser(viewer.id),
     prisma.storePurchase.findMany({
       where: { userId: viewer.id },
@@ -45,11 +45,12 @@ export default async function LojaPage() {
       select: { id: true, handle: true, name: true, artisticName: true, photoUrl: true, level: true },
     }),
     prisma.user.count({ where: { role: { not: 'ADMIN' }, totalXp: { gt: viewer.totalXp } } }),
+    prisma.track.count({ where: { submittedById: viewer.id } }),
   ])
 
   return (
     <div className="min-h-screen bg-gate-bg">
-      <IconSidebar isAdmin={isAdmin} isArtist={isArtist} mappingEnabled={viewer.mappingEnabled} photoUrl={viewer.photoUrl} handle={viewer.handle} />
+      <IconSidebar isAdmin={isAdmin} hasUploads={uploadCount > 0} photoUrl={viewer.photoUrl} handle={viewer.handle} />
 
       <main className="md:ml-16 md:pt-20 px-4 sm:px-8 py-8 sm:py-12">
         <div className="max-w-2xl mx-auto">

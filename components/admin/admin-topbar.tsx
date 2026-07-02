@@ -6,18 +6,18 @@ import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { getVisibleGroups } from '@/components/admin/admin-sidebar'
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/admin/dashboard' },
-  { label: 'Músicas', href: '/admin/musicas' },
-  { label: 'Pedidos recebidos', href: '/admin/convites' },
-  { label: 'Convites pendentes', href: '/admin/convites-aceitos' },
-  { label: 'Cadastro ativo', href: '/admin/cadastros' },
-]
-
-export function AdminTopbar() {
+export function AdminTopbar({
+  role = 'ADMIN',
+  permissions = [],
+}: {
+  role?: string
+  permissions?: string[]
+}) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const navItems = getVisibleGroups(role, permissions).flatMap((group) => group.items)
 
   // Se outra aba fizer logout, esta aba acompanha imediatamente
   useEffect(() => onLogoutBroadcast(() => { window.location.href = '/' }), [])
@@ -53,7 +53,7 @@ export function AdminTopbar() {
       {/* Dropdown mobile */}
       {open && (
         <nav className="border-t border-gate-azure bg-gate-bg p-2 flex flex-col gap-0.5">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}

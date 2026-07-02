@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { processDownload } from '@/lib/downloads/service'
 import { withRole } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 
 // ============================================================
 // Validação de input
@@ -31,6 +32,10 @@ const downloadSchema = z.object({
 // ============================================================
 
 export const POST = withRole('MEMBER', async (request: NextRequest): Promise<NextResponse> => {
+  if (!(await isFeatureEnabled('download'))) {
+    return NextResponse.json({ error: 'Download está desativado no momento', code: 'FEATURE_DISABLED' }, { status: 403 })
+  }
+
   // 1. Valida body
   let body: unknown
   try {

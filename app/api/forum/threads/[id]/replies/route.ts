@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { addReply, ThreadLockedError } from '@/lib/forum/forum'
 
 // ============================================================
@@ -25,6 +26,10 @@ export const POST = withAuth(async (request: NextRequest, auth, params) => {
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
+  }
+
+  if (!(await isFeatureEnabled('postar_forum'))) {
+    return apiError('Postar no fórum está desativado no momento', 403, 'FEATURE_DISABLED')
   }
 
   try {

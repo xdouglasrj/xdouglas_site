@@ -13,12 +13,19 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 
 // Área logada da comunidade — exige sessão (qualquer role) e redireciona
 // para o portão de login ("/"). Sem isso, qualquer pessoa podia abrir
-// /inicio ou /musicas direto pela URL (ou chamar a API por trás dessas
+// /inicio ou /forum direto pela URL (ou chamar a API por trás dessas
 // páginas) sem nunca ter feito login.
+//
+// Conteúdo de música fica de fora desta lista de propósito: /musicas/[slug],
+// /generos*, /artista/[slug], /musicas-recentes e suas APIs (/api/musicas,
+// /api/stream) precisam ser acessíveis sem login para visitante e Googlebot
+// indexarem — é a porta de entrada pública da plataforma (ver §3.1/§3.12 do
+// MAPA-E-PLANO-XDOUGLAS.md). Baixar música continua exigindo conta
+// (/api/download permanece protegido abaixo).
 const MEMBER_PREFIXES = [
-  '/inicio', '/musicas', '/upload', '/minhas-musicas', '/perfil', '/forum', '/busca', '/comentarios',
-  '/api/musicas', '/api/download', '/api/stream', '/api/vinheta', '/api/perfil',
-  '/api/social', '/api/forum', '/api/reports', '/api/usuarios',
+  '/inicio', '/upload', '/minhas-musicas', '/perfil', '/forum', '/busca', '/comentarios', '/biblioteca',
+  '/api/download', '/api/vinheta', '/api/perfil',
+  '/api/social', '/api/forum', '/api/reports', '/api/usuarios', '/api/playlists',
 ]
 
 // ============================================================
@@ -92,21 +99,20 @@ export const config = {
     '/admin/:path*',
     '/api/admin/:path*',
     '/inicio/:path*',
-    '/musicas/:path*',
     '/upload/:path*',
     '/minhas-musicas/:path*',
     '/perfil/:path*',
     '/forum/:path*',
     '/busca/:path*',
     '/comentarios/:path*',
-    '/api/musicas/:path*',
+    '/biblioteca/:path*',
     '/api/download/:path*',
-    '/api/stream/:path*',
     '/api/vinheta/:path*',
     '/api/perfil/:path*',
     '/api/social/:path*',
     '/api/forum/:path*',
     '/api/reports/:path*',
     '/api/usuarios/:path*',
+    '/api/playlists/:path*',
   ],
 }

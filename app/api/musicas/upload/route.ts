@@ -1,12 +1,15 @@
 import { NextRequest } from 'next/server'
 import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
+import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { submitTrack, submitTrackSchema, listMySubmissions } from '@/lib/tracks/artist-queries'
 
 // ============================================================
 // GET /api/musicas/upload — lista os envios do próprio artista
 // ============================================================
 
-export const GET = withRole('ARTIST', async (_req: NextRequest, auth) => {
+// withRole('GUEST', ...) — qualquer usuário autenticado pode enviar música,
+// independente do role (upload liberado a todos, ver MAPA-E-PLANO §3.7)
+export const GET = withRole('GUEST', async (_req: NextRequest, auth) => {
   const tracks = await listMySubmissions(auth.userId)
 
   return apiSuccess({
@@ -25,7 +28,11 @@ export const GET = withRole('ARTIST', async (_req: NextRequest, auth) => {
 // moderação do admin antes de aparecer no catálogo público.
 // ============================================================
 
-export const POST = withRole('ARTIST', async (request: NextRequest, auth) => {
+export const POST = withRole('GUEST', async (request: NextRequest, auth) => {
+  if (!(await isFeatureEnabled('upload'))) {
+    return apiError('Upload de músicas está desativado no momento', 403, 'FEATURE_DISABLED')
+  }
+
   let body: unknown
   try {
     body = await request.json()
