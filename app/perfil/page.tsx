@@ -1,22 +1,25 @@
 import { redirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
+import { prisma } from '@/lib/prisma'
 
-// /perfil não tem conteúdo próprio — manda para a página de visualização
-// do próprio usuário (/perfil/<seu @>). Editar dados só existe via o
-// popup "Editar perfil", aberto a partir de lá.
-export default async function PerfilPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function PerfilRedirectPage() {
   const token = await getAccessToken()
-  if (!token) redirect('/')
+  if (!token) redirect('/inicio')
   const payload = await verifyAccessToken(token).catch(() => null)
-  if (!payload) redirect('/')
+  if (!payload) redirect('/inicio')
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
     select: { handle: true },
   })
 
-  if (!user?.handle) redirect('/inicio')
-  redirect(`/perfil/${user.handle}`)
+  if (user?.handle) {
+    redirect(`/perfil/${user.handle}`)
+  }
+
+  // Sem handle definido — redirecionar para edição de perfil
+  redirect('/perfil/editar')
 }

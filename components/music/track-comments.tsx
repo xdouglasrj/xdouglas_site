@@ -33,7 +33,7 @@ function formatDate(iso: string) {
   })
 }
 
-export function TrackComments({ trackId, trackOwnerId }: { trackId: string; trackOwnerId: string | null }) {
+export function TrackComments({ trackId, trackOwnerId, isLoggedIn = true }: { trackId: string; trackOwnerId: string | null; isLoggedIn?: boolean }) {
   const [comments, setComments] = useState<TrackCommentView[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -300,7 +300,12 @@ export function TrackComments({ trackId, trackOwnerId }: { trackId: string; trac
           <p className="text-xs text-white/30">Nenhum comentário ainda. Seja o primeiro!</p>
         )}
 
-        {allowComments ? (
+        {!isLoggedIn ? (
+          <p className="mt-2 text-xs text-white/40">
+            <Link href="/inicio?login=1" className="text-gate-pink hover:underline">Faça login</Link>{' '}
+            para comentar.
+          </p>
+        ) : allowComments ? (
           <form onSubmit={submitComment} className="mt-2 flex flex-col gap-1.5">
             <div className="flex gap-2">
               <textarea

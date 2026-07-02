@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SetorPage({ params, searchParams }: PageProps) {
   const { setor } = await params
   const user = await getCurrentUserBasics()
-  if (!user) redirect('/')
+  if (!user) redirect('/inicio')
 
   const sector = await getSectorBySlug(setor)
   if (!sector || !sector.active) notFound()

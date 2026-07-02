@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
@@ -24,7 +24,7 @@ export default async function TopicoPage({ params }: PageProps) {
   const { setor, topico } = await params
 
   const user = await getCurrentUserBasics()
-  if (!user) redirect('/')
+  if (!user) redirect('/inicio')
 
   const sector = await getSectorBySlug(setor)
   if (!sector) notFound()

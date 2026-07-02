@@ -1,54 +1,61 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { prisma } from '@/lib/prisma'
-import { PlaylistList } from '@/components/playlists/playlist-list'
 
 export const metadata: Metadata = {
-  title: 'Suas playlists',
+  title: 'Minhas playlists',
   robots: { index: false, follow: false },
 }
+
 export const dynamic = 'force-dynamic'
 
 export default async function PlaylistsPage() {
   const token = await getAccessToken()
-  if (!token) redirect('/')
+  if (!token) redirect('/inicio')
   const payload = await verifyAccessToken(token).catch(() => null)
-  if (!payload) redirect('/')
+  if (!payload) redirect('/inicio')
 
   const playlists = await prisma.playlist.findMany({
     where: { userId: payload.userId },
-    orderBy: { updatedAt: 'desc' },
-    include: {
-      _count: { select: { tracks: true } },
-      tracks: {
-        orderBy: { position: 'asc' },
-        take: 4,
-        select: { track: { select: { coverUrl: true } } },
-      },
-    },
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { tracks: true } } },
   })
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Suas playlists</h1>
-        <p className="mt-1 text-sm text-gate-blue">
-          Organize as músicas que você curte em coleções suas.
-        </p>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-white">Minhas playlists</h1>
       </div>
 
-      <PlaylistList
-        initialPlaylists={playlists.map((p) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          isPublic: p.isPublic,
-          trackCount: p._count.tracks,
-          coverUrls: p.tracks.map((t) => t.track.coverUrl).filter((u): u is string => !!u),
-        }))}
-      />
+      {playlists.length === 0 ? (
+        <p className="text-sm text-white/40 py-12 text-center">
+          Você ainda não criou nenhuma playlist.
+        </p>
+      ) : (
+        <ul className="divide-y divide-gate-azure/40 rounded-lg border border-gate-azure bg-white/5">
+          {playlists.map((pl) => (
+            <li key={pl.id}>
+              <Link
+                href={`/biblioteca/playlists/${pl.id}`}
+                className="flex items-center justify-between gap-4 p-4 transition hover:bg-white/5"
+              >
+                <div>
+                  <p className="text-sm font-medium text-white">{pl.name}</p>
+                  {pl.description && (
+                    <p className="text-xs text-white/40 mt-0.5 truncate">{pl.description}</p>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-gate-blue">
+                  {pl._count.tracks} {pl._count.tracks === 1 ? 'música' : 'músicas'}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

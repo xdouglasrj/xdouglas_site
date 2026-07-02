@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
 import { PostCommentsPage } from '@/components/social/post-comments-page'
@@ -14,7 +14,7 @@ interface ComentariosPageProps {
 export default async function ComentariosPage({ params }: ComentariosPageProps) {
   const { postId } = await params
   const user = await getCurrentUserBasics()
-  if (!user) redirect('/')
+  if (!user) redirect('/inicio')
 
   return (
     <div className="min-h-screen bg-gate-bg">

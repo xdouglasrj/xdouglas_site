@@ -49,6 +49,14 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
           return
         }
 
+        // Visitante sem conta: baixar exige login — manda para o portão
+        // com retorno para esta página (regra do §3.12 / plano 03)
+        if (res.status === 401) {
+          const next = encodeURIComponent(window.location.pathname)
+          window.location.href = `/inicio?login=1&next=${next}`
+          return
+        }
+
         setStatus({
           state: 'error',
           errorMessage: data.error ?? 'Erro ao preparar download.',

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
@@ -16,9 +16,9 @@ export default async function PlaylistDetailPage({ params }: PageProps) {
   const { id } = await params
 
   const token = await getAccessToken()
-  if (!token) redirect('/')
+  if (!token) redirect('/inicio')
   const payload = await verifyAccessToken(token).catch(() => null)
-  if (!payload) redirect('/')
+  if (!payload) redirect('/inicio')
 
   const playlist = await prisma.playlist.findUnique({
     where: { id },

@@ -27,31 +27,39 @@ export default async function MinhasMusicasPage() {
   const canAccess = submissions.length > 0 || user.role === 'ADMIN'
   if (!canAccess) redirect('/upload')
 
+  const hasStats = user.mappingEnabled || user.role === 'ADMIN'
+
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Minhas músicas</h1>
         <p className="mt-1 text-sm text-gate-blue">
-          Estatísticas de reprodução, downloads e localização de quem ouve suas faixas.
+          {hasStats
+            ? 'Estatísticas de reprodução, downloads e localização de quem ouve suas faixas.'
+            : 'Suas faixas enviadas e status de publicação.'}
         </p>
       </div>
+
+      {!hasStats && (
+        <div className="mb-6 rounded-xl border border-gate-azure bg-white/5 px-4 py-3">
+          <p className="text-sm text-white">Estatísticas detalhadas são um recurso premium.</p>
+        </div>
+      )}
 
       {submissions.length === 0 ? (
         <p className="text-sm text-gate-blue">Você ainda não enviou nenhuma faixa.</p>
       ) : (
         <div className="rounded-xl border border-gate-azure bg-white/5 overflow-hidden">
           <ul className="divide-y divide-gate-azure">
-            {submissions.map((track) => (
-              <li key={track.id}>
-                <Link
-                  href={`/minhas-musicas/${track.id}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
-                >
+            {submissions.map((track) => {
+              const content = (
+                <>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{track.title}</p>
                     <p className="text-xs text-gate-blue">
-                      {track.downloadCount.toLocaleString('pt-BR')} downloads
-                      {track.genre && ` · ${track.genre}`}
+                      {hasStats && `${track.downloadCount.toLocaleString('pt-BR')} downloads`}
+                      {hasStats && track.genre && ' · '}
+                      {track.genre}
                     </p>
                   </div>
                   {track.published ? (
@@ -63,9 +71,23 @@ export default async function MinhasMusicasPage() {
                       Em análise
                     </span>
                   )}
-                </Link>
-              </li>
-            ))}
+                </>
+              )
+              return (
+                <li key={track.id}>
+                  {hasStats ? (
+                    <Link
+                      href={`/minhas-musicas/${track.id}`}
+                      className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className="flex items-center justify-between px-4 py-3">{content}</div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

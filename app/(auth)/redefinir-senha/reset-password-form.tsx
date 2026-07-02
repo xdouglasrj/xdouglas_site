@@ -16,7 +16,7 @@ type TokenStatus = 'checking' | 'valid' | 'used' | 'invalid'
 
 function BackHomeButton() {
   return (
-    <Link href="/">
+    <Link href="/inicio">
       <Button type="button" fullWidth className={buttonClassName}>
         Voltar para o início
       </Button>

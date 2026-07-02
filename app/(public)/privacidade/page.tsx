@@ -291,7 +291,7 @@ export default function PrivacidadePage() {
           Versão em vigor desde {LAST_UPDATED}
         </p>
         <Link
-          href="/"
+          href="/inicio"
           className="text-sm text-rose-500 hover:text-rose-400 transition-colors"
         >
           ← Voltar ao início

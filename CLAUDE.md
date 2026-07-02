@@ -4,7 +4,7 @@
 
 O `IconSidebar` (`components/layout/icon-sidebar.tsx`) renderiza, para usuário logado: o trilho de ícones lateral (desktop) e, dentro dele, a `Topbar` (`components/layout/topbar.tsx`) — logo + busca centralizada + notificação + avatar, fixa no topo (`h-20`), tanto no mobile (dentro do header `sticky`, h-14) quanto no desktop.
 
-A logo é sempre um link: `/inicio` quando logado, `/` quando deslogado. Isso vale em qualquer header novo — nunca deixe a logo sem `<Link>`.
+A logo é sempre um link para `/inicio`, logado ou não. Isso vale em qualquer header novo — nunca deixe a logo sem `<Link>`.
 
 Para visitante anônimo (sem login) nas páginas públicas de música/gênero/artista, use `PublicHeader` (`components/layout/public-header.tsx`) em vez de `IconSidebar` — não faz sentido mostrar trilho de navegação autenticado (upload, logout etc.) para quem não tem conta. `PublicHeader` reaproveita a `Topbar` com `isLoggedIn={false}` (mostra botão "Entrar" no lugar do avatar/notificação).
 

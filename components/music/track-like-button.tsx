@@ -1,20 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface TrackLikeButtonProps {
   trackId: string
   initialCount: number
   compact?: boolean
+  isLoggedIn?: boolean
 }
 
-export function TrackLikeButton({ trackId, initialCount, compact = false }: TrackLikeButtonProps) {
+export function TrackLikeButton({ trackId, initialCount, compact = false, isLoggedIn = true }: TrackLikeButtonProps) {
   const [liked, setLiked] = useState(false)
   const [count, setCount] = useState(initialCount)
   const [busy, setBusy] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
 
   // Estado de curtida é por usuário — busca assim que monta, sem bloquear a contagem inicial
   useEffect(() => {
+    if (!isLoggedIn) return
     let active = true
     fetch(`/api/social/tracks/${trackId}/like`)
       .then((res) => (res.ok ? res.json() : null))
@@ -25,11 +30,15 @@ export function TrackLikeButton({ trackId, initialCount, compact = false }: Trac
     return () => {
       active = false
     }
-  }, [trackId])
+  }, [trackId, isLoggedIn])
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
+    if (!isLoggedIn) {
+      router.push(`/inicio?login=1&next=${encodeURIComponent(pathname)}`)
+      return
+    }
     if (busy) return
     setBusy(true)
 

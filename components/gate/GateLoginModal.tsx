@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { broadcastLogin } from '@/lib/auth/cross-tab-logout'
 
 interface GateLoginModalProps {
   isOpen: boolean
   onClose: () => void
   onSignupClick: () => void
+  /** Caminho interno para onde navegar após o login (ex.: rota que exigiu login). */
+  next?: string | null
 }
 
 const REMEMBER_USERNAME_KEY = 'xd_remember_username'
 
-export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModalProps) {
+export function GateLoginModal({ isOpen, onClose, onSignupClick, next = null }: GateLoginModalProps) {
+  const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -51,11 +55,12 @@ export function GateLoginModal({ isOpen, onClose, onSignupClick }: GateLoginModa
         if (data.user?.role === 'ADMIN') {
           window.location.href = '/admin/dashboard'
         } else {
-          const params = new URLSearchParams({
-            welcomeName: data.user?.username ?? data.user?.name ?? '',
-            firstToday: data.user?.isFirstLoginToday ? '1' : '0',
-          })
-          window.location.href = `/inicio?${params.toString()}`
+          onClose()
+          if (next) {
+            router.push(next)
+          } else {
+            router.refresh()
+          }
         }
       } else {
         setError('Usuário ou senha inválidos.')

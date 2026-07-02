@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
 
 interface TopbarProps {
   isLoggedIn: boolean
@@ -20,6 +21,7 @@ export function Topbar({ isLoggedIn, photoUrl = null, handle = null }: TopbarPro
   const [focused, setFocused] = useState(false)
   const [query, setQuery] = useState('')
   const router = useRouter()
+  const { openLogin } = useAuthPopup()
   const profileHref = handle ? `/perfil/${handle}` : '/perfil'
 
   function handleSubmit(e: React.FormEvent) {
@@ -31,7 +33,7 @@ export function Topbar({ isLoggedIn, photoUrl = null, handle = null }: TopbarPro
 
   return (
     <header className="fixed left-16 right-0 top-0 z-30 hidden h-20 items-center gap-4 border-b border-gate-azure bg-gate-bg px-6 md:flex">
-      <Link href={isLoggedIn ? '/inicio' : '/'} className="shrink-0" aria-label="xDouglas — início">
+      <Link href="/inicio" className="shrink-0" aria-label="xDouglas — início">
         <Image
           src="/brand/xdouglas-logo.png"
           alt="xDouglas"
@@ -96,12 +98,13 @@ export function Topbar({ isLoggedIn, photoUrl = null, handle = null }: TopbarPro
             )}
           </Link>
         ) : (
-          <Link
-            href="/?login=1"
+          <button
+            type="button"
+            onClick={() => openLogin()}
             className="rounded-md bg-gate-pink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
           >
             Entrar
-          </Link>
+          </button>
         )}
       </div>
     </header>

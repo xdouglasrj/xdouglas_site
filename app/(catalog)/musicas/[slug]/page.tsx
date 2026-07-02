@@ -174,7 +174,7 @@ export default async function TrackDetailPage({
             <WaveformPlayer trackId={track.id} title={track.title} showCover={false} />
             <div className="flex flex-wrap items-center gap-3">
               {canDownload && <TrackDownloadButton track={track} />}
-              <TrackLikeButton trackId={track.id} initialCount={track.likeCount} />
+              <TrackLikeButton trackId={track.id} initialCount={track.likeCount} isLoggedIn={role !== null} />
               <ShareButton trackId={track.id} slug={track.slug} title={track.title} artistName={track.artist.name} />
               {role !== null && <AddToPlaylistButton trackId={track.id} />}
             </div>
@@ -209,7 +209,7 @@ export default async function TrackDetailPage({
         </section>
       )}
 
-      <TrackComments trackId={track.id} trackOwnerId={trackOwner?.ownerId ?? null} />
+      <TrackComments trackId={track.id} trackOwnerId={trackOwner?.ownerId ?? null} isLoggedIn={role !== null} />
     </div>
   )
 }

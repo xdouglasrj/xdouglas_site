@@ -7,16 +7,17 @@ import { verifyAccessToken } from '@/lib/auth/jwt'
 import { prisma } from '@/lib/prisma'
 
 export const metadata: Metadata = {
-  title: 'Curtidas',
+  title: 'Músicas curtidas',
   robots: { index: false, follow: false },
 }
+
 export const dynamic = 'force-dynamic'
 
 export default async function CurtidasPage() {
   const token = await getAccessToken()
-  if (!token) redirect('/')
+  if (!token) redirect('/inicio')
   const payload = await verifyAccessToken(token).catch(() => null)
-  if (!payload) redirect('/')
+  if (!payload) redirect('/inicio')
 
   const likes = await prisma.trackLike.findMany({
     where: { userId: payload.userId },
@@ -24,7 +25,10 @@ export default async function CurtidasPage() {
     include: {
       track: {
         select: {
-          id: true, slug: true, title: true, coverUrl: true, genre: true,
+          id: true,
+          slug: true,
+          title: true,
+          coverUrl: true,
           artist: { select: { name: true } },
         },
       },
@@ -32,30 +36,41 @@ export default async function CurtidasPage() {
   })
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Curtidas</h1>
-        <p className="mt-1 text-sm text-gate-blue">Músicas que você curtiu.</p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold text-white mb-6">Músicas curtidas</h1>
 
       {likes.length === 0 ? (
-        <p className="text-sm text-gate-blue">Você ainda não curtiu nenhuma música.</p>
+        <p className="text-sm text-white/40 py-12 text-center">
+          Você ainda não curtiu nenhuma música.
+        </p>
       ) : (
-        <ul className="rounded-xl border border-gate-azure bg-white/5 divide-y divide-gate-azure overflow-hidden">
+        <ul className="divide-y divide-gate-azure/40 rounded-lg border border-gate-azure bg-white/5">
           {likes.map(({ track }) => (
             <li key={track.id}>
-              <Link href={`/musicas/${track.slug}`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white/5">
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white/10">
-                  {track.coverUrl && (
-                    <Image src={track.coverUrl} alt="" fill sizes="40px" className="object-cover" />
-                  )}
-                </div>
+              <Link
+                href={`/musica/${track.slug}`}
+                className="flex items-center gap-3 p-4 transition hover:bg-white/5"
+              >
+                {track.coverUrl ? (
+                  <Image
+                    src={track.coverUrl}
+                    alt={track.title}
+                    width={40}
+                    height={40}
+                    className="rounded-md object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 shrink-0 rounded-md bg-white/10 flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gate-blue">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </svg>
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{track.title}</p>
-                  <p className="truncate text-xs text-gate-blue">
-                    {track.artist.name}
-                    {track.genre && ` · ${track.genre}`}
-                  </p>
+                  <p className="text-sm font-medium text-white truncate">{track.title}</p>
+                  <p className="text-xs text-white/40 truncate">{track.artist.name}</p>
                 </div>
               </Link>
             </li>

@@ -1,20 +1,19 @@
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
 import { getCurrentRole } from '@/lib/auth/role'
-import { GateContent } from '@/components/gate/GateContent'
 
-export default async function GatePage() {
+interface RootPageProps {
+  searchParams: Promise<{ login?: string; next?: string }>
+}
+
+export default async function RootPage({ searchParams }: RootPageProps) {
   const role = await getCurrentRole()
+  if (role === 'ADMIN') redirect('/admin/dashboard')
 
-  // Já está logado (em outra aba, por exemplo) — não mostra o portão de
-  // login de novo, manda direto para a área correspondente
-  if (role) {
-    redirect(role === 'ADMIN' ? '/admin/dashboard' : '/inicio')
-  }
+  const { login, next } = await searchParams
+  const params = new URLSearchParams()
+  if (login) params.set('login', login)
+  if (next) params.set('next', next)
+  const query = params.toString()
 
-  return (
-    <Suspense>
-      <GateContent />
-    </Suspense>
-  )
+  redirect(query ? `/inicio?${query}` : '/inicio')
 }

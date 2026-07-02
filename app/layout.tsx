@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Allison, Manrope, Space_Grotesk } from 'next/font/google'
 import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 import { AdProvider } from '@/components/ads/ad-provider'
+import { AuthPopupProvider } from '@/components/auth/AuthPopupProvider'
 import { ConsentBanner } from '@/components/consent/consent-banner'
 import { getAdsSettings } from '@/lib/settings/ads'
 import './globals.css'
@@ -103,7 +104,7 @@ export default async function RootLayout({
       <body className="bg-neutral-950 text-white antialiased" suppressHydrationWarning>
         <AnalyticsProvider>
           <AdProvider enabled={adsEnabled} slots={adsSettings.slots}>
-            {children}
+            <AuthPopupProvider>{children}</AuthPopupProvider>
             {/*
               ConsentBanner vive dentro do AnalyticsProvider para ter
               acesso a giveConsent() e revokeConsent() via contexto.

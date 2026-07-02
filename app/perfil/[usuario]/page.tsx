@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
@@ -41,15 +41,15 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const { usuario } = await params
 
   const token = await getAccessToken()
-  if (!token) redirect('/')
+  if (!token) redirect('/inicio')
   const payload = await verifyAccessToken(token).catch(() => null)
-  if (!payload) redirect('/')
+  if (!payload) redirect('/inicio')
 
   const viewer = await prisma.user.findUnique({
     where: { id: payload.userId },
     select: { id: true, role: true, photoUrl: true, handle: true, mappingEnabled: true },
   })
-  if (!viewer) redirect('/')
+  if (!viewer) redirect('/inicio')
 
   const isSelf = viewer.handle === usuario
 

@@ -112,7 +112,7 @@ export function SignupForm({ type, initialInviteCode = '' }: SignupFormProps) {
         </div>
         <h2 className="mb-2 text-2xl font-bold text-white">Conta criada</h2>
         <p className="text-sm text-gate-blue">{doneMessage}</p>
-        <Link href="/" className="mt-6 inline-block text-sm text-gate-pink underline-offset-2 hover:underline">
+        <Link href="/inicio" className="mt-6 inline-block text-sm text-gate-pink underline-offset-2 hover:underline">
           Ir para o início
         </Link>
       </div>
@@ -230,7 +230,7 @@ export function SignupForm({ type, initialInviteCode = '' }: SignupFormProps) {
 
       <p className="mt-5 text-center text-sm text-gate-blue">
         Já tem conta?{' '}
-        <Link href="/" className="font-medium text-gate-pink hover:underline">
+        <Link href="/inicio" className="font-medium text-gate-pink hover:underline">
           Entrar
         </Link>
       </p>

@@ -23,9 +23,11 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 // MAPA-E-PLANO-XDOUGLAS.md). Baixar música continua exigindo conta
 // (/api/download permanece protegido abaixo).
 const MEMBER_PREFIXES = [
-  '/inicio', '/upload', '/minhas-musicas', '/perfil', '/forum', '/busca', '/comentarios', '/biblioteca',
+  '/upload', '/minhas-musicas', '/perfil', '/forum', '/busca', '/comentarios', '/biblioteca',
+  '/loja', '/suporte', '/notificacoes',
   '/api/download', '/api/vinheta', '/api/perfil',
   '/api/social', '/api/forum', '/api/reports', '/api/usuarios', '/api/playlists',
+  '/api/store', '/api/support',
 ]
 
 // ============================================================
@@ -83,10 +85,13 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// Manda para a home — para rotas admin, abre o modal de login automaticamente
-function redirectToGate(request: NextRequest, openLoginModal: boolean): NextResponse {
-  const gateUrl = new URL('/', request.url)
-  if (openLoginModal) gateUrl.searchParams.set('login', '1')
+// Manda para /inicio — abre popup de login automaticamente e preserva a rota
+// original em ?next= para retornar após autenticação.
+function redirectToGate(request: NextRequest, _openLoginModal: boolean): NextResponse {
+  const gateUrl = new URL('/inicio', request.url)
+  gateUrl.searchParams.set('login', '1')
+  const next = request.nextUrl.pathname + request.nextUrl.search
+  if (next !== '/inicio') gateUrl.searchParams.set('next', next)
   return NextResponse.redirect(gateUrl)
 }
 
@@ -98,7 +103,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/api/admin/:path*',
-    '/inicio/:path*',
     '/upload/:path*',
     '/minhas-musicas/:path*',
     '/perfil/:path*',
@@ -114,5 +118,10 @@ export const config = {
     '/api/reports/:path*',
     '/api/usuarios/:path*',
     '/api/playlists/:path*',
+    '/loja/:path*',
+    '/suporte/:path*',
+    '/notificacoes/:path*',
+    '/api/store/:path*',
+    '/api/support/:path*',
   ],
 }
