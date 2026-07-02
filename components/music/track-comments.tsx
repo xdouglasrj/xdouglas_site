@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ReportButton } from '@/components/social/report-button'
+import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
 
 const MAX_LENGTH = 500
 
@@ -34,6 +35,7 @@ function formatDate(iso: string) {
 }
 
 export function TrackComments({ trackId, trackOwnerId, isLoggedIn = true }: { trackId: string; trackOwnerId: string | null; isLoggedIn?: boolean }) {
+  const { openLogin } = useAuthPopup()
   const [comments, setComments] = useState<TrackCommentView[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -302,7 +304,13 @@ export function TrackComments({ trackId, trackOwnerId, isLoggedIn = true }: { tr
 
         {!isLoggedIn ? (
           <p className="mt-2 text-xs text-white/40">
-            <Link href="/inicio?login=1" className="text-gate-pink hover:underline">Faça login</Link>{' '}
+            <button
+              type="button"
+              onClick={() => openLogin()}
+              className="text-gate-pink hover:underline"
+            >
+              Faça login
+            </button>{' '}
             para comentar.
           </p>
         ) : allowComments ? (

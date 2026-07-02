@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
 
 interface TrackLikeButtonProps {
   trackId: string
@@ -11,11 +11,10 @@ interface TrackLikeButtonProps {
 }
 
 export function TrackLikeButton({ trackId, initialCount, compact = false, isLoggedIn = true }: TrackLikeButtonProps) {
+  const { openLogin } = useAuthPopup()
   const [liked, setLiked] = useState(false)
   const [count, setCount] = useState(initialCount)
   const [busy, setBusy] = useState(false)
-  const router = useRouter()
-  const pathname = usePathname()
 
   // Estado de curtida é por usuário — busca assim que monta, sem bloquear a contagem inicial
   useEffect(() => {
@@ -36,7 +35,9 @@ export function TrackLikeButton({ trackId, initialCount, compact = false, isLogg
     e.preventDefault()
     e.stopPropagation()
     if (!isLoggedIn) {
-      router.push(`/inicio?login=1&next=${encodeURIComponent(pathname)}`)
+      // Abre o popup de login na própria página — sem navegar; após logar o
+      // modal faz router.refresh() e a pessoa continua onde estava
+      openLogin()
       return
     }
     if (busy) return

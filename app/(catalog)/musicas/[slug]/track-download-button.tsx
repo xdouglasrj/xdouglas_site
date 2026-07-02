@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAnalytics } from '@/components/analytics/use-analytics'
+import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
 import type { TrackPublic } from '@/lib/tracks/types'
 
 // ============================================================
@@ -22,6 +23,7 @@ interface TrackDownloadButtonProps {
 
 export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
   const { trackMusicView } = useAnalytics()
+  const { openLogin } = useAuthPopup()
   const [status, setStatus] = useState<DownloadButtonState>({ state: 'idle' })
 
   async function handleDownload() {
@@ -49,11 +51,11 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
           return
         }
 
-        // Visitante sem conta: baixar exige login — manda para o portão
-        // com retorno para esta página (regra do §3.12 / plano 03)
+        // Visitante sem conta: baixar exige login — abre o popup na própria
+        // página; após logar o modal faz refresh e a pessoa baixa daqui mesmo
         if (res.status === 401) {
-          const next = encodeURIComponent(window.location.pathname)
-          window.location.href = `/inicio?login=1&next=${next}`
+          setStatus({ state: 'idle' })
+          openLogin()
           return
         }
 
