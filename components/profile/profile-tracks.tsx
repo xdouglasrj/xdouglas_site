@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { WaveformPlayer } from '@/components/music/waveform-player'
 import { TrackLikeButton } from '@/components/music/track-like-button'
+import type { PlayerTrack } from '@/components/player/player-provider'
 
 interface ProfileTrack {
   id: string
@@ -20,6 +21,15 @@ export function ProfileTracks({
   artistName: string
 }) {
   if (tracks.length === 0) return null
+
+  // Fila do player global — tocar uma faixa enfileira as músicas do perfil
+  const playerQueue: PlayerTrack[] = tracks.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    title: t.title,
+    artistName,
+    coverUrl: t.coverUrl,
+  }))
 
   return (
     <section className="mt-6 rounded-lg border border-gate-azure bg-white/5 p-5">
@@ -44,7 +54,14 @@ export function ProfileTracks({
 
             {/* Player */}
             <div className="mt-2">
-              <WaveformPlayer trackId={track.id} title={track.title} coverUrl={track.coverUrl} />
+              <WaveformPlayer
+                trackId={track.id}
+                slug={track.slug}
+                title={track.title}
+                artistName={artistName}
+                coverUrl={track.coverUrl}
+                queue={playerQueue}
+              />
             </div>
 
             {/* Gênero + curtidas */}

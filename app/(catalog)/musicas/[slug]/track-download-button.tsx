@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAnalytics } from '@/components/analytics/use-analytics'
 import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
+import { FollowToDownloadModal } from '@/components/music/follow-to-download-modal'
 import type { TrackPublic } from '@/lib/tracks/types'
 
 // ============================================================
@@ -19,14 +21,28 @@ interface DownloadButtonState {
 
 interface TrackDownloadButtonProps {
   track: TrackPublic
+  /**
+   * V3 Plano 12 — o usuário logado já segue o dono da faixa? Calculado no
+   * servidor. Só relevante quando track.downloadMode === "follow". Se true
+   * (ou faixa "free"), o botão baixa direto; se false, abre o mini-modal.
+   */
+  alreadyFollowing?: boolean
 }
 
-export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
+export function TrackDownloadButton({ track, alreadyFollowing = false }: TrackDownloadButtonProps) {
+  const router = useRouter()
   const { trackMusicView } = useAnalytics()
   const { openLogin } = useAuthPopup()
   const [status, setStatus] = useState<DownloadButtonState>({ state: 'idle' })
+  const [showFollowModal, setShowFollowModal] = useState(false)
 
-  async function handleDownload() {
+  // Follow-gate ativo: faixa exige follow, há um dono ligado a uma conta e o
+  // usuário ainda não segue. A verificação REAL é no servidor — isto só decide
+  // a UX (mostrar modal em vez de erro).
+  const followGateActive =
+    track.downloadMode === 'follow' && !!track.artist.userId && !alreadyFollowing
+
+  async function startDownload(source: 'direct' | 'follow_gate' = 'direct') {
     if (status.state === 'loading') return
 
     trackMusicView(track.id)
@@ -36,7 +52,7 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId: track.id }),
+        body: JSON.stringify({ trackId: track.id, source }),
       })
 
       const data = await res.json()
@@ -56,6 +72,14 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
         if (res.status === 401) {
           setStatus({ state: 'idle' })
           openLogin()
+          return
+        }
+
+        // V3 Plano 12 — servidor exige seguir o artista: abre o mini-modal
+        // (defesa em profundidade; a UI normalmente já mostra "Seguir para baixar")
+        if (res.status === 403 && data.code === 'FOLLOW_REQUIRED') {
+          setStatus({ state: 'idle' })
+          setShowFollowModal(true)
           return
         }
 
@@ -83,12 +107,27 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
     }
   }
 
+  function handleClick() {
+    if (followGateActive) {
+      setShowFollowModal(true)
+      return
+    }
+    startDownload('direct')
+  }
+
+  function handleFollowed() {
+    setShowFollowModal(false)
+    router.refresh() // atualiza o estado de "seguindo" na página
+    startDownload('follow_gate')
+  }
+
   const isClickable = status.state === 'idle' || status.state === 'error'
+  const label = followGateActive && status.state === 'idle' ? 'Seguir para baixar' : buttonLabel(status.state)
 
   return (
     <div className="flex flex-col gap-2">
       <button
-        onClick={isClickable ? handleDownload : undefined}
+        onClick={isClickable ? handleClick : undefined}
         disabled={status.state === 'loading' || status.state === 'rate_limited'}
         className={[
           'w-full sm:w-auto flex items-center justify-center gap-2',
@@ -99,8 +138,19 @@ export function TrackDownloadButton({ track }: TrackDownloadButtonProps) {
         aria-label={`Download de ${track.title}`}
       >
         <ButtonIcon state={status.state} />
-        {buttonLabel(status.state)}
+        {label}
       </button>
+
+      {showFollowModal && track.artist.userId && (
+        <FollowToDownloadModal
+          artistUserId={track.artist.userId}
+          artistName={track.artist.name}
+          artistHandle={track.artist.userHandle}
+          artistPhotoUrl={track.artist.photoUrl}
+          onClose={() => setShowFollowModal(false)}
+          onFollowed={handleFollowed}
+        />
+      )}
 
       {/* Mensagem de erro inline */}
       {status.state === 'error' && status.errorMessage && (

@@ -1,176 +1,79 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import Image from 'next/image'
-import { useAnalytics } from '@/components/analytics/use-analytics'
+import { usePlayer, type PlayerTrack } from '@/components/player/player-provider'
 
 // ============================================================
 // Player com waveform — formato "post de áudio" (capa + botão
 // de play sobreposto, barras de progresso, tempo decorrido).
 // As barras são geradas de forma determinística a partir do
 // trackId (não é uma análise real do áudio, é só visual).
+//
+// V3 Plano 1: virou uma "visão" do player global — não tem mais
+// <audio> próprio. Play/pause/seek controlam o MESMO áudio da
+// barra fixa do rodapé, e a contagem de plays acontece lá.
 // ============================================================
 
 interface WaveformPlayerProps {
   trackId: string
+  slug: string
   title: string
+  artistName: string
   coverUrl?: string | null
   /** false esconde a capa e mostra um botão de play redondo —
    * útil quando a página já exibe a capa grande em outro lugar. */
   showCover?: boolean
   barCount?: number
+  /** Lista de origem — tocar esta faixa enfileira a lista a partir dela */
+  queue?: PlayerTrack[]
 }
-
-type State = 'idle' | 'loading' | 'playing' | 'error'
 
 export function WaveformPlayer({
   trackId,
+  slug,
   title,
+  artistName,
   coverUrl,
   showCover = true,
   barCount = 48,
+  queue,
 }: WaveformPlayerProps) {
-  const [state, setState] = useState<State>('idle')
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [playingVinheta, setPlayingVinheta] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const vinhetaTriedRef = useRef(false)
-  const playStartFiredRef = useRef(false)
-  const played30sRef = useRef(false)
-  const completedRef = useRef(false)
+  const player = usePlayer()
   const barsRef = useRef<HTMLDivElement | null>(null)
   const heights = useMemo(() => generateBars(trackId, barCount), [trackId, barCount])
-  const { trackPlayStart, trackPlay30s, trackPlayComplete } = useAnalytics()
 
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause()
-    }
-  }, [])
+  const isCurrent = player.currentTrack?.id === trackId
+  const isPlaying = isCurrent && player.isPlaying && !player.isVinheta
+  const isLoading = isCurrent && player.isLoading
+  const isVinheta = isCurrent && player.isVinheta
+  const currentTime = isCurrent && !isVinheta ? player.currentTime : 0
+  const progress =
+    isCurrent && !isVinheta && player.duration > 0
+      ? player.currentTime / player.duration
+      : 0
 
-  // Faixa diferente — não deve herdar o progresso de play da anterior.
-  useEffect(() => {
-    playStartFiredRef.current = false
-    played30sRef.current = false
-    completedRef.current = false
-  }, [trackId])
+  const state: ButtonState = isLoading ? 'loading' : isPlaying ? 'playing' : 'idle'
 
-  // Ao fim da faixa, tenta encadear a vinheta (arquivo separado, tocado
-  // dinamicamente pelo player — nunca concatenado no áudio original).
-  async function tryPlayVinheta(audio: HTMLAudioElement): Promise<boolean> {
-    try {
-      const res = await fetch('/api/vinheta')
-      if (!res.ok) return false
-      const data = await res.json()
-      if (!data.streamUrl) return false
-
-      setState('loading')
-      audio.src = data.streamUrl
-      setPlayingVinheta(true)
-      await audio.play()
-      setState('playing')
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  function resetAfterPlayback() {
-    setState('idle')
-    setCurrentTime(0)
-    setPlayingVinheta(false)
-    vinhetaTriedRef.current = false
-    audioRef.current = null
-  }
-
-  async function ensureAudio(): Promise<HTMLAudioElement | null> {
-    if (audioRef.current) return audioRef.current
-
-    setState('loading')
-    try {
-      const res = await fetch('/api/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setState('error')
-        setTimeout(() => setState('idle'), 3000)
-        return null
-      }
-
-      const audio = new Audio(data.streamUrl)
-      audio.addEventListener('loadedmetadata', () => setDuration(audio.duration))
-      audio.addEventListener('timeupdate', () => {
-        setCurrentTime(audio.currentTime)
-        if (!played30sRef.current && audio.currentTime >= 30) {
-          played30sRef.current = true
-          trackPlay30s(trackId, audio.duration)
-        }
-      })
-      audio.addEventListener('play', () => {
-        if (!playStartFiredRef.current) {
-          playStartFiredRef.current = true
-          trackPlayStart(trackId)
-        }
-      })
-      audio.addEventListener('ended', async () => {
-        if (!completedRef.current) {
-          completedRef.current = true
-          trackPlayComplete(trackId, audio.duration)
-        }
-        if (!vinhetaTriedRef.current) {
-          vinhetaTriedRef.current = true
-          const played = await tryPlayVinheta(audio)
-          if (played) return
-        }
-        resetAfterPlayback()
-      })
-      audio.addEventListener('pause', () => {
-        setState((s) => (s === 'loading' ? s : 'idle'))
-      })
-      audioRef.current = audio
-      return audio
-    } catch {
-      setState('error')
-      setTimeout(() => setState('idle'), 3000)
-      return null
-    }
-  }
-
-  async function togglePlay(e: React.MouseEvent) {
+  function togglePlay(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-
-    if (state === 'playing') {
-      audioRef.current?.pause()
-      setState('idle')
-      return
-    }
-    if (state === 'loading') return
-
-    const audio = await ensureAudio()
-    if (!audio) return
-
-    await audio.play()
-    setState('playing')
+    if (isLoading) return
+    player.playTrack(
+      { id: trackId, slug, title, artistName, coverUrl: coverUrl ?? null },
+      queue,
+    )
   }
 
   function seek(e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault()
     e.stopPropagation()
-    if (playingVinheta || !audioRef.current?.duration || !barsRef.current) return
+    if (!isCurrent || isVinheta || player.duration <= 0 || !barsRef.current) return
 
     const rect = barsRef.current.getBoundingClientRect()
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-    audioRef.current.currentTime = ratio * audioRef.current.duration
-    setCurrentTime(audioRef.current.currentTime)
+    player.seek(ratio * player.duration)
   }
-
-  const progress = duration && !playingVinheta ? currentTime / duration : 0
 
   return (
     <div className="flex items-center gap-3">
@@ -205,28 +108,30 @@ export function WaveformPlayer({
         <div
           ref={barsRef}
           onClick={seek}
-          className={`flex-1 flex items-center gap-[2px] h-8 ${playingVinheta ? 'cursor-default' : 'cursor-pointer'}`}
+          className={`flex-1 flex items-center gap-[2px] h-8 ${
+            isVinheta || !isCurrent ? 'cursor-default' : 'cursor-pointer'
+          }`}
           role="slider"
-          aria-label={playingVinheta ? 'Tocando vinheta' : `Progresso de ${title}`}
+          aria-label={isVinheta ? 'Tocando vinheta' : `Progresso de ${title}`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(progress * 100)}
         >
           {heights.map((h, i) => {
-            const played = i / heights.length <= progress
+            const played = i / heights.length <= progress && progress > 0
             return (
               <span
                 key={i}
                 className={`flex-1 min-w-[2px] rounded-full transition-colors ${
-                  playingVinheta ? 'bg-gate-azure animate-pulse' : played ? 'bg-gate-pink' : 'bg-gate-azure'
+                  isVinheta ? 'bg-gate-azure animate-pulse' : played ? 'bg-gate-pink' : 'bg-gate-azure'
                 }`}
                 style={{ height: `${Math.round(h * 100)}%` }}
               />
             )
           })}
         </div>
-        <span className={`text-[11px] text-gate-blue shrink-0 tabular-nums text-right ${playingVinheta ? 'w-14' : 'w-9'}`}>
-          {playingVinheta ? 'vinheta' : formatTime(currentTime)}
+        <span className={`text-[11px] text-gate-blue shrink-0 tabular-nums text-right ${isVinheta ? 'w-14' : 'w-9'}`}>
+          {isVinheta ? 'vinheta' : formatTime(currentTime)}
         </span>
       </div>
     </div>
@@ -235,7 +140,9 @@ export function WaveformPlayer({
 
 // ── Ícones ────────────────────────────────────────────────────
 
-function PlayPauseIcon({ state }: { state: State }) {
+type ButtonState = 'idle' | 'loading' | 'playing'
+
+function PlayPauseIcon({ state }: { state: ButtonState }) {
   if (state === 'loading') {
     return (
       <svg className="w-4 h-4 text-white animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -249,13 +156,6 @@ function PlayPauseIcon({ state }: { state: State }) {
       <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
         <rect x="3" y="2" width="3.5" height="12" rx="1" />
         <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
-      </svg>
-    )
-  }
-  if (state === 'error') {
-    return (
-      <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7.25 4.5h1.5v5h-1.5v-5zM7.25 10.5h1.5V12h-1.5v-1.5z" />
       </svg>
     )
   }

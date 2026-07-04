@@ -1,61 +1,39 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { usePlayer } from '@/components/player/player-provider'
 
 interface ListenButtonProps {
   trackId: string
+  slug: string
   title: string
+  artistName: string
+  coverUrl?: string | null
   compact?: boolean
 }
 
-type State = 'idle' | 'loading' | 'playing' | 'error'
+// V3 Plano 1: toca pelo player global (barra fixa) — sem áudio próprio.
+export function ListenButton({
+  trackId,
+  slug,
+  title,
+  artistName,
+  coverUrl = null,
+  compact = false,
+}: ListenButtonProps) {
+  const player = usePlayer()
 
-export function ListenButton({ trackId, title, compact = false }: ListenButtonProps) {
-  const [state, setState] = useState<State>('idle')
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const isCurrent = player.currentTrack?.id === trackId
+  const isPlaying = isCurrent && player.isPlaying && !player.isVinheta
+  const isLoading = isCurrent && player.isLoading
 
-  async function handleClick(e: React.MouseEvent) {
+  function handleClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-
-    // Já está tocando — pausa
-    if (state === 'playing' && audioRef.current) {
-      audioRef.current.pause()
-      setState('idle')
-      return
-    }
-
-    if (state === 'loading') return
-
-    setState('loading')
-    try {
-      const res = await fetch('/api/stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setState('error')
-        setTimeout(() => setState('idle'), 3000)
-        return
-      }
-
-      if (!audioRef.current) {
-        audioRef.current = new Audio()
-        audioRef.current.addEventListener('ended', () => setState('idle'))
-        audioRef.current.addEventListener('pause', () => setState('idle'))
-      }
-
-      audioRef.current.src = data.streamUrl
-      await audioRef.current.play()
-      setState('playing')
-    } catch {
-      setState('error')
-      setTimeout(() => setState('idle'), 3000)
-    }
+    if (isLoading) return
+    player.playTrack({ id: trackId, slug, title, artistName, coverUrl })
   }
+
+  const state: State = isLoading ? 'loading' : isPlaying ? 'playing' : 'idle'
 
   return (
     <button
@@ -69,10 +47,12 @@ export function ListenButton({ trackId, title, compact = false }: ListenButtonPr
       aria-label={state === 'playing' ? `Pausar ${title}` : `Ouvir ${title}`}
     >
       <ListenIcon state={state} />
-      {state === 'loading' ? 'Carregando…' : state === 'playing' ? 'Pausar' : state === 'error' ? 'Erro' : 'Ouvir'}
+      {state === 'loading' ? 'Carregando…' : state === 'playing' ? 'Pausar' : 'Ouvir'}
     </button>
   )
 }
+
+type State = 'idle' | 'loading' | 'playing'
 
 function ListenIcon({ state }: { state: State }) {
   if (state === 'loading') {

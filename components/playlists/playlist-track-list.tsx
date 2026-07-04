@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { usePlayer, type PlayerTrack } from '@/components/player/player-provider'
 
 interface PlaylistTrack {
   id: string
@@ -19,8 +20,23 @@ export function PlaylistTrackList({
   initialTracks: PlaylistTrack[]
 }) {
   const [tracks, setTracks] = useState(initialTracks)
-  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const player = usePlayer()
+
+  // Índice tocando agora — derivado do player global (V3 Plano 1)
+  const playingIndex =
+    player.currentTrack && player.isPlaying
+      ? tracks.findIndex((t) => t.id === player.currentTrack?.id)
+      : -1
+
+  function toPlayerQueue(list: PlaylistTrack[]): PlayerTrack[] {
+    return list.map((t) => ({
+      id: t.id,
+      slug: t.slug,
+      title: t.title,
+      artistName: t.artistName,
+      coverUrl: t.coverUrl,
+    }))
+  }
 
   function persistOrder(next: PlaylistTrack[]) {
     setTracks(next)
@@ -52,36 +68,11 @@ export function PlaylistTrackList({
     await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' })
   }
 
-  async function playFrom(index: number) {
+  // Toca pelo player global — a playlist inteira vira a fila
+  function playFrom(index: number) {
     const track = tracks[index]
     if (!track) return
-    setPlayingIndex(index)
-
-    const res = await fetch('/api/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ trackId: track.id }),
-    })
-    if (!res.ok) {
-      setPlayingIndex(null)
-      return
-    }
-    const data = await res.json()
-
-    audioRef.current?.pause()
-    const audio = new Audio(data.streamUrl)
-    audio.addEventListener('ended', () => {
-      if (index + 1 < tracks.length) playFrom(index + 1)
-      else setPlayingIndex(null)
-    })
-    audioRef.current = audio
-    audio.play().catch(() => setPlayingIndex(null))
-  }
-
-  function stop() {
-    audioRef.current?.pause()
-    audioRef.current = null
-    setPlayingIndex(null)
+    player.playTrack(toPlayerQueue(tracks)[index], toPlayerQueue(tracks))
   }
 
   if (tracks.length === 0) {
@@ -91,10 +82,10 @@ export function PlaylistTrackList({
   return (
     <div className="flex flex-col gap-4">
       <button
-        onClick={() => (playingIndex === null ? playFrom(0) : stop())}
+        onClick={() => (playingIndex === -1 ? playFrom(0) : player.toggle())}
         className="self-start rounded-lg bg-gate-pink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
       >
-        {playingIndex === null ? '▶ Tocar tudo' : '⏸ Parar'}
+        {playingIndex === -1 ? '▶ Tocar tudo' : '⏸ Pausar'}
       </button>
 
       <ul className="rounded-xl border border-gate-azure bg-white/5 divide-y divide-gate-azure overflow-hidden">

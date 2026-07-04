@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { IconSidebar } from '@/components/layout/icon-sidebar'
 import { getAccessToken } from '@/lib/auth/cookies'
@@ -83,9 +84,14 @@ export default async function LojaPage() {
             </div>
           </div>
 
-          <p className="text-sm text-white/50 mb-6">
-            Troque seus pontos por itens e benefícios exclusivos.
-          </p>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-sm text-white/50">
+              Troque seus pontos por itens e benefícios exclusivos.
+            </p>
+            <Link href="/ganhe-pontos" className="shrink-0 text-xs text-gate-blue hover:text-gate-pink transition">
+              Ganhe pontos →
+            </Link>
+          </div>
 
           <StoreCatalog
             items={storeItems}

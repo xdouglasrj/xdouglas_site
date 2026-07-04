@@ -34,9 +34,20 @@ export interface DownloadError {
     | 'NOT_PUBLISHED'
     | 'RATE_LIMITED'
     | 'STORAGE_ERROR'
+    | 'FOLLOW_REQUIRED'
     | 'INTERNAL_ERROR'
   message: string
   retryAfter?: string // ISO string, presente em RATE_LIMITED
+}
+
+// V3 Plano 12 — origem do download (para métricas de conversão do follow-gate)
+export type DownloadSource = 'direct' | 'follow_gate'
+
+export interface ProcessDownloadOptions {
+  /** Usuário autenticado que dispara o download (garantido pelo withRole no route). */
+  userId: string
+  /** Origem do clique — "follow_gate" quando veio do mini-modal "Seguir para baixar". */
+  source?: DownloadSource
 }
 
 // ============================================================
@@ -45,8 +56,10 @@ export interface DownloadError {
 
 export async function processDownload(
   trackId: string,
-  request: NextRequest
+  request: NextRequest,
+  options: ProcessDownloadOptions
 ): Promise<{ ok: true; data: DownloadResult } | { ok: false; error: DownloadError }> {
+  const { userId, source = 'direct' } = options
 
   // ── 1. Extrai contexto da requisição ─────────────────────
   const ip = extractIp(request)
@@ -104,6 +117,10 @@ export async function processDownload(
       audioFormat: true,
       downloadAudioKey: true,
       downloadAudioVinhetaKey: true,
+      // V3 Plano 12 — modo de download + dono da faixa (para o follow-gate)
+      downloadMode: true,
+      submittedById: true,
+      artist: { select: { userId: true } },
     },
   })
 
@@ -118,6 +135,35 @@ export async function processDownload(
     return {
       ok: false,
       error: { code: 'NOT_PUBLISHED', message: 'Música não disponível.' },
+    }
+  }
+
+  // ── 5a. Follow-gate (V3 Plano 12) — CRÍTICO: verificação NO SERVIDOR ──
+  // Se a faixa exige seguir o dono, o usuário logado precisa já ter um
+  // registro Follow para com o dono. Esconder o botão na UI NÃO basta:
+  // uma chamada direta a POST /api/download sem follow cai aqui e recebe
+  // 403 FOLLOW_REQUIRED. Faixa "free" pula este bloco (comportamento atual).
+  if (track.downloadMode === 'follow') {
+    // "dono da faixa" = quem enviou (submittedById) ou o usuário ligado ao
+    // Artist da faixa. Mesma lógica de getTrackOwner (lib/social/track-comments).
+    const ownerId = track.submittedById ?? track.artist?.userId ?? null
+
+    // Sem dono ligado a uma conta não há quem seguir — degrada para "free"
+    // em vez de travar o download para sempre (nunca deixa o arquivo inacessível).
+    if (ownerId && ownerId !== userId) {
+      const follows = await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: userId, followingId: ownerId } },
+        select: { id: true },
+      })
+      if (!follows) {
+        return {
+          ok: false,
+          error: {
+            code: 'FOLLOW_REQUIRED',
+            message: 'Siga o artista para baixar esta faixa.',
+          },
+        }
+      }
     }
   }
 
@@ -177,6 +223,7 @@ export async function processDownload(
           status: 'INICIADO',
           signedUrlExpiry,
           downloadSuspeito: suspicious,
+          source,
         },
         select: { id: true },
       })

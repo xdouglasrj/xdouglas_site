@@ -7,7 +7,7 @@ import type { TrackPublic } from './types'
 // sensíveis. coverUrl é a URL pública CDN, ok expor.
 // ============================================================
 
-const TRACK_SELECT = {
+export const TRACK_SELECT = {
   id: true,
   slug: true,
   title: true,
@@ -15,6 +15,13 @@ const TRACK_SELECT = {
   genre: true,
   bpm: true,
   key: true,
+  mood: true,
+  tags: true,
+  durationSeconds: true,
+  kind: true,
+  downloadMode: true,
+  seriesId: true,
+  episodeNumber: true,
   producerName: true,
   coverUrl: true,
   audioFormat: true,
@@ -22,6 +29,7 @@ const TRACK_SELECT = {
   downloadCount: true,
   publishedAt: true,
   pinned: true,
+  submittedById: true,
   artist: {
     select: {
       id: true,
@@ -29,16 +37,17 @@ const TRACK_SELECT = {
       name: true,
       bio: true,
       photoUrl: true,
-      user: { select: { handle: true } },
+      // V3 Plano 12 — userId do dono, para o mini-modal "Seguir para baixar"
+      user: { select: { id: true, handle: true } },
     },
   },
-  _count: { select: { likes: true } },
+  _count: { select: { likes: true, reposts: true, reactions: true } },
 } as const
 
 // ── Serialização ─────────────────────────────────────────────
 
 // BigInt não é JSON-serializável nativamente — converte para string
-function serializeTrack(raw: {
+export function serializeTrack(raw: {
   id: string
   slug: string
   title: string
@@ -46,6 +55,13 @@ function serializeTrack(raw: {
   genre: string | null
   bpm: number | null
   key: string | null
+  mood: string | null
+  tags: string[]
+  durationSeconds: number | null
+  kind: string
+  downloadMode: string
+  seriesId: string | null
+  episodeNumber: number | null
   producerName: string | null
   coverUrl: string | null
   audioFormat: string
@@ -53,25 +69,58 @@ function serializeTrack(raw: {
   downloadCount: number
   publishedAt: Date | null
   pinned: boolean
+  submittedById: string | null
   artist: {
     id: string
     slug: string
     name: string
     bio: string | null
     photoUrl: string | null
-    user: { handle: string | null } | null
+    user: { id: string; handle: string | null } | null
   }
-  _count: { likes: number }
-}): TrackPublic {
-  const { _count, artist, ...rest } = raw
+  _count: { likes: number; reposts: number; reactions: number }
+}, options: { topReaction?: { emoji: string; count: number } | null } = {}): TrackPublic {
+  const top = options.topReaction ?? null
+  const { _count, artist, submittedById, ...rest } = raw
   const { user, ...artistRest } = artist
+  // V3 Plano 12 — "dono da faixa" a ser seguido no follow-gate. Mesma
+  // ordem de prioridade do getTrackOwner e da verificação no servidor.
+  const ownerUserId = submittedById ?? user?.id ?? null
   return {
     ...rest,
-    artist: { ...artistRest, userHandle: user?.handle ?? null },
+    artist: { ...artistRest, userHandle: user?.handle ?? null, userId: ownerUserId },
     likeCount: _count.likes,
+    repostCount: _count.reposts,
+    topReaction: top?.emoji ?? null,
+    topReactionCount: top?.count ?? 0,
+    reactionCount: _count.reactions,
     audioSizeBytes: raw.audioSizeBytes?.toString() ?? null,
     publishedAt: raw.publishedAt?.toISOString() ?? null,
   }
+}
+
+// V3 Plano 15 — top emoji agregado por faixa, em lote (evita N+1). Usa
+// groupBy por (trackId, emoji) e escolhe o maior count por trackId em memória.
+async function getTopReactionsByTrackIds(
+  trackIds: string[],
+): Promise<Map<string, { emoji: string; count: number }>> {
+  const best = new Map<string, { emoji: string; count: number }>()
+  if (trackIds.length === 0) return best
+
+  const grouped = await prisma.trackReaction.groupBy({
+    by: ['trackId', 'emoji'],
+    where: { trackId: { in: trackIds } },
+    _count: { emoji: true },
+  })
+
+  for (const row of grouped) {
+    const current = best.get(row.trackId)
+    if (!current || row._count.emoji > current.count) {
+      best.set(row.trackId, { emoji: row.emoji, count: row._count.emoji })
+    }
+  }
+
+  return best
 }
 
 // ── Queries ───────────────────────────────────────────────────
@@ -133,8 +182,10 @@ export async function listTracks(opts: ListTracksOptions = {}) {
     prisma.track.count({ where }),
   ])
 
+  const topReactions = await getTopReactionsByTrackIds(raws.map((r) => r.id))
+
   return {
-    tracks: raws.map(serializeTrack),
+    tracks: raws.map((raw) => serializeTrack(raw, { topReaction: topReactions.get(raw.id) ?? null })),
     total,
     page,
     perPage,
@@ -150,8 +201,10 @@ export async function getTrackBySlug(slug: string): Promise<TrackPublic | null> 
     where: { slug, published: true },
     select: TRACK_SELECT,
   })
+  if (!raw) return null
 
-  return raw ? serializeTrack(raw) : null
+  const topReactions = await getTopReactionsByTrackIds([raw.id])
+  return serializeTrack(raw, { topReaction: topReactions.get(raw.id) ?? null })
 }
 
 export async function listGenres(includeExpired = false): Promise<string[]> {
@@ -175,5 +228,25 @@ export async function listLatestTracks(limit: number): Promise<TrackPublic[]> {
     orderBy: { publishedAt: 'desc' },
     take: limit,
   })
-  return raws.map(serializeTrack)
+  const topReactions = await getTopReactionsByTrackIds(raws.map((r) => r.id))
+  return raws.map((raw) => serializeTrack(raw, { topReaction: topReactions.get(raw.id) ?? null }))
+}
+
+// V3 Plano 16 — query pronta para uma futura seção "Sets" na home (kind=set).
+// Não usada ainda em nenhuma página; deixada aqui para reuso quando o dono
+// decidir criar a seção. Segue a mesma janela de exibição do restante do feed.
+export async function listLatestSets(limit: number, includeExpired = false): Promise<TrackPublic[]> {
+  const cutoff = includeExpired ? null : await getContentCutoffDate()
+  const raws = await prisma.track.findMany({
+    where: {
+      published: true,
+      kind: 'set',
+      ...(cutoff && { publishedAt: { gte: cutoff } }),
+    },
+    select: TRACK_SELECT,
+    orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
+    take: limit,
+  })
+  const topReactions = await getTopReactionsByTrackIds(raws.map((r) => r.id))
+  return raws.map((raw) => serializeTrack(raw, { topReaction: topReactions.get(raw.id) ?? null }))
 }

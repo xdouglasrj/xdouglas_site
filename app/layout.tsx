@@ -4,6 +4,8 @@ import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 import { AdProvider } from '@/components/ads/ad-provider'
 import { AuthPopupProvider } from '@/components/auth/AuthPopupProvider'
 import { ConsentBanner } from '@/components/consent/consent-banner'
+import { PlayerProvider } from '@/components/player/player-provider'
+import { GlobalPlayerBar } from '@/components/player/global-player-bar'
 import { getAdsSettings } from '@/lib/settings/ads'
 import './globals.css'
 
@@ -104,7 +106,18 @@ export default async function RootLayout({
       <body className="bg-neutral-950 text-white antialiased" suppressHydrationWarning>
         <AnalyticsProvider>
           <AdProvider enabled={adsEnabled} slots={adsSettings.slots}>
-            <AuthPopupProvider>{children}</AuthPopupProvider>
+            <AuthPopupProvider>
+              {/*
+                PlayerProvider vive no layout raiz para o áudio sobreviver
+                à navegação client-side em TODAS as áreas (logada e pública).
+                A GlobalPlayerBar renderiza um espaçador em fluxo + barra
+                fixa, então nenhum <main> precisa de padding extra.
+              */}
+              <PlayerProvider>
+                {children}
+                <GlobalPlayerBar />
+              </PlayerProvider>
+            </AuthPopupProvider>
             {/*
               ConsentBanner vive dentro do AnalyticsProvider para ter
               acesso a giveConsent() e revokeConsent() via contexto.

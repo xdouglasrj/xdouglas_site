@@ -4,6 +4,8 @@ import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
 import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { prisma } from '@/lib/prisma'
 import { addPoints } from '@/lib/points/points-service'
+import { awardMilestoneOnce } from '@/lib/points/milestones'
+import { checkAndAwardProfileCompletion } from '@/lib/profile-completeness'
 
 const createPlaylistSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório').max(120),
@@ -75,6 +77,17 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
 
   addPoints(auth.userId, 'PLAYLIST_CREATED').catch((err) =>
     console.error('[API /playlists POST] Falha ao registrar pontos', err)
+  )
+
+  // V3 Plano 7 — tarefa de onboarding "crie sua primeira playlist" (paga 1x
+  // na vida, ADICIONAL ao PLAYLIST_CREATED de cima que tem teto diário)
+  awardMilestoneOnce(auth.userId, 'first_playlist', 'FIRST_PLAYLIST_CREATED').catch((err) =>
+    console.error('[API /playlists POST] Falha ao registrar marco de 1ª playlist', err)
+  )
+
+  // V3 Plano 9 — "criar playlist" é item do checklist de completude
+  checkAndAwardProfileCompletion(auth.userId).catch((err) =>
+    console.error('[API /playlists POST] Falha ao checar completude de perfil', err)
   )
 
   return apiSuccess({ playlist }, 201)

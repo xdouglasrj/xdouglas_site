@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { clsx } from 'clsx'
 import { detectBpm } from '@/lib/audio/detect-bpm'
+import { detectDuration } from '@/lib/audio/detect-duration'
 
 // ============================================================
 // Tipos
@@ -15,7 +16,7 @@ interface UploadResult {
 }
 
 interface FileUploadProps {
-  kind: 'audio' | 'cover' | 'avatar'
+  kind: 'audio' | 'cover' | 'avatar' | 'stems'
   accept: string
   label: string
   hint?: string
@@ -24,6 +25,7 @@ interface FileUploadProps {
   onUpload: (result: UploadResult) => void
   onError?: (message: string) => void
   onBpmDetected?: (bpm: number) => void
+  onDurationDetected?: (seconds: number) => void
   disabled?: boolean
   uploadUrlEndpoint?: string
 }
@@ -42,6 +44,7 @@ export function FileUpload({
   onUpload,
   onError,
   onBpmDetected,
+  onDurationDetected,
   disabled,
   uploadUrlEndpoint = '/api/admin/musicas/upload-url',
 }: FileUploadProps) {
@@ -66,6 +69,13 @@ export function FileUpload({
       detectBpm(file)
         .then((bpm) => { if (bpm) onBpmDetected(bpm) })
         .finally(() => setDetectingBpm(false))
+    }
+
+    // Duração é barata de extrair (só metadata) — roda em paralelo ao upload
+    if (kind === 'audio' && onDurationDetected) {
+      detectDuration(file).then((seconds) => {
+        if (seconds) onDurationDetected(seconds)
+      })
     }
 
     try {

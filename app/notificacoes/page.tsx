@@ -24,6 +24,13 @@ type NotificationPayload = {
   threadTitle?: string
   threadId?: string
   sectorSlug?: string
+  milestonePlays?: number
+  eventTitle?: string
+  eventSlug?: string
+  artistName?: string
+  contestTitle?: string
+  contestSlug?: string
+  won?: boolean
 }
 
 function notificationLabel(type: string, payload: NotificationPayload): { text: string; href: string | null } {
@@ -61,6 +68,41 @@ function notificationLabel(type: string, payload: NotificationPayload): { text: 
       return {
         text: `Você recebeu um presente do admin.`,
         href: '/loja',
+      }
+    case 'resposta_comentario':
+      return {
+        text: `${actor} respondeu ao seu comentário em "${payload.trackTitle ?? ''}"`,
+        href: payload.trackSlug ? `/musicas/${payload.trackSlug}` : null,
+      }
+    case 'curtida_comentario':
+      return {
+        text: `${actor} curtiu seu comentário em "${payload.trackTitle ?? ''}"`,
+        href: payload.trackSlug ? `/musicas/${payload.trackSlug}` : null,
+      }
+    case 'repost':
+      return {
+        text: `${actor} repostou sua música "${payload.trackTitle ?? ''}"`,
+        href: payload.trackSlug ? `/musicas/${payload.trackSlug}` : null,
+      }
+    case 'marco_plays':
+      return {
+        text: `🎉 Sua faixa "${payload.trackTitle ?? ''}" passou de ${(payload.milestonePlays ?? 0).toLocaleString('pt-BR')} plays!`,
+        href: payload.trackSlug ? `/musica/${payload.trackSlug}` : null,
+      }
+    case 'evento_publicado':
+      return {
+        text: `${payload.artistName ?? 'Um artista que você segue'} anunciou um novo evento: "${payload.eventTitle ?? ''}"`,
+        href: '/eventos',
+      }
+    case 'contest_publicado':
+      return {
+        text: `${payload.artistName ?? 'Um artista que você segue'} publicou um novo concurso: "${payload.contestTitle ?? ''}"`,
+        href: payload.contestSlug ? `/contests/${payload.contestSlug}` : '/contests',
+      }
+    case 'contest_resultado':
+      return {
+        text: `🏆 Você venceu o concurso "${payload.contestTitle ?? ''}"!`,
+        href: payload.contestSlug ? `/contests/${payload.contestSlug}` : '/contests',
       }
     default:
       return { text: 'Nova notificação.', href: null }

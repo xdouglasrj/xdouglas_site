@@ -6,6 +6,9 @@ import { verifyAccessToken } from '@/lib/auth/jwt'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { prisma } from '@/lib/prisma'
 import { ProfileFormFields } from '@/components/profile/profile-form'
+import { ProfileCompletenessWidget } from '@/components/profile/profile-completeness-widget'
+import { getProfileCompleteness } from '@/lib/profile-completeness'
+import { parseNotificationPrefs } from '@/lib/notifications/notification-prefs'
 
 export const metadata: Metadata = {
   title: 'Editar perfil',
@@ -33,6 +36,12 @@ export default async function EditarPerfilPage() {
       artisticName: true,
       phone: true,
       photoUrl: true,
+      coverUrl: true,
+      bio: true,
+      instagramUrl: true,
+      youtubeUrl: true,
+      tiktokUrl: true,
+      websiteUrl: true,
       role: true,
       showContatosNoPerfil: true,
       showName: true,
@@ -40,12 +49,16 @@ export default async function EditarPerfilPage() {
       showEspacoUploadNoPerfil: true,
       allowComentariosNaMusica: true,
       showComentariosVisiveis: true,
+      notificationPrefs: true,
+      theme: true,
     },
   })
 
   if (!user) redirect('/inicio')
 
   const isArtist = user.role === 'ARTIST'
+  const notificationPrefs = parseNotificationPrefs(user.notificationPrefs)
+  const completeness = await getProfileCompleteness(payload.userId)
 
   return (
     <div className="min-h-screen bg-gate-bg">
@@ -60,6 +73,10 @@ export default async function EditarPerfilPage() {
         <div className="max-w-xl mx-auto">
           <h1 className="text-2xl font-bold text-white mb-6">Editar perfil</h1>
 
+          {!completeness.isComplete && (
+            <ProfileCompletenessWidget percent={completeness.percent} items={completeness.items} />
+          )}
+
           <ProfileFormFields
             email={user.email}
             username={user.username}
@@ -68,12 +85,20 @@ export default async function EditarPerfilPage() {
             phone={user.phone}
             initialName={user.name ?? ''}
             initialPhotoUrl={user.photoUrl}
+            initialCoverUrl={user.coverUrl}
+            initialBio={user.bio}
+            initialInstagramUrl={user.instagramUrl}
+            initialYoutubeUrl={user.youtubeUrl}
+            initialTiktokUrl={user.tiktokUrl}
+            initialWebsiteUrl={user.websiteUrl}
             initialShowContatosNoPerfil={user.showContatosNoPerfil}
             initialShowName={user.showName}
             initialShowMusicasNoPerfil={user.showMusicasNoPerfil}
             initialShowEspacoUploadNoPerfil={user.showEspacoUploadNoPerfil}
             initialAllowComentariosNaMusica={user.allowComentariosNaMusica}
             initialShowComentariosVisiveis={user.showComentariosVisiveis}
+            initialNotificationPrefs={notificationPrefs}
+            initialTheme={user.theme}
             isArtist={isArtist}
           />
         </div>

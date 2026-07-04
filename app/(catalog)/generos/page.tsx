@@ -42,6 +42,7 @@ async function CatalogoContent({ genre, q, sort }: CatalogoContentProps) {
       initialQuery={q ?? null}
       initialSort={sort}
       canDownload={canDownload}
+      isLoggedIn={role !== null}
       mode="catalog"
     />
   )

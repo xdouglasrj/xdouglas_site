@@ -11,6 +11,7 @@ import {
   deleteTrack,
 } from '@/lib/tracks/admin-queries'
 import { getStorage } from '@/lib/storage'
+import { runCopyrightCheck } from '@/lib/tracks/copyright-check'
 import { z } from 'zod'
 
 // ============================================================
@@ -42,6 +43,8 @@ const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('publish'), published: z.boolean() }),
   z.object({ action: z.literal('pin'), pinned: z.boolean() }),
   z.object({ action: z.literal('cancelSchedule') }),
+  // V3 Plano 20 — botão "verificar novamente" na moderação (error/pending)
+  z.object({ action: z.literal('recheckCopyright') }),
 ])
 
 export const PATCH = withPermission('musicas.editar', async (request: NextRequest, auth, params) => {
@@ -73,6 +76,14 @@ export const PATCH = withPermission('musicas.editar', async (request: NextReques
 
     if (parsed.data.action === 'cancelSchedule') {
       const track = await cancelSchedule(id, auth.userId)
+      return apiSuccess({ track })
+    }
+
+    if (parsed.data.action === 'recheckCopyright') {
+      // Roda de novo, aguardando desta vez (é uma ação explícita do admin,
+      // não o fluxo de upload) — mas continua nunca lançando erro.
+      await runCopyrightCheck(id)
+      const track = await adminGetTrack(id)
       return apiSuccess({ track })
     }
 

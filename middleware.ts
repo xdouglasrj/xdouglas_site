@@ -22,6 +22,11 @@ const PUBLIC_ADMIN_PATHS = ['/api/admin/auth/login']
 // indexarem — é a porta de entrada pública da plataforma (ver §3.1/§3.12 do
 // MAPA-E-PLANO-XDOUGLAS.md). Baixar música continua exigindo conta
 // (/api/download permanece protegido abaixo).
+//
+// V3 Plano 8 — /embed/* (player embedável em iframe de terceiros) também
+// fica fora de propósito: precisa tocar sem login em qualquer site que o
+// incorpore. Já não está no matcher abaixo nem em nenhum prefixo protegido,
+// então passa direto sem checar sessão — não precisou de carve-out extra.
 const MEMBER_PREFIXES = [
   '/upload', '/minhas-musicas', '/perfil', '/forum', '/busca', '/comentarios', '/biblioteca',
   '/loja', '/suporte', '/notificacoes',
@@ -34,12 +39,28 @@ const MEMBER_PREFIXES = [
 // Middleware Edge — validação JWT sem I/O de banco
 // ============================================================
 
+// V3 Plano 2 — anônimo pode LER os comentários da página pública da faixa
+// (interagir continua exigindo login). Só o GET da listagem é liberado.
+const PUBLIC_TRACK_COMMENTS_RE = /^\/api\/social\/tracks\/[^/]+\/comments$/
+
+// V3 Plano 10 — anônimo/Googlebot pode LER a tracklist da faixa (a barra do
+// player mostra "tocando agora" e a página renderiza a lista). Só o GET.
+const PUBLIC_TRACK_TRACKLIST_RE = /^\/api\/social\/tracks\/[^/]+\/tracklist$/
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isAdminRoute = ADMIN_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   const isMemberRoute = MEMBER_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   const isPublicAdminPath = PUBLIC_ADMIN_PATHS.some((path) => pathname.startsWith(path))
+
+  if (request.method === 'GET' && PUBLIC_TRACK_COMMENTS_RE.test(pathname)) {
+    return NextResponse.next()
+  }
+
+  if (request.method === 'GET' && PUBLIC_TRACK_TRACKLIST_RE.test(pathname)) {
+    return NextResponse.next()
+  }
 
   if ((!isAdminRoute && !isMemberRoute) || isPublicAdminPath) {
     return NextResponse.next()

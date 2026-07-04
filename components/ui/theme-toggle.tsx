@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 
 type Tema = 'light' | 'dark'
+/** Preferência salva — "system" significa "sem override, segue o SO" (ausência de STORAGE_KEY). */
+export type TemaPreferencia = Tema | 'system'
 
 const STORAGE_KEY = 'xd_tema'
 
@@ -36,7 +38,25 @@ export function useTema() {
     setTemaState(proximo)
   }
 
-  return { tema, alternar }
+  /**
+   * Define explicitamente claro/escuro/sistema (usado pela seção de
+   * preferências em /perfil/editar — V3 Plano 19). "system" remove o
+   * override salvo e volta a seguir prefers-color-scheme.
+   */
+  function definir(preferencia: TemaPreferencia) {
+    if (preferencia === 'system') {
+      localStorage.removeItem(STORAGE_KEY)
+      const resolvido = getSistema()
+      document.documentElement.setAttribute('data-theme', resolvido)
+      setTemaState(resolvido)
+      return
+    }
+    document.documentElement.setAttribute('data-theme', preferencia)
+    localStorage.setItem(STORAGE_KEY, preferencia)
+    setTemaState(preferencia)
+  }
+
+  return { tema, alternar, definir }
 }
 
 export function ThemeToggle({ className = '' }: { className?: string }) {

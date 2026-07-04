@@ -13,10 +13,22 @@ const nextConfig: NextConfig = {
   },
 
   // Headers de segurança padrão
+  //
+  // V3 Plano 8 — /embed/* precisa ser embutível em <iframe> de qualquer
+  // site (é o ponto inteiro do player embedável), então essa rota NÃO
+  // recebe X-Frame-Options: DENY. Em vez disso, ganha sua própria CSP
+  // com frame-ancestors * (equivalente liberal e explícito, e que os
+  // navegadores modernos priorizam sobre X-Frame-Options quando ambos
+  // existem). O resto do site continua bloqueando iframe normalmente.
   async headers() {
     return [
       {
-        source: '/(.*)',
+        // Exclui /embed/* explicitamente do catch-all (em vez de confiar em
+        // "regra mais específica sobrescreve" — o Next.js aplica headers de
+        // TODAS as entradas cujo source combine com a rota, então sem essa
+        // exclusão o /embed/* receberia X-Frame-Options: DENY desta regra
+        // ALÉM da CSP liberada na regra abaixo, quebrando o iframe).
+        source: '/((?!embed/).*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -25,6 +37,18 @@ const nextConfig: NextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
           },
+        ],
+      },
+      {
+        source: '/embed/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          { key: 'Content-Security-Policy', value: 'frame-ancestors *' },
         ],
       },
     ]

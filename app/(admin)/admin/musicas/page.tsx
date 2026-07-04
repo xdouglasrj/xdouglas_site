@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
 import { TrackActions } from './track-actions'
+import { CopyrightBadge } from './copyright-badge'
 
 export const metadata: Metadata = { title: 'Músicas' }
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,8 @@ export default async function AdminMusicasPage() {
       createdAt: true,
       artist: { select: { name: true } },
       submittedById: true,
+      copyrightStatus: true,
+      copyrightResult: true,
     },
   })
 
@@ -85,6 +88,9 @@ export default async function AdminMusicasPage() {
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide">
                   Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-neutral-500 uppercase tracking-wide hidden lg:table-cell">
+                  Copyright
                 </th>
                 <th className="px-4 py-3 w-24">
                   <span className="sr-only">Ações</span>
@@ -162,6 +168,15 @@ export default async function AdminMusicasPage() {
                       <span className={`w-1 h-1 rounded-full ${track.published ? 'bg-emerald-400' : 'bg-neutral-500'}`} aria-hidden="true" />
                       {track.published ? 'Publicada' : 'Rascunho'}
                     </span>
+                  </td>
+
+                  {/* Copyright (V3 Plano 20 — aviso informativo, AcoustID) */}
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    <CopyrightBadge
+                      trackId={track.id}
+                      status={track.copyrightStatus}
+                      result={track.copyrightResult as { score: number; recordingId: string; title: string; artist: string } | null}
+                    />
                   </td>
 
                   {/* Ações */}

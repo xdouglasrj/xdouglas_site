@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { withAuth, apiSuccess, apiError } from '@/lib/auth/guard'
 import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { toggleFollow } from '@/lib/social/follow'
+import { checkAndAwardProfileCompletion } from '@/lib/profile-completeness'
 
 // ============================================================
 // POST /api/social/follow — liga/desliga seguir outro usuário
@@ -35,6 +36,14 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
 
   try {
     const following = await toggleFollow(auth.userId, parsed.data.userId)
+
+    // V3 Plano 9 — "seguir 3 perfis" é item do checklist de completude
+    if (following) {
+      checkAndAwardProfileCompletion(auth.userId).catch((err) =>
+        console.error('[API /social/follow POST] Falha ao checar completude de perfil', err)
+      )
+    }
+
     return apiSuccess({ following })
   } catch {
     return apiError('Erro ao seguir/deixar de seguir', 500, 'FOLLOW_ERROR')

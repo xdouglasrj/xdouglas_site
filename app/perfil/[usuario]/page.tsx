@@ -9,7 +9,10 @@ import { FollowButton } from '@/components/profile/follow-button'
 import { FollowListModal } from '@/components/profile/follow-list-modal'
 import { Avatar } from '@/components/ui/avatar'
 import { EditProfileButton } from '@/components/profile/edit-profile-button'
+import { SocialLinks } from '@/components/profile/social-links'
 import { ProfileTracks } from '@/components/profile/profile-tracks'
+import { ProfileReposts } from '@/components/profile/profile-reposts'
+import { listUserReposts } from '@/lib/social/track-reposts'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
 import { getArtistLikeCount } from '@/lib/social/track-likes'
 import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
@@ -74,8 +77,14 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       createdAt: true,
       totalXp: true,
       level: true,
+      loginStreak: true,
       plan: true,
       bonusStorageMb: true,
+      bio: true,
+      instagramUrl: true,
+      youtubeUrl: true,
+      tiktokUrl: true,
+      websiteUrl: true,
       artist: { select: { id: true, name: true, slug: true, bio: true } },
     },
   })
@@ -93,7 +102,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
   const canSeeStorage = isSelf || isPrivileged || profile.showEspacoUploadNoPerfil
   const canSeeTracks = isSelf || isPrivileged || profile.showMusicasNoPerfil
 
-  const [counts, followingAlready, tracks, likeCount, storageUsed, viewerUploadCount] = await Promise.all([
+  const [counts, followingAlready, tracks, likeCount, storageUsed, viewerUploadCount, reposts] = await Promise.all([
     getFollowCounts(profile.id),
     isSelf ? Promise.resolve(false) : isFollowing(viewer.id, profile.id),
     profile.artist && canSeeTracks ? listPublishedTracksByArtist(profile.artist.id) : Promise.resolve([]),
@@ -102,6 +111,7 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
       ? prisma.track.aggregate({ where: { submittedById: profile.id }, _sum: { audioSizeBytes: true } })
       : Promise.resolve(null),
     prisma.track.count({ where: { submittedById: viewer.id } }),
+    listUserReposts(profile.id),
   ])
 
   const storageUsedBytes = Number(storageUsed?._sum.audioSizeBytes ?? 0)
@@ -176,6 +186,15 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
                 {profile.totalXp.toLocaleString('pt-BR')} XP
               </span>
             )}
+            {isSelf && profile.loginStreak > 0 && (
+              <span
+                className="flex items-center gap-1 text-white/80"
+                title={`${profile.loginStreak} dia${profile.loginStreak === 1 ? '' : 's'} seguidos de login`}
+              >
+                <span aria-hidden="true">🔥</span>
+                <strong className="text-white">{profile.loginStreak}</strong>
+              </span>
+            )}
             {profile.artist && (
               <span className="flex items-center gap-1.5 text-white/80">
                 <svg className="w-3.5 h-3.5 text-gate-pink" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -186,9 +205,18 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
             )}
           </div>
 
-          {profile.artist?.bio && (
-            <p className="mt-4 text-sm text-white/70">{profile.artist.bio}</p>
+          {(profile.bio || profile.artist?.bio) && (
+            <p className="mt-4 text-sm text-white/70">{profile.bio || profile.artist?.bio}</p>
           )}
+
+          <div className="mt-3">
+            <SocialLinks
+              instagramUrl={profile.instagramUrl}
+              youtubeUrl={profile.youtubeUrl}
+              tiktokUrl={profile.tiktokUrl}
+              websiteUrl={profile.websiteUrl}
+            />
+          </div>
 
           {/* Dados de contato — respeita a privacidade escolhida pelo usuário */}
           <section className="mt-6 rounded-lg border border-gate-azure bg-white/5 p-5">
@@ -233,6 +261,8 @@ export default async function PerfilPublicoPage({ params }: PageProps) {
           )}
 
           {canSeeTracks && <ProfileTracks tracks={tracks} artistName={profile.artist?.name ?? ''} />}
+
+          <ProfileReposts reposts={reposts} />
         </div>
       </main>
     </div>

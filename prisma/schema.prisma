@@ -67,6 +67,7 @@ enum PointActionType {
   TRACK_LIKED
   COMMENT_CREATED
   TRACK_SHARED
+  REPOST_RECEIVED
   TRACK_PUBLISHED
   TRACK_PLAYED
   PLAYLIST_CREATED
@@ -76,6 +77,20 @@ enum PointActionType {
   INVITE_ABUSE_PENALTY
   ADMIN_GIFT
   ADMIN_ADJUSTMENT
+  // V3 Plano 7 — marcos de plays do artista (250 e 10.000; o de 1.000 já
+  // existia) e tarefas "Ganhe pontos" (onboarding + engajamento semanal)
+  TRACK_MILESTONE_250
+  TRACK_MILESTONE_10000
+  FIRST_COMMENT_OF_WEEK
+  FIRST_PLAYLIST_CREATED
+  FIRST_LIKE_GIVEN
+  // V3 Plano 13 — débito ao destacar a própria faixa gastando pontos
+  // ("Highlight"). Valor vem do custo em lib/points/constants.ts na hora.
+  HIGHLIGHT_TRACK
+  // V3 Plano 9 — recompensa por completar 100% do perfil (foto, capa, bio,
+  // link social, 1ª curtida, 1ª playlist, seguir 3). Idempotente via
+  // MilestoneAward (kind "profile_100_percent") — awardMilestoneOnce.
+  PROFILE_100_PERCENT
 }
 
 // Pra quem o item da loja está disponível — Artista (role ARTIST) ou
@@ -206,6 +221,18 @@ model User {
   photoKey               String?   @map("photo_key")
   photoUrl               String?   @map("photo_url")
 
+  // V3 Plano 9 — completude de perfil: bio, capa e links sociais (avatar já
+  // existe via photoKey/photoUrl acima, não duplicado aqui)
+  bio                    String?
+  coverKey               String?   @map("cover_key")
+  coverUrl               String?   @map("cover_url")
+  instagramUrl           String?   @map("instagram_url")
+  youtubeUrl             String?   @map("youtube_url")
+  tiktokUrl              String?   @map("tiktok_url")
+  websiteUrl             String?   @map("website_url")
+  // Lembrete "complete seu perfil" — enviado no máx. 1x (perfil <50% após 3 dias)
+  profileReminderSentAt  DateTime? @map("profile_reminder_sent_at")
+
   // Privacidade — campos originais
   showEmail              Boolean   @default(false) @map("show_email")
   showPhone              Boolean   @default(false) @map("show_phone")
@@ -219,6 +246,14 @@ model User {
   showComentariosVisiveis  Boolean @default(true)  @map("show_comentarios_visiveis")
 
   mappingEnabled         Boolean   @default(false) @map("mapping_enabled")
+
+  // V3 Plano 19 — preferências de notificação (por categoria, JSON simples
+  // evita 1 coluna por tipo — ver lib/notifications/notification-prefs.ts)
+  // e tema (persistido pro logado sincronizar entre dispositivos; anônimo
+  // continua controlando só via localStorage, ver components/ui/theme-toggle.tsx)
+  notificationPrefs      Json?     @map("notification_prefs")
+  theme                  String    @default("dark") @map("theme")
+
   resetPasswordTokenHash String?   @unique @map("reset_password_token_hash")
   resetPasswordExpiresAt DateTime? @map("reset_password_expires_at")
   resetPasswordUsedAt    DateTime? @map("reset_password_used_at")
@@ -238,9 +273,13 @@ model User {
   inviteBlockedUntil    DateTime? @map("invite_blocked_until")
 
   pointsHistory           PointsHistory[]
+  milestoneAwards         MilestoneAward[]
   storePurchases          StorePurchase[]
+  trackHighlights         TrackHighlight[]
   paymentOrders           PaymentOrder[]
   referredWaitlistEntries Waitlist[]      @relation("WaitlistReferrals")
+  // V3 Plano 6 — submissões enviadas pelo usuário a concursos
+  contestEntries          ContestEntry[]
 
   adminSessions   AdminSession[]
   auditLogs       AuditLog[]
@@ -255,6 +294,11 @@ model User {
   trackLikes     TrackLike[]
   comments       Comment[]
   trackComments  TrackComment[]
+  trackCommentLikes TrackCommentLike[]
+  trackReposts   TrackRepost[]
+  trackReactions TrackReaction[]
+  playbackProgress PlaybackProgress[]
+  listeningHistory ListeningHistory[]
   forumThreads   ForumThread[]
   forumReplies   ForumReply[]
   reportsMade    Report[]        @relation("ReportsMade")
@@ -459,10 +503,92 @@ model Artist {
   schedulingToken String? @unique @map("scheduling_token")
 
   tracks Track[]
+  series TrackSeries[]
+  events ArtistEvent[]
+  // V3 Plano 6 — concursos hospedados por este artista (opcional; só o
+  // admin cria contests nesta v1, mas pode atribuir um artista host)
+  hostedContests Contest[]
 
   @@index([slug])
   @@index([active])
   @@map("artists")
+}
+
+// =============================================================
+// EVENTOS — agenda de apresentações do artista (V3 Plano 18)
+// v1 enxuta: SEM venda de ingresso, SEM RSVP — vitrine "onde o
+// xdouglas vai tocar". infoUrl é opcional (link de ingressos/infos
+// externo), validado http/https no servidor antes de salvar.
+// =============================================================
+
+model ArtistEvent {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  artistId  String   @map("artist_id")
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  title     String
+  venue     String?
+  city      String?
+  startsAt  DateTime @map("starts_at")
+  infoUrl   String?  @map("info_url")
+  coverKey  String?  @map("cover_key")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([artistId, startsAt])
+  @@map("artist_events")
+}
+
+// =============================================================
+// CONTESTS — concursos de remix (V3 Plano 6). Prêmio em pontos da loja
+// (nunca dinheiro/cripto) + destaque de 7 dias na faixa vencedora. Só o
+// admin cria contests nesta v1 (artistas pedem via suporte). Submissão =
+// uma faixa do fluxo de upload normal vinculada ao contest via contestId.
+// =============================================================
+
+model Contest {
+  id           String    @id @default(uuid())
+  slug         String    @unique
+  title        String
+  description  String // regras em markdown/texto
+  coverKey     String?   @map("cover_key")
+  stemsKey     String?   @map("stems_key") // zip no mesmo storage dos áudios
+  hostArtistId String?   @map("host_artist_id")
+  hostArtist   Artist?   @relation(fields: [hostArtistId], references: [id])
+  prizePoints  Int       @default(0) @map("prize_points")
+  prizeText    String?   @map("prize_text") // prêmios extras descritos livres
+  deadline     DateTime
+  published    Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  entries      ContestEntry[]
+
+  @@index([published])
+  @@index([deadline])
+  @@map("contests")
+}
+
+// Uma submissão = uma faixa (do fluxo de upload normal) vinculada a um
+// contest. @@unique([contestId, userId]) trava 1 entry por usuário nesta
+// v1. trackId é @unique porque cada faixa só pode ser a submissão de UM
+// contest (não faz sentido a mesma faixa competir em dois concursos).
+// `winner` também é a trava de idempotência do crédito de prêmio — ver
+// lib/contests/winners.ts: só credita ADMIN_GIFT quando winner passa de
+// false para true dentro da mesma transação que grava esse campo.
+model ContestEntry {
+  id        String   @id @default(uuid())
+  contestId String   @map("contest_id")
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  trackId   String   @unique @map("track_id")
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  winner    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([contestId, userId])
+  @@index([contestId])
+  @@index([userId])
+  @@map("contest_entries")
 }
 
 // =============================================================
@@ -505,6 +631,14 @@ model Track {
   genreRef    Genre?  @relation(fields: [genreId], references: [id])
   bpm         Int?
   key         String?
+  // V3 Plano 5 — metadados DJ: mood (lista fixa em lib/tracks/moods.ts),
+  // tags livres (máx. 10, lowercase) e duração extraída no upload
+  mood            String?
+  tags            String[] @default([])
+  durationSeconds Int?     @map("duration_seconds")
+  // V3 Plano 16 — tipo de upload: "track" | "set" | "podcast" (lista fixa em
+  // lib/tracks/track-kinds.ts). Default "track" preserva faixas existentes.
+  kind            String   @default("track") @map("kind")
 
   artistId     String  @map("artist_id")
   artist       Artist  @relation(fields: [artistId], references: [id])
@@ -522,6 +656,11 @@ model Track {
   downloadAudioKey        String? @map("download_audio_key")
   downloadAudioVinhetaKey String? @map("download_audio_vinheta_key")
 
+  // V3 Plano 12 — modo de download: "free" (qualquer conta baixa) ou
+  // "follow" (exige seguir o dono da faixa). Default "free" preserva o
+  // comportamento atual de todas as faixas existentes.
+  downloadMode String @default("free") @map("download_mode") // "free" | "follow"
+
   published     Boolean   @default(false)
   publishedAt   DateTime? @map("published_at")
   downloadCount Int       @default(0) @map("download_count")
@@ -532,10 +671,34 @@ model Track {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   scheduledAt   DateTime? @map("scheduled_at")
 
+  // V3 Plano 20 — verificação de copyright via AcoustID (best-effort,
+  // nunca bloqueia upload/publicação). "pending" | "clear" | "match" |
+  // "error" | "skipped". copyrightResult só é preenchido quando "match":
+  // { score, recordingId, title, artist }
+  copyrightStatus String    @default("pending") @map("copyright_status")
+  copyrightResult Json?     @map("copyright_result")
+  copyrightAt     DateTime? @map("copyright_at")
+
+  // V3 Plano 14 — série de sets (volumes/episódios). Opcional: faixa sem
+  // série não muda em nada. episodeNumber é sugerido (maior da série + 1)
+  // mas editável no formulário.
+  seriesId      String?      @map("series_id")
+  series        TrackSeries? @relation(fields: [seriesId], references: [id])
+  episodeNumber Int?         @map("episode_number")
+
   downloads     Download[]
   likes         TrackLike[]
   comments      TrackComment[]
   playlistTracks PlaylistTrack[]
+  reposts       TrackRepost[]
+  reactions     TrackReaction[]
+  playbackProgress PlaybackProgress[]
+  listeningHistory ListeningHistory[]
+  tracklist        TrackTracklistItem[]
+  highlights       TrackHighlight[]
+  // V3 Plano 6 — participação em concurso (1:1: uma faixa só pode ser
+  // a submissão de UM contest, ver @@unique em ContestEntry)
+  contestEntry     ContestEntry?
 
   @@index([slug])
   @@index([artistId])
@@ -545,7 +708,48 @@ model Track {
   @@index([submittedById])
   @@index([pinned])
   @@index([scheduledAt])
+  @@index([mood])
+  @@index([kind])
+  @@index([seriesId])
   @@map("tracks")
+}
+
+// V3 Plano 14 — série de sets/podcasts recorrentes ("Sunday Soul Sessions").
+// Página própria pública (/series/[slug]) e navegação entre episódios na
+// página da faixa. `Playlist` existente é biblioteca pessoal do usuário
+// (não vitrine pública do artista) — por isso um modelo novo, e não reuso.
+model TrackSeries {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String?
+  coverKey    String?  @map("cover_key")
+  artistId    String   @map("artist_id")
+  artist      Artist   @relation(fields: [artistId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tracks Track[]
+
+  @@unique([artistId, title])
+  @@index([artistId])
+  @@map("track_series")
+}
+
+// V3 Plano 10 — tracklist com timestamps do set (uma linha por música).
+// Digitada no upload; clicar numa linha faz seek no player global. Cada
+// linha é texto indexável (SEO: nomes de música dentro do mix no Google).
+model TrackTracklistItem {
+  id           String @id @default(uuid())
+  trackId      String @map("track_id")
+  track        Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  position     Int // ordem 1..n
+  startSeconds Int    @map("start_seconds")
+  title        String // "Artista - Nome da música"
+
+  @@unique([trackId, position])
+  @@index([trackId])
+  @@map("track_tracklist_items")
 }
 
 model TrackComment {
@@ -561,9 +765,30 @@ model TrackComment {
   pinnedExpiresAt DateTime? @map("pinned_expires_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
+  // V3 Plano 2 — respostas aninhadas (1 nível), timestamp da música e likes
+  parentId         String?            @map("parent_id")
+  parent           TrackComment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies          TrackComment[]     @relation("CommentReplies")
+  timestampSeconds Int?               @map("timestamp_seconds")
+  likes            TrackCommentLike[]
+
   @@index([trackId])
   @@index([pinned])
+  @@index([parentId])
   @@map("track_comments")
+}
+
+model TrackCommentLike {
+  id        String       @id @default(uuid())
+  commentId String       @map("comment_id")
+  comment   TrackComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String       @map("user_id")
+  user      User         @relation(fields: [userId], references: [id])
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@map("track_comment_likes")
 }
 
 model TrackLike {
@@ -578,6 +803,76 @@ model TrackLike {
   @@index([trackId])
   @@index([userId])
   @@map("track_likes")
+}
+
+// V3 Plano 3 — repostar música no perfil (estilo Audius)
+model TrackRepost {
+  id        String   @id @default(uuid())
+  trackId   String   @map("track_id")
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([trackId, userId])
+  @@index([userId])
+  @@map("track_reposts")
+}
+
+// V3 Plano 15 — reações com emoji (camada expressiva ADICIONAL ao TrackLike;
+// não vale ponto, não influencia trending). Conjunto fixo em lib/reactions.ts.
+// 1 reação por usuário por faixa — trocar de emoji substitui a anterior.
+model TrackReaction {
+  id        String   @id @default(uuid())
+  trackId   String   @map("track_id")
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([trackId, userId])
+  @@index([trackId])
+  @@index([userId])
+  @@map("track_reactions")
+}
+
+// V3 Plano 11 — retomar de onde parou (resume playback), só para logados.
+// Anônimo usa localStorage no client, nunca chega aqui.
+model PlaybackProgress {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id])
+  trackId         String   @map("track_id")
+  track           Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  positionSeconds Int      @map("position_seconds")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, trackId])
+  @@index([trackId])
+  @@index([updatedAt])
+  @@map("playback_progress")
+}
+
+// V3 Plano 17 — histórico de escuta (privado, só o dono vê).
+// Deriva DE PlaybackProgress foi avaliado e descartado: PlaybackProgress só
+// existe para faixas >= 10min (MIN_DURATION_FOR_RESUME_SECONDS) e é APAGADA
+// quando a faixa é concluída (>=95%) — a maioria das músicas do site é mais
+// curta que 10min e nunca geraria uma linha lá, então o histórico ficaria
+// vazio para o caso comum. ListeningHistory registra qualquer faixa ouvida
+// por >=10s, logado, independente de duração.
+model ListeningHistory {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  user     User     @relation(fields: [userId], references: [id])
+  trackId  String   @map("track_id")
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  playedAt DateTime @default(now()) @map("played_at")
+
+  // Guarda só a ÚLTIMA escuta de cada faixa (upsert) — reouvir sobe pro topo
+  @@unique([userId, trackId])
+  @@index([userId, playedAt])
+  @@map("listening_history")
 }
 
 // =============================================================
@@ -657,6 +952,10 @@ model Download {
   status           DownloadStatus @default(INICIADO)
   signedUrlExpiry  DateTime?      @map("signed_url_expiry")
   downloadSuspeito Boolean        @default(false) @map("download_suspeito")
+  // V3 Plano 12 — origem do download, para o admin medir conversão do
+  // follow-gate: "direct" (botão normal) ou "follow_gate" (baixou logo
+  // após seguir o artista pelo mini-modal "Seguir para baixar").
+  source           String         @default("direct") @map("source") // "direct" | "follow_gate"
   createdAt        DateTime       @default(now()) @map("created_at")
   completedAt      DateTime?      @map("completed_at")
 
@@ -863,6 +1162,60 @@ model PointsHistory {
   @@index([userId, createdAt])
   @@index([action])
   @@map("points_history")
+}
+
+// V3 Plano 7 — registro idempotente de marcos (milestones) que só podem
+// pagar pontos UMA vez por combinação (userId, kind, refId). Streak de
+// login diário JÁ EXISTE em User.loginStreak/lastDailyLoginAt + o bônus
+// DAILY_LOGIN_STREAK_BONUS a cada 7 dias (lib/points/points-service.ts) —
+// não duplicado aqui. Este modelo cobre marcos que aquele mecanismo não
+// cobre: plays de faixa (250/1000/10000), 1º comentário da semana,
+// 1ª playlist, 1ª curtida dada.
+//
+// refId é NOT NULL (default '' para marcos sem referência, ex.: 1ª
+// playlist) DE PROPÓSITO: Postgres trata NULL como distinto em unique
+// constraints, então @@unique com uma coluna nullable NÃO impediria
+// múltiplos inserts com refId=NULL — quebraria a idempotência exatamente
+// nos marcos "paga 1x na vida" que mais precisam dela.
+model MilestoneAward {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  kind      String // "track_plays_250" | "track_plays_1000" | "track_plays_10000" | "first_comment_week" | "first_playlist" | "first_like_given"
+  refId     String   @default("") @map("ref_id") // trackId (marco de plays), ISO da semana (comentário semanal) ou "" (sem referência)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, kind, refId])
+  @@index([userId])
+  @@map("milestone_awards")
+}
+
+// V3 Plano 13 — destaque de faixa PAGO com pontos ("Highlight"). Registra
+// quem pagou, quanto, e a janela de exibição. O débito de pontos
+// (PointsHistory action HIGHLIGHT_TRACK) e a criação deste registro
+// acontecem na MESMA transação (lib/store/highlight-service.ts), reusando
+// a checagem de saldo transacional da loja — nunca debita sem destacar nem
+// destaca sem debitar. Diferente do destaque editorial do admin
+// (Track.pinned), que continua tendo prioridade e não custa pontos.
+// A vitrine filtra por endsAt > now (sem cron); cleanup só faz manutenção.
+model TrackHighlight {
+  id         String   @id @default(uuid())
+  trackId    String   @map("track_id")
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  userId     String   @map("user_id") // quem pagou (dono da faixa)
+  user       User     @relation(fields: [userId], references: [id])
+  costPoints Int      @map("cost_points")
+  startsAt   DateTime @default(now()) @map("starts_at")
+  endsAt     DateTime @map("ends_at")
+  // Cancelamento pelo admin (moderação) com estorno de pontos. Quando
+  // cancelado, endsAt é encurtado para "agora" e canceledAt é preenchido —
+  // some da vitrine na hora e não pode ser reaberto.
+  canceledAt DateTime? @map("canceled_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([trackId])
+  @@index([endsAt])
+  @@map("track_highlights")
 }
 
 model StoreItem {

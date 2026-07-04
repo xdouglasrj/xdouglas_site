@@ -2,10 +2,28 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAnalytics } from '@/components/analytics/use-analytics'
 import { WaveformPlayer } from './waveform-player'
 import { TrackLikeButton } from './track-like-button'
+import { TrackRepostButton } from './track-repost-button'
+import { TrackProgressBar } from './track-progress-bar'
+import { FollowToDownloadModal } from './follow-to-download-modal'
+import { useAuthPopup } from '@/components/auth/AuthPopupProvider'
 import type { TrackPublic } from '@/lib/tracks/types'
+import type { PlayerTrack } from '@/components/player/player-provider'
+import { trackKindLabel } from '@/lib/tracks/track-kinds'
+
+/** Converte o shape público da API para o shape mínimo do player global */
+export function toPlayerTrack(track: TrackPublic): PlayerTrack {
+  return {
+    id: track.id,
+    slug: track.slug,
+    title: track.title,
+    artistName: track.artist.name,
+    coverUrl: track.coverUrl,
+  }
+}
 
 // ============================================================
 // Helpers
@@ -33,11 +51,55 @@ function formatDate(iso: string | null): string | null {
 interface TrackCardProps {
   track: TrackPublic
   canDownload?: boolean
+  /** Lista de origem — tocar esta faixa enfileira a lista a partir dela */
+  queue?: PlayerTrack[]
+  /**
+   * Usuário tem sessão (inclui GUEST). Controla se a barrinha "já ouvido"
+   * busca progresso na API (logado) ou no localStorage (anônimo).
+   * Default false = anônimo, para não chamar a API em páginas públicas.
+   */
+  isLoggedIn?: boolean
+  /**
+   * V3 Plano 13 — faixa com destaque PAGO ativo (pontos). Mostra o selo
+   * "Em destaque", visualmente distinto do selo "Fixada" (destaque
+   * editorial do admin, âmbar). Não substitui `track.pinned`.
+   */
+  isHighlighted?: boolean
 }
 
-export function TrackCard({ track, canDownload = true }: TrackCardProps) {
+export function TrackCard({ track, canDownload = true, queue, isLoggedIn = false, isHighlighted = false }: TrackCardProps) {
+  const router = useRouter()
   const { trackMusicView } = useAnalytics()
+  const { openLogin } = useAuthPopup()
   const [downloading, setDownloading] = useState(false)
+  const [showFollowModal, setShowFollowModal] = useState(false)
+
+  // V3 Plano 12 — no card não temos o estado de "seguindo" pré-carregado.
+  // Tentamos o download direto; se o servidor exigir follow (403
+  // FOLLOW_REQUIRED), abrimos o mini-modal. Quem já segue baixa na hora.
+  async function requestDownload(source: 'direct' | 'follow_gate') {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trackId: track.id, source }),
+    })
+    const data = await res.json().catch(() => null)
+
+    if (res.ok && data?.downloadUrl) {
+      window.location.href = data.downloadUrl
+      return
+    }
+    if (res.status === 401) {
+      openLogin()
+      return
+    }
+    if (res.status === 403 && data?.code === 'FOLLOW_REQUIRED' && track.artist.userId) {
+      setShowFollowModal(true)
+      return
+    }
+    // Demais erros permanecem silenciosos no card — a página de detalhe
+    // dá feedback mais rico.
+  }
 
   async function handleDownload(e: React.MouseEvent) {
     e.preventDefault()
@@ -47,19 +109,7 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
     setDownloading(true)
 
     try {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId: track.id }),
-      })
-
-      const data = await res.json()
-
-      if (res.ok && data.downloadUrl) {
-        window.location.href = data.downloadUrl
-      }
-      // Erros na linha são silenciosos — redireciona para página de detalhe
-      // onde o botão tem feedback mais rico
+      await requestDownload('direct')
     } catch {
       // Silencioso na linha
     } finally {
@@ -67,8 +117,18 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
     }
   }
 
+  function handleFollowed() {
+    setShowFollowModal(false)
+    router.refresh()
+    requestDownload('follow_gate').catch(() => {})
+  }
+
   const fileSize = formatBytes(track.audioSizeBytes)
   const approvedAt = formatDate(track.publishedAt)
+  // V3 Plano 12 — rótulo do botão: faixa com follow-gate mostra "Seguir".
+  // No card não sabemos se o viewer já segue; quem já segue baixa direto
+  // ao clicar (o servidor libera) — o modal só abre em 403 FOLLOW_REQUIRED.
+  const gateLabel = track.downloadMode === 'follow' && track.artist.userId ? 'Seguir' : 'Download'
 
   return (
     <article className="rounded-2xl border border-gate-azure bg-white/5 p-4 transition-colors hover:bg-white/[0.07]">
@@ -87,7 +147,17 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
               Fixada
             </span>
           )}
+          {isHighlighted && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-gate-pink/15 text-gate-pink border border-gate-pink/40 shrink-0">
+              ⭐ Em destaque
+            </span>
+          )}
           <span className="truncate">{track.title}</span>
+          {track.kind !== 'track' && (
+            <span className="inline-flex items-center shrink-0 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-white/5 text-gate-blue border border-gate-azure">
+              {trackKindLabel(track.kind)}
+            </span>
+          )}
         </h2>
         <p className="mt-0.5 text-xs text-gate-blue truncate">
           {track.artist.name}
@@ -99,13 +169,25 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
 
       {/* Player */}
       <div className="mt-3">
-        <WaveformPlayer trackId={track.id} title={track.title} coverUrl={track.coverUrl} />
+        <WaveformPlayer
+          trackId={track.id}
+          slug={track.slug}
+          title={track.title}
+          artistName={track.artist.name}
+          coverUrl={track.coverUrl}
+          queue={queue}
+        />
+        {/* Barrinha "já ouvido" (V3 Plano 11) — só aparece se houver progresso salvo */}
+        <div className="mt-1.5">
+          <TrackProgressBar trackId={track.id} durationSeconds={track.durationSeconds} isLoggedIn={isLoggedIn} />
+        </div>
       </div>
 
       {/* Tags de metadados */}
       <div className="hidden sm:flex flex-wrap items-center gap-1.5 mt-3">
         {track.genre && <MetaTag>{track.genre}</MetaTag>}
         {track.bpm && <MetaTag>{track.bpm} BPM</MetaTag>}
+        {track.key && <MetaTag>{track.key}</MetaTag>}
         {fileSize && <MetaTag>{fileSize}</MetaTag>}
         <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide rounded bg-white/5 text-gate-blue border border-gate-azure">
           {track.audioFormat}
@@ -117,6 +199,13 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
       <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gate-azure/40">
         <div className="flex items-center gap-3">
           <TrackLikeButton trackId={track.id} initialCount={track.likeCount} compact />
+          <TrackRepostButton trackId={track.id} initialCount={track.repostCount} compact />
+          {track.topReaction && track.topReactionCount > 0 && (
+            <span className="flex items-center gap-1 text-xs text-white/50" aria-label={`Reação mais popular: ${track.topReaction}, ${track.topReactionCount}`}>
+              <span aria-hidden="true">{track.topReaction}</span>
+              {track.topReactionCount.toLocaleString('pt-BR')}
+            </span>
+          )}
           <span className="text-xs text-white/40">
             {track.downloadCount.toLocaleString('pt-BR')} download{track.downloadCount !== 1 ? 's' : ''}
           </span>
@@ -134,10 +223,25 @@ export function TrackCard({ track, canDownload = true }: TrackCardProps) {
             ) : (
               <DownloadIcon />
             )}
-            <span className="hidden sm:inline">{downloading ? 'Preparando…' : 'Download'}</span>
+            <span className="hidden sm:inline">
+              {downloading
+                ? 'Preparando…'
+                : gateLabel}
+            </span>
           </button>
         )}
       </div>
+
+      {showFollowModal && track.artist.userId && (
+        <FollowToDownloadModal
+          artistUserId={track.artist.userId}
+          artistName={track.artist.name}
+          artistHandle={track.artist.userHandle}
+          artistPhotoUrl={track.artist.photoUrl}
+          onClose={() => setShowFollowModal(false)}
+          onFollowed={handleFollowed}
+        />
+      )}
     </article>
   )
 }

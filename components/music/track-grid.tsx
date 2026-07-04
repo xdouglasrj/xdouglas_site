@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { TrackCard } from './track-card'
+import { TrackCard, toPlayerTrack } from './track-card'
 import { TrackGridSkeleton } from './track-card-skeleton'
 import { EmptyState } from './empty-state'
 import { SortFilter } from './sort-filter'
@@ -15,6 +15,8 @@ interface TrackGridProps {
   initialQuery?: string | null
   initialSort?: TrackSortBy
   canDownload?: boolean
+  /** Usuário tem sessão (inclui GUEST) — repassado ao TrackCard p/ a barra de progresso. */
+  isLoggedIn?: boolean
   /**
    * 'feed' — /musicas-recentes: só músicas postadas nas últimas 24h (janela
    * individual por upload), sem barra de filtros.
@@ -33,6 +35,7 @@ export function TrackGrid({
   initialQuery = null,
   initialSort = 'recent',
   canDownload = true,
+  isLoggedIn = false,
   mode = 'feed',
 }: TrackGridProps) {
   const isCatalog = mode === 'catalog'
@@ -45,6 +48,9 @@ export function TrackGrid({
   const [loading, setLoading] = useState(false)
 
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
+
+  // Fila do player global — tocar uma faixa enfileira a página visível
+  const playerQueue = tracks.map(toPlayerTrack)
 
   // Busca quando filtro ou página muda
   const fetchTracks = useCallback(
@@ -127,7 +133,13 @@ export function TrackGrid({
         <>
           <div className="max-w-3xl mx-auto w-full flex flex-col gap-3">
             {tracks.map((track) => (
-              <TrackCard key={track.id} track={track} canDownload={canDownload} />
+              <TrackCard
+                key={track.id}
+                track={track}
+                canDownload={canDownload}
+                isLoggedIn={isLoggedIn}
+                queue={playerQueue}
+              />
             ))}
           </div>
 

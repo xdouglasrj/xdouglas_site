@@ -29,12 +29,14 @@ export function ConsentBanner() {
 
   // 'pending' = ainda não leu o localStorage (SSR / hidratação)
   // 'show'    = precisa mostrar o banner
-  // 'hidden'  = não mostrar (já decidiu ou está no /admin)
+  // 'hidden'  = não mostrar (já decidiu, está no /admin, ou é um /embed)
   const [visibility, setVisibility] = useState<'pending' | 'show' | 'hidden'>('pending')
 
   useEffect(() => {
-    // Não exibe no painel admin
-    if (pathname.startsWith('/admin')) {
+    // Não exibe no painel admin nem no player embedável (V3 Plano 8) — o
+    // /embed roda dentro de um <iframe> de terceiros, sem espaço/sentido
+    // para um banner de cookies do site principal.
+    if (pathname.startsWith('/admin') || pathname.startsWith('/embed')) {
       setVisibility('hidden')
       return
     }

@@ -10,6 +10,9 @@ import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 
 const downloadSchema = z.object({
   trackId: z.string().uuid('trackId deve ser um UUID válido'),
+  // V3 Plano 12 — origem do download (métrica de conversão do follow-gate).
+  // "follow_gate" quando o clique veio do mini-modal "Seguir para baixar".
+  source: z.enum(['direct', 'follow_gate']).optional(),
 })
 
 // ============================================================
@@ -31,7 +34,7 @@ const downloadSchema = z.object({
 // O audioKey NUNCA é exposto — apenas a downloadUrl temporária.
 // ============================================================
 
-export const POST = withRole('MEMBER', async (request: NextRequest): Promise<NextResponse> => {
+export const POST = withRole('MEMBER', async (request: NextRequest, auth): Promise<NextResponse> => {
   if (!(await isFeatureEnabled('download'))) {
     return NextResponse.json({ error: 'Download está desativado no momento', code: 'FEATURE_DISABLED' }, { status: 403 })
   }
@@ -59,10 +62,11 @@ export const POST = withRole('MEMBER', async (request: NextRequest): Promise<Nex
     )
   }
 
-  const { trackId } = parsed.data
+  const { trackId, source } = parsed.data
 
-  // 2–8. Delega ao service
-  const result = await processDownload(trackId, request)
+  // 2–8. Delega ao service — passa o usuário autenticado (garantido pelo
+  // withRole) para a verificação de follow-gate no servidor.
+  const result = await processDownload(trackId, request, { userId: auth.userId, source })
 
   if (!result.ok) {
     const { code, message, retryAfter } = result.error
@@ -72,6 +76,7 @@ export const POST = withRole('MEMBER', async (request: NextRequest): Promise<Nex
       : code === 'NOT_PUBLISHED' ? 404
       : code === 'RATE_LIMITED' ? 429
       : code === 'STORAGE_ERROR' ? 503
+      : code === 'FOLLOW_REQUIRED' ? 403
       : 500
 
     const headers: Record<string, string> = {}

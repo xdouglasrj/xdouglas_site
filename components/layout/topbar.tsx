@@ -66,6 +66,18 @@ export function Topbar({ isLoggedIn, photoUrl = null, handle = null }: TopbarPro
       </form>
 
       <div className="ml-auto flex shrink-0 items-center gap-3">
+        {/* V3 Plano 4 — atalho para o trending, logado ou não */}
+        <Link
+          href="/trending"
+          className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-gate-blue transition hover:bg-gate-pink/15 hover:text-gate-pink"
+          title="Em Alta"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 7h6v6" />
+          </svg>
+          Em Alta
+        </Link>
         {isLoggedIn && (
           <Link
             href="/notificacoes"

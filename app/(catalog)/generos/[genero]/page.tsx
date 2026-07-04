@@ -2,8 +2,10 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { listTracks } from '@/lib/tracks/queries'
+import { listHighlightedTracks } from '@/lib/tracks/highlighted-queries'
 import { genreFromSlug } from '@/lib/tracks/genres'
 import { TrackGrid } from '@/components/music/track-grid'
+import { TrackCard, toPlayerTrack } from '@/components/music/track-card'
 import { TrackGridSkeleton } from '@/components/music/track-card-skeleton'
 import { getCurrentRole } from '@/lib/auth/role'
 
@@ -13,6 +15,8 @@ import { getCurrentRole } from '@/lib/auth/role'
 export const dynamic = 'force-dynamic'
 
 const PER_PAGE = 20
+
+const HIGHLIGHTED_GENRE_LIMIT = 6
 
 interface PageProps {
   params: Promise<{ genero: string }>
@@ -35,14 +39,17 @@ export default async function GeneroPage({ params }: PageProps) {
   const genre = genreFromSlug(genero)
   if (!genre) notFound()
 
-  const [result, role] = await Promise.all([
+  const [result, role, highlightedTracks] = await Promise.all([
     listTracks({ page: 1, perPage: PER_PAGE, genre, includeExpired: true }),
     getCurrentRole(),
+    listHighlightedTracks(HIGHLIGHTED_GENRE_LIMIT, genre).catch(() => []),
   ])
 
   // Visitante anônimo (sem login) e ouvintes (role GUEST) podem ouvir, mas
   // não baixar
   const canDownload = role !== null && role !== 'GUEST'
+  const isLoggedIn = role !== null
+  const highlightQueue = highlightedTracks.map(toPlayerTrack)
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
@@ -53,12 +60,34 @@ export default async function GeneroPage({ params }: PageProps) {
         </p>
       </div>
 
+      {/* V3 Plano 13 — faixas com destaque pago ativo neste gênero */}
+      {highlightedTracks.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-widest text-gate-blue">
+            ⭐ Em destaque
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {highlightedTracks.map((track) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                canDownload={canDownload}
+                isLoggedIn={isLoggedIn}
+                queue={highlightQueue}
+                isHighlighted
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
       <Suspense fallback={<TrackGridSkeleton count={PER_PAGE} />}>
         <TrackGrid
           initialTracks={result.tracks}
           initialTotal={result.total}
           initialGenre={genre}
           canDownload={canDownload}
+          isLoggedIn={role !== null}
           mode="catalog"
         />
       </Suspense>

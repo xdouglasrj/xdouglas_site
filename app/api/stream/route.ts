@@ -6,10 +6,12 @@ import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 // ============================================================
 // POST /api/stream
 //
-// Gera uma URL assinada para tocar a faixa inline no site
-// ("Ouvir"), sem contar como download. Disponível para todas
-// as contas logadas — a checagem de sessão é feita no
-// middleware (rota protegida em MEMBER_PREFIXES).
+// Gera uma URL assinada (TTL curto) para tocar a faixa inline
+// ("Ouvir"), sem contar como download nem expor a audioKey.
+// PÚBLICA de propósito: NÃO está em MEMBER_PREFIXES nem no matcher
+// do middleware — precisa tocar sem login para visitante/Googlebot
+// e para o player embedável (/embed/*, V3 Plano 8). Baixar continua
+// exigindo conta (/api/download permanece protegido).
 // ============================================================
 
 const streamSchema = z.object({

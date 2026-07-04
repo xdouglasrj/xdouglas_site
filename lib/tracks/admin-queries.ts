@@ -1,7 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { after } from 'next/server'
+import { isValidMood, normalizeTag, MAX_TAGS } from './moods'
+import { isValidTrackKind, DEFAULT_TRACK_KIND } from './track-kinds'
 import { addPoints } from '@/lib/points/points-service'
 import { createNotification } from '@/lib/notifications/notifications'
+import { saveTracklistFromText } from './tracklist-writer'
+import { runCopyrightCheck } from './copyright-check'
 
 // Pontua TRACK_PUBLISHED só quando a faixa vira pública pela primeira vez
 // e foi enviada por um artista (não músicas cadastradas direto pelo admin)
@@ -36,7 +41,23 @@ export const createTrackSchema = z.object({
   description: z.string().max(2000).optional(),
   genre: z.string().max(100).optional(),
   bpm: z.number().int().min(40).max(300).optional(),
-  key: z.string().max(10).optional(),
+  key: z.string().max(20).optional(),
+  // V3 Plano 5 — metadados DJ (tudo opcional; null limpa o campo na edição)
+  mood: z.string().max(40).refine((v) => isValidMood(v), 'Mood inválido').nullable().optional(),
+  tags: z
+    .array(z.string().max(40))
+    .max(MAX_TAGS, `Máximo de ${MAX_TAGS} tags`)
+    .transform((arr) => [...new Set(arr.map(normalizeTag).filter(Boolean))])
+    .optional(),
+  durationSeconds: z.number().int().positive().max(24 * 60 * 60).optional(),
+  // V3 Plano 16 — tipo de upload (Música / Set-Mix / Podcast). Default Música.
+  kind: z.string().refine((v) => isValidTrackKind(v), 'Tipo inválido').default(DEFAULT_TRACK_KIND),
+  // V3 Plano 10 — tracklist do set colada como texto (parseada no servidor).
+  // null/"" limpa; undefined não mexe. Não é coluna de Track — tratada à parte.
+  tracklistText: z.string().max(20000).nullable().optional(),
+  // V3 Plano 12 — modo de download: "free" (qualquer conta) ou "follow"
+  // (exige seguir o dono). Validado no servidor — só aceita esses dois valores.
+  downloadMode: z.enum(['free', 'follow']).default('free'),
   audioKey: z.string().min(1, 'Arquivo de áudio obrigatório'),
   audioFormat: z.enum(['mp3', 'wav', 'flac', 'aiff']),
   audioSizeBytes: z.number().positive().optional(),
@@ -99,6 +120,8 @@ export async function adminListTracks() {
       coverUrl: true,
       createdAt: true,
       artist: { select: { id: true, name: true } },
+      copyrightStatus: true,
+      copyrightResult: true,
     },
   })
 }
@@ -114,6 +137,11 @@ export async function adminGetTrack(id: string) {
       genre: true,
       bpm: true,
       key: true,
+      mood: true,
+      tags: true,
+      durationSeconds: true,
+      kind: true,
+      downloadMode: true,
       producerName: true,
       audioKey: true,
       audioFormat: true,
@@ -125,6 +153,9 @@ export async function adminGetTrack(id: string) {
       downloadCount: true,
       artistId: true,
       artist: { select: { id: true, name: true, slug: true } },
+      copyrightStatus: true,
+      copyrightResult: true,
+      copyrightAt: true,
     },
   })
 }
@@ -142,6 +173,11 @@ export async function createTrack(input: CreateTrackInput, userId: string) {
       genre: input.genre,
       bpm: input.bpm,
       key: input.key,
+      mood: input.mood,
+      tags: input.tags ?? [],
+      durationSeconds: input.durationSeconds,
+      kind: input.kind,
+      downloadMode: input.downloadMode,
       audioKey: input.audioKey,
       audioFormat: input.audioFormat,
       audioSizeBytes: input.audioSizeBytes ? BigInt(input.audioSizeBytes) : null,
@@ -153,6 +189,9 @@ export async function createTrack(input: CreateTrackInput, userId: string) {
     select: { id: true, slug: true, title: true },
   })
 
+  // V3 Plano 10 — grava a tracklist (se enviada) após criar a faixa
+  await saveTracklistFromText(track.id, input.tracklistText)
+
   // Audit log
   await prisma.auditLog.create({
     data: {
@@ -163,6 +202,11 @@ export async function createTrack(input: CreateTrackInput, userId: string) {
       metadata: { title: track.title, slug: track.slug },
     },
   })
+
+  // V3 Plano 20 — verificação de copyright (AcoustID), best-effort, roda
+  // depois da resposta. Admin também recebe o aviso (é só informativo,
+  // o admin é o dono da decisão de publicar).
+  after(() => runCopyrightCheck(track.id))
 
   return track
 }
@@ -178,10 +222,13 @@ export async function updateTrack(
     select: { title: true, published: true },
   })
 
+  // tracklistText não é coluna de Track — separa do resto antes do update
+  const { tracklistText, ...trackData } = input
+
   const track = await prisma.track.update({
     where: { id },
     data: {
-      ...input,
+      ...trackData,
       // Se publicar agora pela primeira vez, registra o momento
       publishedAt:
         input.published && !before?.published ? new Date() : undefined,
@@ -189,6 +236,9 @@ export async function updateTrack(
     },
     select: { id: true, slug: true, title: true, published: true },
   })
+
+  // V3 Plano 10 — atualiza a tracklist (só se o campo foi enviado)
+  await saveTracklistFromText(id, tracklistText)
 
   await prisma.auditLog.create({
     data: {

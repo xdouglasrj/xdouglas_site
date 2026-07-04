@@ -17,6 +17,8 @@ import { PlaysChart } from '@/components/admin/charts/plays-chart'
 import { DeviceOsChart } from '@/components/admin/charts/device-os-chart'
 import { GeoRankingTable } from '@/components/admin/geo-ranking-table'
 import { GeoScatterChart } from '@/components/admin/charts/geo-scatter-chart'
+import { ReactionsChart } from '@/components/admin/charts/reactions-chart'
+import { getReactionSummary } from '@/lib/social/track-reactions'
 
 export const metadata: Metadata = { title: 'Estatísticas da faixa' }
 export const dynamic = 'force-dynamic'
@@ -41,7 +43,7 @@ export default async function TrackAnalyticsPage({ params, searchParams }: PageP
   })
   if (!track) notFound()
 
-  const [overview, downloadsByDay, playsByDay, deviceOsBreakdown, geoBreakdown, geoPoints] =
+  const [overview, downloadsByDay, playsByDay, deviceOsBreakdown, geoBreakdown, geoPoints, reactionSummary] =
     await Promise.all([
       getTrackOverview(trackId, days),
       getDownloadsByDay(days, trackId),
@@ -49,6 +51,7 @@ export default async function TrackAnalyticsPage({ params, searchParams }: PageP
       getDeviceOsBreakdown(days, trackId),
       getGeoBreakdownByTrack(trackId, days),
       getGeoPoints(trackId, days),
+      getReactionSummary(trackId),
     ])
 
   const { playFunnel } = overview
@@ -105,6 +108,13 @@ export default async function TrackAnalyticsPage({ params, searchParams }: PageP
         </ChartCard>
         <ChartCard title="Mapa de pontos (lat/long)">
           <GeoScatterChart data={geoPoints} />
+        </ChartCard>
+      </div>
+
+      {/* Distribuição de reações com emoji (V3 Plano 15) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        <ChartCard title="Reações com emoji">
+          <ReactionsChart data={reactionSummary} />
         </ChartCard>
       </div>
     </div>

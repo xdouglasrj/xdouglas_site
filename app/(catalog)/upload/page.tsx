@@ -5,8 +5,11 @@ import { getAccessToken } from '@/lib/auth/cookies'
 import { verifyAccessToken } from '@/lib/auth/jwt'
 import { getUploadLimits } from '@/lib/settings/upload-limits'
 import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
+import Link from 'next/link'
 import { ArtistTrackForm } from '@/components/upload/artist-track-form'
 import { SchedulingLinkButton } from '@/components/upload/scheduling-link-button'
+import { prisma } from '@/lib/prisma'
+import { isContestOpen } from '@/lib/contests/contests'
 
 export const metadata: Metadata = {
   title: 'Upload de música',
@@ -14,7 +17,12 @@ export const metadata: Metadata = {
 }
 export const dynamic = 'force-dynamic'
 
-export default async function UploadPage() {
+interface UploadPageProps {
+  searchParams: Promise<{ contestId?: string }>
+}
+
+export default async function UploadPage({ searchParams }: UploadPageProps) {
+  const { contestId: contestIdParam } = await searchParams
   const token = await getAccessToken()
   if (!token) redirect('/inicio')
   const payload = token ? await verifyAccessToken(token) : null
@@ -26,25 +34,59 @@ export default async function UploadPage() {
   const submissions = payload ? await listMySubmissions(payload.userId) : []
   const { musicMaxSizeMb } = await getUploadLimits()
 
+  // V3 Plano 6 — quando vem de "Participar" num concurso (/contests/[slug]),
+  // valida no servidor que o concurso existe, está publicado e no prazo
+  // ANTES de oferecer o formulário vinculado. Se inválido, cai no upload
+  // normal (sem contestId) em vez de travar a página.
+  let contest: { id: string; title: string } | null = null
+  if (contestIdParam) {
+    const found = await prisma.contest.findUnique({
+      where: { id: contestIdParam },
+      select: { id: true, title: true, published: true, deadline: true },
+    })
+    if (found && isContestOpen(found)) {
+      contest = { id: found.id, title: found.title }
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Upload de música</h1>
+        <h1 className="text-2xl font-bold text-white">
+          {contest ? `Participar — ${contest.title}` : 'Upload de música'}
+        </h1>
         <p className="mt-1 text-sm text-gate-blue">
-          Envie sua faixa para revisão. Ela só aparece no catálogo depois de aprovada pela equipe.
-          Você pode enviar até 5 músicas por vez e agendar o lançamento automático para até 15
-          dias no futuro.
+          {contest
+            ? 'Envie sua faixa para participar do concurso. Ela também passa pela revisão normal da equipe antes de aparecer no catálogo público.'
+            : 'Envie sua faixa para revisão. Ela só aparece no catálogo depois de aprovada pela equipe. Você pode enviar até 5 músicas por vez e agendar o lançamento automático para até 15 dias no futuro.'}
         </p>
       </div>
 
-      <div className="mb-8">
-        <SchedulingLinkButton />
-        <p className="mt-1.5 text-xs text-gate-blue">
-          Link particular para você (e a equipe) acompanhar suas músicas agendadas, sem precisar logar.
-        </p>
-      </div>
+      {!contest && (
+        <>
+          <div className="mb-8">
+            <SchedulingLinkButton />
+            <p className="mt-1.5 text-xs text-gate-blue">
+              Link particular para você (e a equipe) acompanhar suas músicas agendadas, sem precisar logar.
+            </p>
+          </div>
 
-      <ArtistTrackForm maxAudioSizeMb={musicMaxSizeMb} />
+          <div className="mb-8">
+            <Link
+              href="/minhas-musicas/eventos"
+              className="inline-block rounded-lg border border-gate-azure px-4 py-2 text-xs font-semibold text-white transition hover:border-gate-pink hover:text-gate-pink"
+            >
+              Gerenciar meus eventos (agenda)
+            </Link>
+          </div>
+        </>
+      )}
+
+      <ArtistTrackForm
+        maxAudioSizeMb={musicMaxSizeMb}
+        contestId={contest?.id}
+        contestTitle={contest?.title}
+      />
 
       {submissions.length > 0 && (
         <section className="mt-12">

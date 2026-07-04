@@ -124,6 +124,7 @@ export const GROUPS: NavGroup[] = [
     items: [
       { label: 'Loja de pontos', href: '/admin/loja', permission: null },
       { label: 'Promoções de XP', href: '/admin/loja/promocoes', permission: null },
+      { label: 'Concursos', href: '/admin/contests', permission: null },
     ],
   },
   {

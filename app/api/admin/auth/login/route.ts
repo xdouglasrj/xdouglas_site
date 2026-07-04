@@ -9,6 +9,8 @@ import { extractIp } from '@/lib/analytics/geo'
 import { getActiveHashKey, hashIp } from '@/lib/analytics/hash'
 import { isSuspiciousUserAgent } from '@/lib/security/detect-bot'
 import { addPoints, registerDailyLogin } from '@/lib/points/points-service'
+import { cleanupStalePlaybackProgress } from '@/lib/social/playback-progress'
+import { maybeSendProfileReminder } from '@/lib/profile-completeness'
 
 // ============================================================
 // Validação de input
@@ -138,6 +140,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (err) {
     console.error('[Login] Falha ao registrar pontos', err)
   }
+
+  // V3 Plano 11 — limpeza oportunista de progresso de reprodução parado
+  // há 90+ dias. Best-effort, não bloqueia o login.
+  cleanupStalePlaybackProgress().catch((err) =>
+    console.error('[Login] Falha ao limpar playback progress antigo', err)
+  )
+
+  // V3 Plano 9 — lembrete de perfil incompleto (<50% após 3 dias de conta,
+  // enviado no máx. 1x). Best-effort, não bloqueia o login.
+  maybeSendProfileReminder(user.id).catch((err) =>
+    console.error('[Login] Falha ao verificar lembrete de perfil', err)
+  )
 
   // 9. Audit log
   await prisma.auditLog.create({

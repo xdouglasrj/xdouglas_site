@@ -146,7 +146,7 @@ export class InsufficientPointsError extends Error {
 export async function spendPoints(
   userId: string,
   amount: number,
-  action: Extract<PointActionType, 'STORE_REDEMPTION' | 'INVITE_ABUSE_PENALTY' | 'ADMIN_ADJUSTMENT'>,
+  action: Extract<PointActionType, 'STORE_REDEMPTION' | 'INVITE_ABUSE_PENALTY' | 'ADMIN_ADJUSTMENT' | 'HIGHLIGHT_TRACK'>,
   description?: string
 ): Promise<{ remainingBalance: number }> {
   if (amount <= 0) throw new Error('amount precisa ser positivo')
@@ -167,6 +167,43 @@ export async function spendPoints(
     })
 
     return { remainingBalance: current - amount }
+  })
+}
+
+/**
+ * Débito atômico + efeito colateral na MESMA transação. Reusa a checagem
+ * de saldo transacional de spendPoints (mesma garantia: nunca deixa saldo
+ * negativo), mas permite ao chamador criar o registro do efeito comprado
+ * (ex.: TrackHighlight) dentro do mesmo `$transaction` — assim ou os dois
+ * acontecem, ou nenhum. Se `effect` lançar, o débito é revertido.
+ */
+export async function spendPointsWithEffect<T>(
+  userId: string,
+  amount: number,
+  action: Extract<PointActionType, 'HIGHLIGHT_TRACK'>,
+  effect: (tx: Tx) => Promise<T>,
+  description?: string
+): Promise<{ remainingBalance: number; effect: T }> {
+  if (amount <= 0) throw new Error('amount precisa ser positivo')
+
+  return prisma.$transaction(async (tx) => {
+    const balance = await tx.pointsHistory.aggregate({
+      where: { userId },
+      _sum: { points: true },
+    })
+    const current = balance._sum.points ?? 0
+
+    if (current < amount) {
+      throw new InsufficientPointsError()
+    }
+
+    await tx.pointsHistory.create({
+      data: { userId, action, points: -amount, description },
+    })
+
+    const effectResult = await effect(tx)
+
+    return { remainingBalance: current - amount, effect: effectResult }
   })
 }
 

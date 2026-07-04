@@ -17,6 +17,8 @@ const uploadUrlSchema = z.object({
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1),
   sizeBytes: z.number().positive().max(5 * 1024 * 1024), // 5MB máximo
+  // V3 Plano 9 — mesma rota serve avatar e capa; só muda o prefixo da key
+  kind: z.enum(['avatar', 'cover']).optional().default('avatar'),
 })
 
 export const POST = withAuth(async (request: NextRequest, auth) => {
@@ -32,7 +34,7 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
     return apiError('Dados inválidos', 400, 'VALIDATION_ERROR')
   }
 
-  const { filename, contentType, sizeBytes } = parsed.data
+  const { filename, contentType, sizeBytes, kind } = parsed.data
 
   if (!ALLOWED_IMAGE.includes(contentType)) {
     return apiError(
@@ -44,7 +46,8 @@ export const POST = withAuth(async (request: NextRequest, auth) => {
 
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
   const uniqueId = crypto.randomUUID()
-  const storageKey = `avatars/${auth.userId}/${uniqueId}.${ext}`
+  const folder = kind === 'cover' ? 'covers' : 'avatars'
+  const storageKey = `${folder}/${auth.userId}/${uniqueId}.${ext}`
 
   try {
     const storage = getStorage()

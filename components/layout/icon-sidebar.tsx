@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { broadcastLogout, onLogoutBroadcast } from '@/lib/auth/cross-tab-logout'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { ThemeToggle, useTema } from '@/components/ui/theme-toggle'
 import { TRACK_GENRES } from '@/lib/tracks/genres'
 import { Topbar } from '@/components/layout/topbar'
 
@@ -44,6 +44,23 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
 
   // Se outra aba fizer logout, esta aba acompanha imediatamente
   useEffect(() => onLogoutBroadcast(() => { window.location.href = '/' }), [])
+
+  // V3 Plano 19 — sincroniza o tema salvo no servidor (outro dispositivo)
+  // para este dispositivo, SÓ quando ainda não há override local salvo
+  // (não sobrescreve uma escolha já feita neste navegador). Fire-and-forget:
+  // falha silenciosa não afeta a navegação — o tema local continua valendo.
+  const { definir } = useTema()
+  useEffect(() => {
+    if (localStorage.getItem('xd_tema')) return
+    fetch('/api/perfil')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const serverTheme = data?.user?.theme
+        if (serverTheme === 'light' || serverTheme === 'dark') definir(serverTheme)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function togglePanel(p: Panel) {
     setPanel((current) => (current === p ? null : p))
@@ -150,9 +167,11 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
               )}
               <MobileLink href="/biblioteca/playlists" onClick={() => setMobileOpen(false)} label="Sua biblioteca" />
               <MobileLink href="/biblioteca/curtidas" onClick={() => setMobileOpen(false)} label="Curtidas" />
+              <MobileLink href="/biblioteca/historico" onClick={() => setMobileOpen(false)} label="Histórico" />
             </MobileSection>
 
             <MobileSection label="Explorar">
+              <MobileLink href="/trending" onClick={() => setMobileOpen(false)} label="Em Alta" />
               <MobileLink href="/generos" onClick={() => setMobileOpen(false)} label="Gêneros" />
               <MobileLink href="/musicas-recentes" onClick={() => setMobileOpen(false)} label="Mais recentes" />
               <MobileLink href="/busca" onClick={() => setMobileOpen(false)} label="Busca" />
@@ -161,10 +180,12 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
             <MobileSection label="Comunidade">
               <MobileLink href="/forum" onClick={() => setMobileOpen(false)} label="Fórum" />
               <MobileLink href="/comentarios" onClick={() => setMobileOpen(false)} label="Comentários" />
+              <MobileLink href="/contests" onClick={() => setMobileOpen(false)} label="Concursos" />
             </MobileSection>
 
             <MobileSection label="Conta">
               <MobileLink href="/loja" onClick={() => setMobileOpen(false)} label="Loja de pontos" />
+              <MobileLink href="/ganhe-pontos" onClick={() => setMobileOpen(false)} label="Ganhe pontos" />
               <MobileLink href="/suporte" onClick={() => setMobileOpen(false)} label="Suporte" />
             </MobileSection>
 
@@ -257,6 +278,10 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h13M3 12h9M3 18h13" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 10l4 2-4 2v-4z" />
           </RailIcon>
+          <RailIcon href="/biblioteca/historico" label="Histórico">
+            <circle cx="12" cy="12" r="9" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3.5 2" />
+          </RailIcon>
 
           <RailSectionLabel>Explorar</RailSectionLabel>
           <button
@@ -273,6 +298,10 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
               <circle cx="17" cy="16" r="3" />
             </svg>
           </button>
+          <RailIcon href="/trending" label="Em Alta">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 7h6v6" />
+          </RailIcon>
           <RailIcon href="/musicas-recentes" label="Mais recentes">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
             <circle cx="12" cy="12" r="9" />
@@ -299,11 +328,19 @@ export function IconSidebar({ isAdmin = false, hasUploads = false, photoUrl = nu
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" />
             <path strokeLinecap="round" d="M7.5 9h9M7.5 12.5h6" />
           </RailIcon>
+          <RailIcon href="/contests" label="Concursos" viewBox="0 0 16 16" strokeWidth="1.5">
+            <path d="M4 2h8v3.5a4 4 0 0 1-8 0V2z" />
+            <path d="M4 3H1.5A1.5 1.5 0 0 0 3 6.5M12 3h2.5A1.5 1.5 0 0 1 13 6.5" />
+            <path d="M8 9.5V12M5.5 14h5" />
+          </RailIcon>
 
           <RailSectionLabel>Conta</RailSectionLabel>
           <RailIcon href="/loja" label="Loja de pontos" viewBox="0 0 16 16" strokeWidth="1.5">
             <path d="M2 5.5h12l-1 8.5H3l-1-8.5z" />
             <path d="M5 5.5V4a3 3 0 0 1 6 0v1.5" />
+          </RailIcon>
+          <RailIcon href="/ganhe-pontos" label="Ganhe pontos" viewBox="0 0 16 16" strokeWidth="1.5">
+            <path d="M8 1l2.2 4.5 4.8.7-3.5 3.4.8 4.8L8 12.1 3.7 14.4l.8-4.8L1 6.2l4.8-.7z" />
           </RailIcon>
           <RailIcon href="/suporte" label="Suporte">
             <circle cx="12" cy="12" r="9" />

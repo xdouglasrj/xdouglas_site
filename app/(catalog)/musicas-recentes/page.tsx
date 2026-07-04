@@ -38,6 +38,7 @@ async function FeedContent({ q }: FeedContentProps) {
       initialTotal={result.total}
       initialQuery={q ?? null}
       canDownload={canDownload}
+      isLoggedIn={role !== null}
       mode="feed"
     />
   )

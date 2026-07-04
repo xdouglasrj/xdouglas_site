@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { addPoints } from '@/lib/points/points-service'
+import { awardMilestoneOnce } from '@/lib/points/milestones'
 import { getTrackOwner } from './track-comments'
 import { createNotification } from '@/lib/notifications/notifications'
+import { checkAndAwardProfileCompletion } from '@/lib/profile-completeness'
 
 export async function isTrackLiked(trackId: string, userId: string): Promise<boolean> {
   const like = await prisma.trackLike.findUnique({
@@ -27,7 +29,19 @@ export async function toggleTrackLike(trackId: string, userId: string): Promise<
   // PointsService; não bloqueia a curtida se falhar
   addPoints(userId, 'TRACK_LIKED').catch((err) => console.error('[TrackLike] Falha ao registrar pontos', err))
 
+  // V3 Plano 7 — tarefa de onboarding "dê sua primeira curtida" (paga 1x na
+  // vida, ADICIONAL ao TRACK_LIKED de cima que tem teto diário)
+  awardMilestoneOnce(userId, 'first_like_given', 'FIRST_LIKE_GIVEN').catch((err) =>
+    console.error('[TrackLike] Falha ao registrar marco de 1ª curtida', err)
+  )
+
   notifyTrackLike(trackId, userId).catch((err) => console.error('[TrackLike] Falha ao criar notificação', err))
+
+  // V3 Plano 9 — a 1ª curtida é um item do checklist de completude; confere
+  // se isso acabou de fechar os 100% do perfil (idempotente, não farmável)
+  checkAndAwardProfileCompletion(userId).catch((err) =>
+    console.error('[TrackLike] Falha ao checar completude de perfil', err)
+  )
 
   return true
 }

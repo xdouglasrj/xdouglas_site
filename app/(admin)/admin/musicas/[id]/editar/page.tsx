@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { TrackForm } from '@/components/admin/track-form'
+import { tracklistItemsToText } from '@/lib/tracks/tracklist'
+import { CopyrightBadge } from '../../copyright-badge'
 
 export const metadata: Metadata = { title: 'Editar música' }
 
@@ -22,6 +24,11 @@ export default async function EditarMusicaPage({ params }: PageProps) {
       genre: true,
       bpm: true,
       key: true,
+      mood: true,
+      tags: true,
+      durationSeconds: true,
+      kind: true,
+      downloadMode: true,
       producerName: true,
       audioKey: true,
       audioFormat: true,
@@ -30,6 +37,12 @@ export default async function EditarMusicaPage({ params }: PageProps) {
       coverUrl: true,
       published: true,
       artistId: true,
+      copyrightStatus: true,
+      copyrightResult: true,
+      tracklist: {
+        orderBy: { position: 'asc' },
+        select: { startSeconds: true, title: true },
+      },
     },
   })
 
@@ -43,6 +56,12 @@ export default async function EditarMusicaPage({ params }: PageProps) {
     genre: track.genre ?? '',
     bpm: track.bpm?.toString() ?? '',
     key: track.key ?? '',
+    mood: track.mood ?? '',
+    tags: track.tags,
+    durationSeconds: track.durationSeconds?.toString() ?? '',
+    kind: track.kind,
+    downloadMode: track.downloadMode,
+    tracklistText: tracklistItemsToText(track.tracklist),
     audioKey: track.audioKey,
     audioFormat: track.audioFormat,
     audioSizeBytes: track.audioSizeBytes?.toString() ?? '',
@@ -64,9 +83,18 @@ export default async function EditarMusicaPage({ params }: PageProps) {
         <span className="text-neutral-400">Editar</span>
       </nav>
 
-      <h1 className="text-xl font-semibold text-white mb-8">
+      <h1 className="text-xl font-semibold text-white mb-2">
         Editar: <span className="text-neutral-400 font-normal">{track.title}</span>
       </h1>
+
+      {/* V3 Plano 20 — aviso de copyright (AcoustID), informativo */}
+      <div className="mb-8">
+        <CopyrightBadge
+          trackId={track.id}
+          status={track.copyrightStatus}
+          result={track.copyrightResult as { score: number; recordingId: string; title: string; artist: string } | null}
+        />
+      </div>
 
       <TrackForm
         mode="edit"

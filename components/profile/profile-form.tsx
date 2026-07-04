@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { NotificationCategory, NotificationPrefs } from '@/lib/notifications/notification-prefs'
+import { useTema } from '@/components/ui/theme-toggle'
 
 export interface ProfileFormFieldsProps {
   email: string
@@ -11,18 +13,53 @@ export interface ProfileFormFieldsProps {
   phone: string | null
   initialName: string
   initialPhotoUrl: string | null
+  initialCoverUrl: string | null
+  initialBio: string | null
+  initialInstagramUrl: string | null
+  initialYoutubeUrl: string | null
+  initialTiktokUrl: string | null
+  initialWebsiteUrl: string | null
   initialShowContatosNoPerfil: boolean
   initialShowName: boolean
   initialShowMusicasNoPerfil: boolean
   initialShowEspacoUploadNoPerfil: boolean
   initialAllowComentariosNaMusica: boolean
   initialShowComentariosVisiveis: boolean
+  initialNotificationPrefs: NotificationPrefs
+  initialTheme: string
   isArtist: boolean
   onHandleChange?: (newHandle: string) => void
 }
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const BIO_MAX_LENGTH = 500
+
+// Validação client-side de URL (só http/https) — espelha a validação do
+// servidor em app/api/perfil/route.ts (isHttpUrl); o servidor é a fonte
+// de verdade, isto é só para feedback imediato antes de enviar.
+function isHttpUrlClient(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// V3 Plano 19 — rótulos exibidos para cada categoria de notificação, na
+// ordem em que aparecem no formulário.
+const NOTIFICATION_CATEGORY_LABELS: { key: NotificationCategory; label: string }[] = [
+  { key: 'likes', label: 'Curtidas (músicas e comentários)' },
+  { key: 'comments', label: 'Comentários e respostas' },
+  { key: 'follows', label: 'Novos seguidores' },
+  { key: 'reposts', label: 'Reposts' },
+  { key: 'forum', label: 'Respostas no fórum' },
+  { key: 'events', label: 'Novos eventos de quem eu sigo' },
+  { key: 'uploads', label: 'Minha música foi publicada' },
+  { key: 'milestones', label: 'Marcos de plays' },
+  { key: 'profile', label: 'Completude do perfil' },
+]
 
 type PrivacyField =
   | 'showContatosNoPerfil'
@@ -89,12 +126,20 @@ export function ProfileFormFields({
   phone,
   initialName,
   initialPhotoUrl,
+  initialCoverUrl,
+  initialBio,
+  initialInstagramUrl,
+  initialYoutubeUrl,
+  initialTiktokUrl,
+  initialWebsiteUrl,
   initialShowContatosNoPerfil,
   initialShowName,
   initialShowMusicasNoPerfil,
   initialShowEspacoUploadNoPerfil,
   initialAllowComentariosNaMusica,
   initialShowComentariosVisiveis,
+  initialNotificationPrefs,
+  initialTheme,
   isArtist,
   onHandleChange,
 }: ProfileFormFieldsProps) {
@@ -103,6 +148,23 @@ export function ProfileFormFields({
   const [photoState, setPhotoState] = useState<'idle' | 'uploading' | 'error'>('idle')
   const [photoError, setPhotoError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [coverUrl, setCoverUrl] = useState<string | null>(initialCoverUrl)
+  const [coverState, setCoverState] = useState<'idle' | 'uploading' | 'error'>('idle')
+  const [coverError, setCoverError] = useState<string | null>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+
+  const [bio, setBio] = useState(initialBio ?? '')
+  const [savingBio, setSavingBio] = useState(false)
+  const [bioMessage, setBioMessage] = useState<string | null>(null)
+
+  const [instagramUrl, setInstagramUrl] = useState(initialInstagramUrl ?? '')
+  const [youtubeUrl, setYoutubeUrl] = useState(initialYoutubeUrl ?? '')
+  const [tiktokUrl, setTiktokUrl] = useState(initialTiktokUrl ?? '')
+  const [websiteUrl, setWebsiteUrl] = useState(initialWebsiteUrl ?? '')
+  const [savingLinks, setSavingLinks] = useState(false)
+  const [linksError, setLinksError] = useState<string | null>(null)
+  const [linksMessage, setLinksMessage] = useState<string | null>(null)
 
   const [name, setName] = useState(initialName)
   const [savingName, setSavingName] = useState(false)
@@ -131,6 +193,61 @@ export function ProfileFormFields({
   const [showComentariosVisiveis, setShowComentariosVisiveis] = useState(initialShowComentariosVisiveis)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
   const [privacyError, setPrivacyError] = useState<string | null>(null)
+
+  // V3 Plano 19 — preferências de notificação (por categoria) + tema
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>(initialNotificationPrefs)
+  const [savingNotificationPrefs, setSavingNotificationPrefs] = useState(false)
+  const [notificationPrefsError, setNotificationPrefsError] = useState<string | null>(null)
+
+  const { tema, definir } = useTema()
+  const [themePreference, setThemePreference] = useState(initialTheme)
+  const [savingTheme, setSavingTheme] = useState(false)
+
+  async function handleNotificationToggle(category: NotificationCategory, value: boolean) {
+    if (savingNotificationPrefs) return
+    setSavingNotificationPrefs(true)
+    setNotificationPrefsError(null)
+
+    const previous = notificationPrefs
+    setNotificationPrefs({ ...notificationPrefs, [category]: value })
+
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationCategory: category, notificationCategoryValue: value }),
+      })
+      if (!res.ok) {
+        setNotificationPrefs(previous)
+        setNotificationPrefsError('Não foi possível salvar.')
+      }
+    } catch {
+      setNotificationPrefs(previous)
+      setNotificationPrefsError('Erro de conexão.')
+    } finally {
+      setSavingNotificationPrefs(false)
+    }
+  }
+
+  async function handleThemeChange(preference: 'light' | 'dark' | 'system') {
+    if (savingTheme) return
+    setSavingTheme(true)
+    definir(preference)
+    setThemePreference(preference)
+
+    try {
+      await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: preference }),
+      })
+    } catch {
+      // Tema já foi aplicado localmente (localStorage) — falha ao persistir
+      // no servidor só afeta a sincronização entre dispositivos, não a sessão atual.
+    } finally {
+      setSavingTheme(false)
+    }
+  }
 
   const PRIVACY_SETTERS: Record<PrivacyField, (v: boolean) => void> = {
     showContatosNoPerfil: setShowContatosNoPerfil,
@@ -220,10 +337,130 @@ export function ProfileFormFields({
 
       setPhotoUrl(publicUrl)
       setPhotoState('idle')
+      router.refresh()
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : 'Erro no upload')
       setPhotoState('error')
       setTimeout(() => setPhotoState('idle'), 3000)
+    }
+  }
+
+  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setCoverError(null)
+
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      setCoverError('Formato não suportado. Use JPG, PNG ou WebP.')
+      return
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setCoverError('A imagem precisa ter até 5MB.')
+      return
+    }
+
+    setCoverState('uploading')
+    try {
+      const urlRes = await fetch('/api/perfil/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+          kind: 'cover',
+        }),
+      })
+
+      if (!urlRes.ok) {
+        const err = await urlRes.json().catch(() => ({}))
+        throw new Error(err.error ?? 'Erro ao gerar URL de upload')
+      }
+
+      const { uploadUrl, storageKey, publicUrl } = await urlRes.json()
+
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!putRes.ok) throw new Error('Falha ao enviar a imagem')
+
+      const patchRes = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverKey: storageKey, coverUrl: publicUrl }),
+      })
+      if (!patchRes.ok) throw new Error('Erro ao salvar a capa no perfil')
+
+      setCoverUrl(publicUrl)
+      setCoverState('idle')
+      router.refresh()
+    } catch (err) {
+      setCoverError(err instanceof Error ? err.message : 'Erro no upload')
+      setCoverState('error')
+      setTimeout(() => setCoverState('idle'), 3000)
+    }
+  }
+
+  async function handleBioSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (savingBio) return
+    setSavingBio(true)
+    setBioMessage(null)
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bio: bio.trim() }),
+      })
+      setBioMessage(res.ok ? 'Bio atualizada.' : 'Erro ao atualizar bio.')
+      if (res.ok) router.refresh()
+    } catch {
+      setBioMessage('Erro ao atualizar bio.')
+    } finally {
+      setSavingBio(false)
+    }
+  }
+
+  async function handleLinksSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (savingLinks) return
+    setLinksError(null)
+    setLinksMessage(null)
+
+    const links = { instagramUrl, youtubeUrl, tiktokUrl, websiteUrl }
+    for (const [field, value] of Object.entries(links)) {
+      if (value.trim() && !isHttpUrlClient(value.trim())) {
+        setLinksError(`Link de ${field.replace('Url', '')} precisa ser uma URL http(s) válida.`)
+        return
+      }
+    }
+
+    setSavingLinks(true)
+    try {
+      const res = await fetch('/api/perfil', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instagramUrl: instagramUrl.trim(),
+          youtubeUrl: youtubeUrl.trim(),
+          tiktokUrl: tiktokUrl.trim(),
+          websiteUrl: websiteUrl.trim(),
+        }),
+      })
+      if (!res.ok) {
+        setLinksError('Erro ao atualizar links.')
+        return
+      }
+      setLinksMessage('Links atualizados.')
+      router.refresh()
+    } catch {
+      setLinksError('Erro de conexão.')
+    } finally {
+      setSavingLinks(false)
     }
   }
 
@@ -388,6 +625,124 @@ export function ProfileFormFields({
         </div>
       </section>
 
+      {/* Foto de capa */}
+      <section className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Foto de capa</h2>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className="relative w-24 h-12 shrink-0 rounded-md overflow-hidden bg-white/10 border border-gate-azure flex items-center justify-center">
+            {coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverUrl} alt="Foto de capa" className="w-full h-full object-cover" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gate-blue">
+                <rect x="3" y="4" width="18" height="14" rx="2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 15l4.5-4.5a2 2 0 0 1 2.8 0L14 14l1.5-1.5a2 2 0 0 1 2.8 0L21 15" />
+              </svg>
+            )}
+            {coverState === 'uploading' && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept={ALLOWED_PHOTO_TYPES.join(',')}
+              onChange={handleCoverChange}
+              className="sr-only"
+            />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              disabled={coverState === 'uploading'}
+              className="rounded-md bg-gate-pink px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60 w-fit"
+            >
+              {coverState === 'uploading' ? 'Enviando…' : 'Trocar capa'}
+            </button>
+            <span className="text-[11px] text-white/40">JPG, PNG ou WebP — até 5MB</span>
+            {coverError && <span className="text-[11px] text-red-400">{coverError}</span>}
+          </div>
+        </div>
+      </section>
+
+      {/* Bio */}
+      <form onSubmit={handleBioSubmit} className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Bio</h2>
+        <p className="mt-1 text-[11px] text-white/40">Aparece no seu perfil público. Mínimo 20 caracteres para contar na completude.</p>
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          maxLength={BIO_MAX_LENGTH}
+          rows={3}
+          placeholder="Conte um pouco sobre você..."
+          className="mt-2 w-full resize-none rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={savingBio}
+            className="rounded-md bg-gate-pink px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+          >
+            {savingBio ? 'Salvando…' : 'Salvar'}
+          </button>
+          <span className="text-[11px] text-white/30">{bio.length}/{BIO_MAX_LENGTH}</span>
+          {bioMessage && <span className="text-[11px] text-emerald-400">{bioMessage}</span>}
+        </div>
+      </form>
+
+      {/* Links sociais */}
+      <form onSubmit={handleLinksSubmit} className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Links sociais</h2>
+        <p className="mt-1 text-[11px] text-white/40">Exibidos com ícone no seu perfil público. Use links completos (https://...).</p>
+        <div className="mt-2 flex flex-col gap-2">
+          <input
+            type="url"
+            value={instagramUrl}
+            onChange={(e) => setInstagramUrl(e.target.value)}
+            placeholder="https://instagram.com/seu_perfil"
+            className="w-full rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+          />
+          <input
+            type="url"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://youtube.com/@seu_canal"
+            className="w-full rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+          />
+          <input
+            type="url"
+            value={tiktokUrl}
+            onChange={(e) => setTiktokUrl(e.target.value)}
+            placeholder="https://tiktok.com/@seu_perfil"
+            className="w-full rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+          />
+          <input
+            type="url"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            placeholder="https://seusite.com"
+            className="w-full rounded-md border border-gate-azure bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none transition focus:border-gate-pink focus:ring-1 focus:ring-gate-pink/40"
+          />
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={savingLinks}
+            className="rounded-md bg-gate-pink px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+          >
+            {savingLinks ? 'Salvando…' : 'Salvar'}
+          </button>
+          {linksError && <span className="text-[11px] text-red-400">{linksError}</span>}
+          {linksMessage && <span className="text-[11px] text-emerald-400">{linksMessage}</span>}
+        </div>
+      </form>
+
       {/* Dados básicos (somente leitura) */}
       <section className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
         <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Conta</h2>
@@ -507,6 +862,51 @@ export function ProfileFormFields({
         )}
 
         {privacyError && <p className="mt-2 text-[11px] text-red-400">{privacyError}</p>}
+      </section>
+
+      {/* Notificações e aparência (V3 Plano 19) */}
+      <section className="rounded-lg border border-gate-azure bg-white/5 p-3.5">
+        <h2 className="text-[11px] font-bold uppercase tracking-widest text-gate-blue">Notificações e aparência</h2>
+
+        <p className="mt-2 text-[11px] text-white/40">Escolha quais notificações você recebe no sino.</p>
+        <div className="mt-2.5 flex flex-col gap-2">
+          {NOTIFICATION_CATEGORY_LABELS.map(({ key, label }) => (
+            <PrivacyToggleRow
+              key={key}
+              label={label}
+              checked={notificationPrefs[key]}
+              disabled={savingNotificationPrefs}
+              onToggle={() => handleNotificationToggle(key, !notificationPrefs[key])}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-white/30">
+          Resumo por e-mail: em breve — ainda não temos infraestrutura de e-mail para isso.
+        </p>
+        {notificationPrefsError && <p className="mt-2 text-[11px] text-red-400">{notificationPrefsError}</p>}
+
+        <h3 className="mt-4 text-[11px] font-bold uppercase tracking-widest text-gate-blue">Tema</h3>
+        <p className="mt-1 text-[11px] text-white/40">
+          Atual: {tema === 'light' ? 'claro' : 'escuro'}. &quot;Sistema&quot; segue a preferência do seu aparelho.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(['dark', 'light', 'system'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              disabled={savingTheme}
+              onClick={() => handleThemeChange(option)}
+              className={[
+                'rounded-md border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-60',
+                themePreference === option
+                  ? 'border-gate-pink bg-gate-pink text-white'
+                  : 'border-gate-azure bg-white/5 text-white/70 hover:border-gate-pink/60',
+              ].join(' ')}
+            >
+              {option === 'dark' ? 'Escuro' : option === 'light' ? 'Claro' : 'Sistema'}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Nome artístico — é o que aparece nas músicas e no perfil público */}

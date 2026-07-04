@@ -4,9 +4,14 @@ import { prisma } from '@/lib/prisma'
 import { Avatar } from '@/components/ui/avatar'
 import { FollowButton } from '@/components/profile/follow-button'
 import { ProfileTracks } from '@/components/profile/profile-tracks'
+import { ArtistSeriesSection } from '@/components/music/artist-series-section'
+import { ArtistEventsSection } from '@/components/music/artist-events-section'
+import { SocialLinks } from '@/components/profile/social-links'
 import { getFollowCounts, isFollowing } from '@/lib/social/follow'
 import { getArtistLikeCount } from '@/lib/social/track-likes'
 import { listPublishedTracksByArtist } from '@/lib/tracks/artist-queries'
+import { listPublishedSeriesByArtist } from '@/lib/tracks/series'
+import { listUpcomingEventsByArtist, listPastEventsByArtist } from '@/lib/events/events'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 
 // Perfil público de artista — canônico e indexável (§3.1/§3.4). Acessível
@@ -31,6 +36,19 @@ async function getArtist(slug: string) {
       active: true,
       updatedAt: true,
       userId: true,
+      // V3 Plano 9 — bio livre e links sociais vivem em User (o Artist.bio
+      // acima é o campo legado, mantido como fallback se o usuário não
+      // preencheu a bio nova em /perfil/editar).
+      user: {
+        select: {
+          bio: true,
+          coverUrl: true,
+          instagramUrl: true,
+          youtubeUrl: true,
+          tiktokUrl: true,
+          websiteUrl: true,
+        },
+      },
     },
   })
 }
@@ -63,8 +81,11 @@ export default async function ArtistaPublicoPage({ params }: PageProps) {
 
   const viewer = await getCurrentUserBasics()
 
-  const [tracks, likeCount, counts, followingAlready] = await Promise.all([
+  const [tracks, series, upcomingEvents, pastEvents, likeCount, counts, followingAlready] = await Promise.all([
     listPublishedTracksByArtist(artist.id),
+    listPublishedSeriesByArtist(artist.id),
+    listUpcomingEventsByArtist(artist.id),
+    listPastEventsByArtist(artist.id),
     getArtistLikeCount(artist.id),
     artist.userId ? getFollowCounts(artist.userId) : Promise.resolve({ followers: 0, following: 0 }),
     artist.userId && viewer ? isFollowing(viewer.id, artist.userId) : Promise.resolve(false),
@@ -107,7 +128,22 @@ export default async function ArtistaPublicoPage({ params }: PageProps) {
         </span>
       </div>
 
-      {artist.bio && <p className="mt-4 text-sm text-white/70">{artist.bio}</p>}
+      {(artist.user?.bio || artist.bio) && (
+        <p className="mt-4 text-sm text-white/70">{artist.user?.bio || artist.bio}</p>
+      )}
+
+      <div className="mt-3">
+        <SocialLinks
+          instagramUrl={artist.user?.instagramUrl}
+          youtubeUrl={artist.user?.youtubeUrl}
+          tiktokUrl={artist.user?.tiktokUrl}
+          websiteUrl={artist.user?.websiteUrl}
+        />
+      </div>
+
+      <ArtistEventsSection upcoming={upcomingEvents} past={pastEvents} />
+
+      <ArtistSeriesSection series={series} />
 
       <ProfileTracks tracks={tracks} artistName={artist.name} />
     </div>

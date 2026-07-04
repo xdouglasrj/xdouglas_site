@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUserBasics } from '@/lib/auth/current-user'
 import { listMySubmissions } from '@/lib/tracks/artist-queries'
 import { publishDueScheduledTracks } from '@/lib/tracks/scheduling'
+import { HighlightButton } from './highlight-button'
 
 export const metadata: Metadata = {
   title: 'Minhas músicas',
@@ -74,17 +75,20 @@ export default async function MinhasMusicasPage() {
                 </>
               )
               return (
-                <li key={track.id}>
+                <li key={track.id} className="flex items-center gap-2 px-4 py-3">
                   {hasStats ? (
                     <Link
                       href={`/minhas-musicas/${track.id}`}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                      className="flex flex-1 items-center justify-between gap-2 rounded-md -mx-2 px-2 py-1 hover:bg-white/5 transition-colors"
                     >
                       {content}
                     </Link>
                   ) : (
-                    <div className="flex items-center justify-between px-4 py-3">{content}</div>
+                    <div className="flex flex-1 items-center justify-between gap-2">{content}</div>
                   )}
+                  {/* V3 Plano 13 — destacar a própria faixa gastando pontos.
+                      Só faixas publicadas podem ser destacadas. */}
+                  {track.published && <HighlightButton trackId={track.id} />}
                 </li>
               )
             })}

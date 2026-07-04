@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Suspense } from 'react'
 import {
   getDashboardSummary,
@@ -11,6 +12,7 @@ import {
   getPlaysByDay,
 } from '@/lib/analytics/queries'
 import { prisma } from '@/lib/prisma'
+import { getTrending, type TrendingEntry } from '@/lib/trending'
 import { DownloadsChart } from '@/components/admin/charts/downloads-chart'
 import { VisitorsChart } from '@/components/admin/charts/visitors-chart'
 import { DeviceOsChart } from '@/components/admin/charts/device-os-chart'
@@ -52,6 +54,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     totalTracks,
     suspiciousCount,
     recentDownloads,
+    trendingTop5,
   ] = await Promise.all([
     getDashboardSummary(),
     getDownloadsByDay(days),
@@ -81,6 +84,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         track: { select: { title: true, slug: true } },
       },
     }),
+    getTrending({ period: 'week' })
+      .then((entries) => entries.slice(0, 5))
+      .catch(() => [] as TrendingEntry[]),
   ])
 
   const recentDownloadsSerialized = recentDownloads.map((d) => ({
@@ -131,6 +137,39 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           value={summary.newWaitlist}
           sub="últimos 30d"
         />
+      </div>
+
+      {/* Em Alta — top 5 da semana (V3 Plano 4) */}
+      <div className="mb-8 rounded-lg border border-neutral-800 bg-neutral-900/50 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white">📈 Em Alta esta semana</h2>
+          <Link href="/trending" className="text-xs text-neutral-400 hover:text-white transition">
+            Ver página →
+          </Link>
+        </div>
+        {trendingTop5.length === 0 ? (
+          <p className="text-xs text-neutral-500">Sem atividade suficiente esta semana.</p>
+        ) : (
+          <ol className="flex flex-col gap-1.5">
+            {trendingTop5.map((entry) => (
+              <li key={entry.track.id} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-right font-bold tabular-nums text-neutral-500">
+                  {entry.position}
+                </span>
+                <Link
+                  href={`/musicas/${entry.track.slug}`}
+                  className="truncate text-white hover:text-neutral-300 transition"
+                >
+                  {entry.track.title}
+                </Link>
+                <span className="truncate text-xs text-neutral-500">· {entry.track.artist.name}</span>
+                <span className="ml-auto shrink-0 text-xs text-neutral-500 tabular-nums">
+                  {entry.stats.score} pts
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       {/* Gráficos principais — linha 1 */}

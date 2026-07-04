@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { withRole, apiSuccess, apiError } from '@/lib/auth/guard'
 import { isFeatureEnabled } from '@/lib/settings/feature-flags'
 import { submitTrack, submitTrackSchema, listMySubmissions } from '@/lib/tracks/artist-queries'
+import { ContestEntryError } from '@/lib/contests/entries'
 
 // ============================================================
 // GET /api/musicas/upload — lista os envios do próprio artista
@@ -49,6 +50,9 @@ export const POST = withRole('GUEST', async (request: NextRequest, auth) => {
     const track = await submitTrack(parsed.data, auth.userId)
     return apiSuccess({ track: { ...track, scheduledAt: track.scheduledAt?.toISOString() ?? null } }, 201)
   } catch (err) {
+    if (err instanceof ContestEntryError) {
+      return apiError(err.message, 400, err.code)
+    }
     const message = err instanceof Error ? err.message : ''
     if (message.startsWith('Data de agendamento') || message.startsWith('Limite de')) {
       return apiError(message, 400, 'SCHEDULE_ERROR')

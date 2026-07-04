@@ -14,9 +14,15 @@ function getCanonicalUrl(slug: string): string {
   return `${window.location.origin}/musicas/${slug}`
 }
 
+function getEmbedSnippet(slug: string): string {
+  return `<iframe src="https://xdouglas.com.br/embed/musicas/${slug}" width="100%" height="152" frameborder="0" allow="autoplay"></iframe>`
+}
+
 export function ShareButton({ trackId, slug, title, artistName, compact = false }: ShareButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [embedOpen, setEmbedOpen] = useState(false)
+  const [embedCopied, setEmbedCopied] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -77,6 +83,17 @@ export function ShareButton({ trackId, slug, title, artistName, compact = false 
     setMenuOpen(false)
   }
 
+  async function copyEmbedSnippet() {
+    try {
+      await navigator.clipboard.writeText(getEmbedSnippet(slug))
+      setEmbedCopied(true)
+      registerShare()
+      setTimeout(() => setEmbedCopied(false), 2000)
+    } catch {
+      // clipboard indisponível — ignora
+    }
+  }
+
   return (
     <div ref={wrapperRef} className="relative">
       <button
@@ -115,6 +132,37 @@ export function ShareButton({ trackId, slug, title, artistName, compact = false 
           >
             {copied ? 'Link copiado!' : 'Copiar link'}
           </button>
+          <button
+            type="button"
+            onClick={() => setEmbedOpen((v) => !v)}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-white hover:bg-white/5 transition"
+            aria-expanded={embedOpen}
+          >
+            Incorporar
+          </button>
+
+          {embedOpen && (
+            <div className="mt-1 border-t border-gate-azure/50 pt-2">
+              <label htmlFor={`embed-snippet-${trackId}`} className="mb-1 block px-1 text-[11px] text-gate-blue">
+                Cole este código no seu site:
+              </label>
+              <textarea
+                id={`embed-snippet-${trackId}`}
+                readOnly
+                value={getEmbedSnippet(slug)}
+                onFocus={(e) => e.currentTarget.select()}
+                rows={3}
+                className="w-full resize-none rounded-md border border-gate-azure bg-black/20 px-2 py-1.5 text-xs text-white/80 focus:outline-none focus:ring-1 focus:ring-gate-pink"
+              />
+              <button
+                type="button"
+                onClick={copyEmbedSnippet}
+                className="mt-1.5 w-full rounded-md bg-gate-pink/15 px-3 py-1.5 text-xs font-semibold text-gate-pink transition hover:bg-gate-pink/25"
+              >
+                {embedCopied ? 'Código copiado!' : 'Copiar código'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

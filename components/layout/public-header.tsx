@@ -26,13 +26,27 @@ export function PublicHeader() {
             className="h-8 w-auto object-contain"
           />
         </Link>
-        <button
-          type="button"
-          onClick={() => openLogin()}
-          className="rounded-md bg-gate-pink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          Entrar
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/trending"
+            className="text-sm font-medium text-gate-blue transition hover:text-gate-pink"
+          >
+            Em Alta
+          </Link>
+          <Link
+            href="/contests"
+            className="text-sm font-medium text-gate-blue transition hover:text-gate-pink"
+          >
+            Concursos
+          </Link>
+          <button
+            type="button"
+            onClick={() => openLogin()}
+            className="rounded-md bg-gate-pink px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            Entrar
+          </button>
+        </div>
       </header>
 
       {/* Desktop */}

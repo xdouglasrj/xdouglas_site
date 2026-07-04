@@ -5,6 +5,30 @@ import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/auth/guard'
 import { HANDLE_REGEX } from '@/lib/auth/handle'
 import { addPoints } from '@/lib/points/points-service'
+import { checkAndAwardProfileCompletion } from '@/lib/profile-completeness'
+import {
+  parseNotificationPrefs,
+  type NotificationCategory,
+} from '@/lib/notifications/notification-prefs'
+
+// Validação de URL — só http/https, nunca javascript:/data: etc. Mesmo
+// padrão usado em lib/events/events.ts (isHttpUrl) para os links de evento.
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const optionalHttpUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .optional()
+  .nullable()
+  .refine((v) => !v || isHttpUrl(v), 'Link deve ser uma URL http(s) válida')
 
 // ============================================================
 // GET /api/perfil — dados do usuário logado
@@ -30,6 +54,8 @@ export const GET = withAuth(async (_request, auth) => {
       showContatosNoPerfil: true,
       allowComentariosNaMusica: true,
       showComentariosVisiveis: true,
+      notificationPrefs: true,
+      theme: true,
       createdAt: true,
       artist: { select: { name: true, slug: true, bio: true, photoUrl: true } },
     },
@@ -39,7 +65,9 @@ export const GET = withAuth(async (_request, auth) => {
     return NextResponse.json({ error: 'Usuário não encontrado', code: 'NOT_FOUND' }, { status: 404 })
   }
 
-  return NextResponse.json({ user })
+  return NextResponse.json({
+    user: { ...user, notificationPrefs: parseNotificationPrefs(user.notificationPrefs) },
+  })
 })
 
 // ============================================================
@@ -54,6 +82,13 @@ const updateSchema = z.object({
   newPassword: z.string().min(8).max(72).optional(),
   photoKey: z.string().min(1).max(500).optional(),
   photoUrl: z.string().url().optional(),
+  coverKey: z.string().min(1).max(500).optional(),
+  coverUrl: z.string().url().optional(),
+  bio: z.string().trim().max(500).optional(),
+  instagramUrl: optionalHttpUrl,
+  youtubeUrl: optionalHttpUrl,
+  tiktokUrl: optionalHttpUrl,
+  websiteUrl: optionalHttpUrl,
   showEmail: z.boolean().optional(),
   showPhone: z.boolean().optional(),
   showName: z.boolean().optional(),
@@ -62,6 +97,13 @@ const updateSchema = z.object({
   showContatosNoPerfil: z.boolean().optional(),
   allowComentariosNaMusica: z.boolean().optional(),
   showComentariosVisiveis: z.boolean().optional(),
+  // V3 Plano 19 — 1 categoria por chamada (o form de preferências salva
+  // toggle a toggle, igual ao padrão já usado pelas outras seções desta rota)
+  notificationCategory: z
+    .enum(['likes', 'comments', 'follows', 'reposts', 'forum', 'events', 'uploads', 'milestones', 'profile', 'emailDigest'])
+    .optional(),
+  notificationCategoryValue: z.boolean().optional(),
+  theme: z.enum(['dark', 'light', 'system']).optional(),
 }).refine(
   (data) => !data.newPassword || !!data.currentPassword,
   { message: 'Senha atual obrigatória para trocar a senha', path: ['currentPassword'] }
@@ -85,9 +127,11 @@ export const PATCH = withAuth(async (request, auth) => {
 
   const {
     name, artisticName, handle, currentPassword, newPassword, photoKey, photoUrl,
+    coverKey, coverUrl, bio, instagramUrl, youtubeUrl, tiktokUrl, websiteUrl,
     showEmail, showPhone, showName,
     showMusicasNoPerfil, showEspacoUploadNoPerfil, showContatosNoPerfil,
     allowComentariosNaMusica, showComentariosVisiveis,
+    notificationCategory, notificationCategoryValue, theme,
   } = parsed.data
   const data: {
     name?: string
@@ -96,6 +140,13 @@ export const PATCH = withAuth(async (request, auth) => {
     password?: string
     photoKey?: string
     photoUrl?: string
+    coverKey?: string
+    coverUrl?: string
+    bio?: string
+    instagramUrl?: string | null
+    youtubeUrl?: string | null
+    tiktokUrl?: string | null
+    websiteUrl?: string | null
     showEmail?: boolean
     showPhone?: boolean
     showName?: boolean
@@ -104,6 +155,8 @@ export const PATCH = withAuth(async (request, auth) => {
     showContatosNoPerfil?: boolean
     allowComentariosNaMusica?: boolean
     showComentariosVisiveis?: boolean
+    notificationPrefs?: Record<NotificationCategory, boolean>
+    theme?: string
   } = {}
 
   if (name !== undefined) {
@@ -123,6 +176,19 @@ export const PATCH = withAuth(async (request, auth) => {
     data.handle = normalized
   }
 
+  if (coverKey !== undefined && coverUrl !== undefined) {
+    data.coverKey = coverKey
+    data.coverUrl = coverUrl
+  }
+
+  if (bio !== undefined) data.bio = bio
+  // Campos de link social usam .nullable() no schema — string vazia ou
+  // null limpa o link (permite "descompletar" o item de forma explícita).
+  if (instagramUrl !== undefined) data.instagramUrl = instagramUrl || null
+  if (youtubeUrl !== undefined) data.youtubeUrl = youtubeUrl || null
+  if (tiktokUrl !== undefined) data.tiktokUrl = tiktokUrl || null
+  if (websiteUrl !== undefined) data.websiteUrl = websiteUrl || null
+
   if (photoKey !== undefined && photoUrl !== undefined) {
     data.photoKey = photoKey
     data.photoUrl = photoUrl
@@ -136,6 +202,19 @@ export const PATCH = withAuth(async (request, auth) => {
   if (showContatosNoPerfil !== undefined) data.showContatosNoPerfil = showContatosNoPerfil
   if (allowComentariosNaMusica !== undefined) data.allowComentariosNaMusica = allowComentariosNaMusica
   if (showComentariosVisiveis !== undefined) data.showComentariosVisiveis = showComentariosVisiveis
+
+  // V3 Plano 19 — atualiza 1 categoria por chamada, mesclando com as prefs
+  // atuais (não sobrescreve as demais categorias já salvas).
+  if (notificationCategory !== undefined && notificationCategoryValue !== undefined) {
+    const current = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { notificationPrefs: true },
+    })
+    const merged = { ...parseNotificationPrefs(current?.notificationPrefs), [notificationCategory]: notificationCategoryValue }
+    data.notificationPrefs = merged
+  }
+
+  if (theme !== undefined) data.theme = theme
 
   if (newPassword) {
     const user = await prisma.user.findUnique({
@@ -186,6 +265,11 @@ export const PATCH = withAuth(async (request, auth) => {
       if (updated.photoUrl && updated.handle && (updated.name || artisticName)) {
         await addPoints(auth.userId, 'PROFILE_COMPLETED')
       }
+
+      // V3 Plano 9 — checklist de 7 itens (foto, capa, bio, link social,
+      // curtida, playlist, seguir 3). Award idempotente separado do
+      // PROFILE_COMPLETED acima (critério mais simples, já existente).
+      await checkAndAwardProfileCompletion(auth.userId)
     } catch (err) {
       console.error('[Perfil] Falha ao registrar pontos', err)
     }

@@ -5,6 +5,7 @@ import { GiftPanel } from './gift-panel'
 import { PromotionsPanel } from './promotions-panel'
 import { PurchasesFeed } from './purchases-feed'
 import { PriceAdjustmentHistory } from './price-adjustment-history'
+import { HighlightsPanel, type AdminHighlightRow } from './highlights-panel'
 
 export const metadata: Metadata = { title: 'Loja de pontos' }
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,9 @@ export const dynamic = 'force-dynamic'
 export default async function AdminLojaPage() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-  const [items, promotions, recentPurchases, priceAdjustments] = await Promise.all([
+  const now = new Date()
+
+  const [items, promotions, recentPurchases, priceAdjustments, highlightRows] = await Promise.all([
     prisma.storeItem.findMany({ orderBy: { price: 'asc' } }),
     prisma.pointsPromotion.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.storePurchase.findMany({
@@ -29,7 +32,26 @@ export default async function AdminLojaPage() {
       orderBy: { createdAt: 'desc' },
       take: 30,
     }),
+    prisma.trackHighlight.findMany({
+      include: {
+        track: { select: { title: true } },
+        user: { select: { email: true, name: true, handle: true } },
+      },
+      orderBy: { startsAt: 'desc' },
+      take: 100,
+    }),
   ])
+
+  const highlights: AdminHighlightRow[] = highlightRows.map((h) => ({
+    id: h.id,
+    trackTitle: h.track.title,
+    userLabel: h.user.handle ? `@${h.user.handle}` : h.user.name ?? h.user.email,
+    costPoints: h.costPoints,
+    startsAt: h.startsAt.toISOString(),
+    endsAt: h.endsAt.toISOString(),
+    canceledAt: h.canceledAt?.toISOString() ?? null,
+    isActive: !h.canceledAt && h.endsAt > now,
+  }))
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -48,6 +70,8 @@ export default async function AdminLojaPage() {
       </div>
 
       <PurchasesFeed purchases={recentPurchases} />
+
+      <HighlightsPanel highlights={highlights} />
 
       <PriceAdjustmentHistory adjustments={priceAdjustments} />
     </div>
