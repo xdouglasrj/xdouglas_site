@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTrending, type TrendingPeriod, type TrendingEntry } from '@/lib/trending'
 import { getCurrentRole } from '@/lib/auth/role'
-import { TrackCard, toPlayerTrack } from '@/components/music/track-card'
+import { TrackCard } from '@/components/music/track-card'
+import { toPlayerTrack } from '@/lib/tracks/to-player-track'
 import { TRACK_GENRES } from '@/lib/tracks/genres'
 
 // A agregação fica no cache de 1h do getTrending (unstable_cache);

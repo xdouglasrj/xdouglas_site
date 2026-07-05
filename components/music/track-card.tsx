@@ -15,15 +15,11 @@ import type { PlayerTrack } from '@/components/player/player-provider'
 import { trackKindLabel } from '@/lib/tracks/track-kinds'
 
 /** Converte o shape público da API para o shape mínimo do player global */
-export function toPlayerTrack(track: TrackPublic): PlayerTrack {
-  return {
-    id: track.id,
-    slug: track.slug,
-    title: track.title,
-    artistName: track.artist.name,
-    coverUrl: track.coverUrl,
-  }
-}
+// Re-exportado do módulo puro para compat de imports existentes.
+// Server Components devem importar direto de '@/lib/tracks/to-player-track'
+// (uma função re-exportada por um módulo "use client" vira referência de
+// cliente e não pode ser chamada no servidor).
+export { toPlayerTrack } from '@/lib/tracks/to-player-track'
 
 // ============================================================
 // Helpers

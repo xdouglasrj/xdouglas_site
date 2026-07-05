@@ -4,7 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getSeriesBySlug, listSeriesEpisodes } from '@/lib/tracks/series'
 import { getCurrentRole } from '@/lib/auth/role'
-import { TrackCard, toPlayerTrack } from '@/components/music/track-card'
+import { TrackCard } from '@/components/music/track-card'
+import { toPlayerTrack } from '@/lib/tracks/to-player-track'
 import { SeriesPlayAllButton } from '@/components/music/series-play-all-button'
 
 export const revalidate = 120
