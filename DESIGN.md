@@ -61,7 +61,7 @@ The concept spine is **an evening gallery of finished digital work**. The page s
 
 The signature moment is the horizontal project rail: the active card expands visually through scale and contrast while the next card remains visible as an invitation. A quieter detail is the changing accent line derived from each project's identity.
 
-Photography and generated covers must preserve each project's real visual character. Copy is short, factual and in Portuguese. Density is low, variance is concentrated inside the project covers, and motion is moderate.
+Every project cover is a real capture of that project's home page or landing page. AI-generated imagery is prohibited for portfolio cards. Copy is short, factual and in Portuguese. Density is low, variance is concentrated inside the project captures, and motion is moderate.
 
 # 2. Colors
 
@@ -97,7 +97,7 @@ Project cards use `{rounded.card}` consistently. Circular controls use `{rounded
 
 The header contains the xDouglas name and a short role line. The introduction states that the page gathers sites and digital projects created by Douglas.
 
-`PortfolioCarousel` reads a small static project list. Only entries marked public render on the home page. Each `PortfolioCard` contains a generated cover, category, project name, short description and external-link affordance. External projects open their final domains in a new tab with safe rel attributes; xDouglas Música opens `/musica` in the same tab.
+`PortfolioCarousel` reads a small static project list. Only entries marked public render on the home page. Each `PortfolioCard` contains a real page capture, category, project name, short description and external-link affordance. External projects open their final domains in a new tab with safe rel attributes; xDouglas Música opens `/musica` in the same tab.
 
 Previous and next controls disable at the ends. Keyboard left/right moves one card. Pointer dragging uses native scroll snap. Reduced motion removes translation and uses opacity only.
 
@@ -106,7 +106,7 @@ The manual project record contains: slug, name, category, description, image, hr
 # 8. Do's and Don'ts
 
 - Keep the portfolio home independent from music authentication and database availability.
-- Keep generated images optimized and dimensioned; total initial cover weight should stay below 3 MB.
+- Use only real captures of each project's home page or landing page; keep them optimized and dimensioned, with total initial cover weight below 3 MB.
 - Preserve semantic landmarks, one H1, skip link, visible focus rings and AA contrast.
 - Preserve the current music product under `/musica` without duplicating its implementation.
 - Do not add an admin panel, CMS, automatic screenshots, subdomains or publishing automation.
