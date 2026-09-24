@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { VitrineHeader } from '@/components/layout/VitrineHeader'
 import PortfolioCarousel from '@/components/portfolio/PortfolioCarousel'
+import DevelopmentProjects from '@/components/portfolio/DevelopmentProjects'
 
 export const metadata: Metadata = {
   title: 'xDouglas — Sites e projetos digitais',
@@ -40,6 +41,7 @@ export default function RootPage() {
         <section aria-label="Projetos em destaque" className="mt-10 sm:mt-14">
           <PortfolioCarousel />
         </section>
+        <DevelopmentProjects />
       </main>
     </div>
   )
