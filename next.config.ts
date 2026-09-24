@@ -63,6 +63,7 @@ const nextConfig: NextConfig = {
   // Só a rota de download carrega esse peso extra, não o resto do site.
   outputFileTracingIncludes: {
     '/api/download': ['./node_modules/ffmpeg-static/**'],
+    '/ian-raposo/api/media/[id]': ['./public/ian-raposo-media/**'],
   },
 
   // Catálogo foi renomeado para "Músicas recentes" — preserva links antigos
@@ -73,6 +74,18 @@ const nextConfig: NextConfig = {
         destination: '/musicas-recentes',
         permanent: true,
       },
+    ]
+  },
+
+  async rewrites() {
+    return [
+      { source: '/ian-raposo', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/pinturas', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/desenhos', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/obra/:id', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/sobre', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/curso', destination: '/ian-raposo-static/index.html' },
+      { source: '/ian-raposo/contato', destination: '/ian-raposo-static/index.html' },
     ]
   },
 }

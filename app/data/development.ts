@@ -15,5 +15,6 @@ export const developmentItems: DevelopmentItem[] = [
     category: 'Artes visuais',
     description: 'Ian Raposo - artista visual',
     image: '/portfolio/ian-raposo.png',
+    href: '/ian-raposo',
   }
 ]
