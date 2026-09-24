@@ -1,7 +1,7 @@
 # Retomada
 
-- Parte concluída: especificação registrada; vitrine responsiva implementada e integrada na branch `codex/portfolio-showcase`; quatro capturas reais adicionadas; `/musica` reutiliza a experiência de `/inicio`.
-- Verificado: `prisma generate`; `tsc --noEmit` sem erros; `/` abriu no navegador; carrossel avançou por botão; os quatro cartões, ordem, links e textos apareceram; capturas somam 998.184 bytes.
-- Não verificado: `/musica` no ambiente local e build completo, porque o sandbox não possui `DATABASE_URL`. O Next compilou e checou os tipos antes de falhar no prerender de rotas preexistentes dependentes do banco.
-- Próxima parte: validar `/musica` com o ambiente de teste configurado, conferir a vitrine em viewport móvel e somente então remover a primeira tarefa de `tarefas.md`.
-- Baseline atual: TypeScript passa após `node_modules/.bin/prisma generate`; build bloqueado por ausência de `DATABASE_URL`.
+- Parte concluída: documentação da seção `Em desenvolvimento`; tarefa implementada e integrada na `main`; Ian Raposo aparece separado dos quatro projetos concluídos, sem link enquanto não existe prévia validada.
+- Verificado: captura real da home do Ian com 487.476 bytes; `node_modules/.bin/tsc --noEmit` sem erros; `/` abriu em `http://localhost:3011/`; a árvore do navegador confirmou os quatro projetos concluídos na ordem anterior e o Ian sem link; captura em viewport móvel confirmou a seção abaixo do carrossel.
+- Build: a tentativa na worktree chegou ao Next, mas falhou no carregador de `next/font` do ambiente isolado; não houve erro TypeScript da tarefa.
+- Próxima parte: auditar o projeto de origem em `D:\Dev\Projetos\landing-pages\Ian-raposo`, especificar a prévia direta e somente então implementar `/ian-raposo` e ativar `Ver prévia`.
+- Baseline atual: TypeScript passa; o build completo continua dependente do ambiente configurado do projeto.

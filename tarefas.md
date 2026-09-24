@@ -1,14 +1,5 @@
 # Tarefas
 
-- [>] Criar na página inicial a seção pública “Em desenvolvimento” e incluir nela o projeto Ian Raposo.
-  - TAREFA: seção de projetos em desenvolvimento.
-  - OBJETIVO: apresentar projetos ainda não finalizados em uma área separada dos trabalhos concluídos, começando pelo Ian Raposo, sem transmitir que o projeto já foi entregue.
-  - ARQUIVOS: `app/page.tsx`, `app/data/portfolio.ts` ou um arquivo de dados estático equivalente, componentes de portfólio estritamente necessários, `app/globals.css`, captura real em `public/portfolio/` e testes pertinentes. Não alterar backend, banco, autenticação, APIs ou migrations.
-  - REGRAS APLICÁVEIS: seguir integralmente `DESIGN.md`; posicionar a seção abaixo da exposição principal; usar o título exato “Em desenvolvimento”; manter os projetos inacabados fora do carrossel de concluídos; cada cartão deve exibir o selo “Em desenvolvimento”, nome, descrição factual e captura real do estado atual da home page ou landing page; imagem de IA é proibida; Ian Raposo é o primeiro item; o registro deve permitir definir uma prévia segura ou deixar o cartão sem link; somente exibir “Ver prévia” quando a rota ou URL existir e funcionar; inclusão e mudança de status continuam manuais e sem painel.
-  - CASOS DE BORDA: nenhum projeto em desenvolvimento remove a seção inteira; projeto sem prévia não gera link, botão enganoso ou rota quebrada; falha da imagem mantém nome e status legíveis; a nova seção não cria rolagem horizontal na página; projetos ocultos continuam ausentes; finalizar um projeto exige removê-lo desta seção antes de colocá-lo entre os concluídos.
-  - PRONTO QUANDO: `/` exibe abaixo do carrossel uma seção visualmente secundária chamada “Em desenvolvimento”; Ian Raposo aparece nela com selo, texto e captura real; o cartão só abre uma prévia se o destino tiver sido validado; a exposição principal continua com os quatro projetos atuais e na mesma ordem; celular, tablet e computador permanecem legíveis; `node_modules/.bin/tsc --noEmit` passa; `node_modules/.bin/next build` passa quando o ambiente permitir; a raiz e a interação do cartão são exercidas no navegador.
-  - FORA DE ESCOPO: concluir ou redesenhar a landing page do Ian Raposo, publicar uma rota quebrada, mover projetos inacabados para o carrossel principal, painel administrativo, CMS, captura automática, imagem gerada por IA, autenticação e alterações na plataforma musical.
-
 - [ ] Especificar e publicar a prévia direta do projeto Ian Raposo, caso a versão atual esteja pronta para apresentação.
   - TAREFA: prévia pública do Ian Raposo.
   - OBJETIVO: disponibilizar uma versão segura do projeto em `xdouglas.com.br/ian-raposo` e então ativar “Ver prévia” no cartão de “Em desenvolvimento”.
