@@ -1,5 +1,13 @@
 # Tarefas
 
+- [>] Publicar prévias fiéis de Aura Leblon e Cheirinho Bom no xDouglas.
+  - TAREFA: integrar os projetos de origem em `D:\Dev\Projetos\landing-pages\Aura-Restaurante` e `D:\Dev\Projetos\landing-pages\Cheirinho-bom` como prévias públicas isoladas.
+  - OBJETIVO: disponibilizar `xdouglas.com.br/aura-leblon` e `xdouglas.com.br/cheirinho-bom` e tornar os respectivos cartões clicáveis com a ação “Ver prévia”.
+  - REGRAS APLICÁVEIS: preservar integralmente conteúdo, identidade visual, imagens e interações dos projetos de origem; fazer somente adaptações técnicas de publicação em subcaminho; manter ambos exclusivamente na seção “Em desenvolvimento”; usar capturas reais das páginas; não alterar os repositórios de origem.
+  - CASOS DE BORDA: rotas internas do Aura funcionam sob `/aura-leblon`; recursos estáticos não escapam para a raiz do xDouglas; links externos continuam corretos; as duas prévias permanecem independentes entre si, de Ian Raposo e de `/musica`.
+  - PRONTO QUANDO: os dois cartões aparecem em “Em desenvolvimento”, abrem as prévias corretas, as páginas mantêm o visual de origem em desktop e celular, a compilação do xDouglas passa e o fluxo real é percorrido no navegador.
+  - FORA DE ESCOPO: redesenho, correção ou atualização de conteúdo das páginas de origem; backend FastAPI/Mongo; inclusão entre projetos concluídos; painel administrativo ou publicação automática.
+
 - [>] Transformar a página inicial do xDouglas em uma exposição dos sites e projetos já produzidos, com miniaturas em quadros, preservando a plataforma musical em `/musica`. Cada projeto terá visibilidade pública ou oculta. Trabalhos finalizados e pagos aparecerão na exposição pública como portfólio e, quando tiverem domínio próprio, abrirão diretamente esse endereço externo. Pilotos e propostas ainda não fechados poderão ficar fora da exposição, mas acessíveis sem senha pelo endereço direto temporário no domínio xDouglas, como `xdouglas.com.br/ian-raposo`; “oculto” significa somente não aparecer na exposição. Inclusão, remoção, visibilidade e troca do endereço serão atualizações manuais simples, sem painel administrativo nem automação de publicação ou redirecionamento.
   - Referência visual aprovada para a exposição: `https://21st.dev/@shadcnspace/components/carousel-08` — carrossel horizontal inspirado na galeria da Apple, com cartões grandes de imagem, cantos arredondados, texto sobreposto, parte do próximo cartão visível e controles circulares de navegação.
   - As capas dos cartões serão capturas reais da home page ou landing page de cada projeto. Imagem gerada por IA é proibida para todos os cartões. As capturas ficarão como arquivos simples e substituíveis para atualização manual.
