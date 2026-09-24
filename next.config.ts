@@ -86,6 +86,10 @@ const nextConfig: NextConfig = {
       { source: '/ian-raposo/sobre', destination: '/ian-raposo-static/index.html' },
       { source: '/ian-raposo/curso', destination: '/ian-raposo-static/index.html' },
       { source: '/ian-raposo/contato', destination: '/ian-raposo-static/index.html' },
+      { source: '/aura-leblon', destination: '/aura-leblon-static/index.html' },
+      { source: '/aura-leblon/cardapio', destination: '/aura-leblon-static/index.html' },
+      { source: '/aura-leblon/menu', destination: '/aura-leblon-static/index.html' },
+      { source: '/cheirinho-bom', destination: '/cheirinho-bom-static/index.html' },
     ]
   },
 }
