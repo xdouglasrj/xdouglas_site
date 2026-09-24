@@ -1,14 +1,5 @@
 # Tarefas
 
-- [ ] Especificar e publicar a prévia direta do projeto Ian Raposo, caso a versão atual esteja pronta para apresentação.
-  - TAREFA: prévia pública do Ian Raposo.
-  - OBJETIVO: disponibilizar uma versão segura do projeto em `xdouglas.com.br/ian-raposo` e então ativar “Ver prévia” no cartão de “Em desenvolvimento”.
-  - ARQUIVOS: rota `app/ian-raposo/page.tsx`, componentes e recursos exclusivos da landing page, além do registro estático do cartão. A lista exata será fechada depois da auditoria do projeto de origem em `D:\Dev\Projetos\landing-pages\Ian-raposo`.
-  - REGRAS APLICÁVEIS: esta tarefa permanece em planejamento até o conteúdo e o estado aproveitável da landing page serem auditados; a rota será pública e sem senha; nenhuma dependência de banco ou autenticação; o cartão só recebe link após a rota passar pelos testes; captura real da própria landing page; nenhum conteúdo inventado para substituir informação ausente.
-  - CASOS DE BORDA: projeto de origem incompleto ou com informação provisória; recursos externos ausentes; rota direta funcionando mas navegação interna quebrada; preview inadequado para exposição pública; remoção futura da prévia não pode quebrar a home.
-  - PRONTO QUANDO: a especificação visual e de conteúdo for aprovada, `/ian-raposo` abrir diretamente e funcionar de forma responsiva, seus caminhos reais forem clicados e o cartão da home ativar “Ver prévia” sem misturar o projeto aos concluídos.
-  - FORA DE ESCOPO: decidir agora conteúdo que ainda não foi auditado, inventar textos, concluir o projeto comercial, comprar domínio, publicar no domínio definitivo e automatizar publicação.
-
 - [>] Transformar a página inicial do xDouglas em uma exposição dos sites e projetos já produzidos, com miniaturas em quadros, preservando a plataforma musical em `/musica`. Cada projeto terá visibilidade pública ou oculta. Trabalhos finalizados e pagos aparecerão na exposição pública como portfólio e, quando tiverem domínio próprio, abrirão diretamente esse endereço externo. Pilotos e propostas ainda não fechados poderão ficar fora da exposição, mas acessíveis sem senha pelo endereço direto temporário no domínio xDouglas, como `xdouglas.com.br/ian-raposo`; “oculto” significa somente não aparecer na exposição. Inclusão, remoção, visibilidade e troca do endereço serão atualizações manuais simples, sem painel administrativo nem automação de publicação ou redirecionamento.
   - Referência visual aprovada para a exposição: `https://21st.dev/@shadcnspace/components/carousel-08` — carrossel horizontal inspirado na galeria da Apple, com cartões grandes de imagem, cantos arredondados, texto sobreposto, parte do próximo cartão visível e controles circulares de navegação.
   - As capas dos cartões serão capturas reais da home page ou landing page de cada projeto. Imagem gerada por IA é proibida para todos os cartões. As capturas ficarão como arquivos simples e substituíveis para atualização manual.
