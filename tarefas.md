@@ -1,5 +1,9 @@
 # Tarefas
 
+- [ ] Evitar o pré-carregamento que devolve 404 nos cartões de prévia estática.
+  - Achado em 24/09/2026: na vitrine, o `Link` do Next tenta buscar `/ian-raposo?_rsc=...`, `/aura-leblon?_rsc=...` e `/cheirinho-bom?_rsc=...` e recebe 404 no console, porque essas rotas são reescritas para HTML estático. O clique funciona por navegação completa; o defeito é ruído e requisição desperdiçada.
+  - Especificar antes de executar (provável caminho: cartão de `components/portfolio/DevelopmentCard.tsx` sem pré-carregamento para destinos estáticos).
+
 - [>] Transformar a página inicial do xDouglas em uma exposição dos sites e projetos já produzidos, com miniaturas em quadros, preservando a plataforma musical em `/musica`. Cada projeto terá visibilidade pública ou oculta. Trabalhos finalizados e pagos aparecerão na exposição pública como portfólio e, quando tiverem domínio próprio, abrirão diretamente esse endereço externo. Pilotos e propostas ainda não fechados poderão ficar fora da exposição, mas acessíveis sem senha pelo endereço direto temporário no domínio xDouglas, como `xdouglas.com.br/ian-raposo`; “oculto” significa somente não aparecer na exposição. Inclusão, remoção, visibilidade e troca do endereço serão atualizações manuais simples, sem painel administrativo nem automação de publicação ou redirecionamento.
   - Referência visual aprovada para a exposição: `https://21st.dev/@shadcnspace/components/carousel-08` — carrossel horizontal inspirado na galeria da Apple, com cartões grandes de imagem, cantos arredondados, texto sobreposto, parte do próximo cartão visível e controles circulares de navegação.
   - As capas dos cartões serão capturas reais da home page ou landing page de cada projeto. Imagem gerada por IA é proibida para todos os cartões. As capturas ficarão como arquivos simples e substituíveis para atualização manual.
