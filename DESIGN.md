@@ -57,7 +57,7 @@ opacity:
 
 Reading this as: a personal project gallery for prospective clients, with a cinematic exhibition language in the Bento/Card line.
 
-The concept spine is **an evening gallery of finished digital work**. The page stays quiet so each project can carry its own color and subject. Layout behaves like a gallery rail, typography behaves like restrained exhibition signage, and motion feels weighted rather than playful.
+The concept spine is **an evening gallery of digital work**. The page stays quiet so each project can carry its own color and subject. Finished work remains the main exhibition; work that is not finished lives in a secondary, visually quieter section called **Em desenvolvimento**. Layout behaves like a gallery rail, typography behaves like restrained exhibition signage, and motion feels weighted rather than playful.
 
 The signature moment is the horizontal project rail: the active card expands visually through scale and contrast while the next card remains visible as an invitation. A quieter detail is the changing accent line derived from each project's identity.
 
@@ -79,6 +79,8 @@ No gradient text, all-uppercase paragraph copy or decorative italics. Text overl
 
 The page has a compact header, one introductory block and one dominant carousel. Content is capped at `{containers.content}` with inline padding from `{spacing.page-inline}`.
 
+Below the finished-project carousel, the **Em desenvolvimento** section presents unfinished projects separately. It must never compete visually with the main exhibition: smaller cards, restrained copy and an explicit status label distinguish work in progress from delivered work.
+
 Desktop shows cards near 4:5 with roughly two full cards and a visible slice of the next. Tablet shows about one and a half cards. Mobile shows one dominant card plus a narrow preview of the next. Horizontal motion supports touch drag, trackpad, buttons and keyboard without hijacking vertical scroll.
 
 The page uses natural document height and `min-height: 100dvh`, never fixed `100vh`. No empty grid cells or decorative sections are added.
@@ -99,6 +101,8 @@ The header contains the xDouglas name and a short role line. The introduction st
 
 `PortfolioCarousel` reads a small static project list. Only entries marked public render on the home page. Each `PortfolioCard` contains a real page capture, category, project name, short description and external-link affordance. External projects open their final domains in a new tab with safe rel attributes; xDouglas Música opens `/musica` in the same tab.
 
+`DevelopmentProjects` reads a separate static list of projects whose status is `in-development`. Each card contains a real capture of the current home page or landing page, the label **Em desenvolvimento**, project name and a factual short description. When a safe preview exists, the card may link to it as **Ver prévia**; otherwise it must remain non-clickable and must not suggest that a broken route is available.
+
 Previous and next controls disable at the ends. Keyboard left/right moves one card. Pointer dragging uses native scroll snap. Reduced motion removes translation and uses opacity only.
 
 The manual project record contains: slug, name, category, description, image, href, visibility and external flag. Adding or hiding a project requires changing only that list and adding an image file.
@@ -111,5 +115,7 @@ The manual project record contains: slug, name, category, description, image, hr
 - Preserve the current music product under `/musica` without duplicating its implementation.
 - Do not add an admin panel, CMS, automatic screenshots, subdomains or publishing automation.
 - Do not show hidden pilots on the home page; direct routes remain accessible without passwords.
+- A project may appear in **Em desenvolvimento** only when Douglas chooses to present its progress publicly. A hidden pilot remains absent from the home page even if it is unfinished.
+- Never mix unfinished projects into the finished-project carousel. When one is completed, remove it from **Em desenvolvimento** and add it to the main exhibition.
 - Do not use autoplay, infinite loops, pagination dots or scroll hijacking.
 - Do not copy 21st.dev source code verbatim; reproduce the approved interaction and composition within this project.
